@@ -1,0 +1,5 @@
+namespace dopenbox {
+  class Box {
+    
+  };
+}
