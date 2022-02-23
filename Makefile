@@ -1,7 +1,7 @@
 LOCAL = .
 LIBSPATH = -L $(LOCAL)/ -Wl,-R$(LOCAL)/ '-Wl,-R$$ORIGIN' -L /usr/lib64 -L /usr/local/lib
 INCS = -I /usr/local/include -I $(LOCAL)/
-LIBS =
+LIBS = -l X11 -l Xinerama
 
 CPPC = c++
 CPPC_FLAGS = -std=c++17 -Wall -fPIE -fPIC -pedantic -c
@@ -28,20 +28,20 @@ endef
 all: dopenbox
 
 dopenbox:
-	@echo "Building Dopenbox Release"
+	@echo "Building Dopenbox Release..."
 	$(foreach src, $(SRC_DOPENBOX), $(call compile_rel, $(src)))
-	@echo "Linking"
-	@${CPPC} -o $@ $(OBJ_DOPENBOX) $(REL_LDFLAGS) $(LIBSPATH) $(LIBS)
-	@echo $@
+	@echo "Linking..."
+	@${CPPC} -o $@.bin $(OBJ_DOPENBOX) $(REL_LDFLAGS) $(LIBSPATH) $(LIBS)
+	@echo $@.bin
 
 dopenbox_dbg:
-	@echo "Building Dopenbox Debug"
+	@echo "Building Dopenbox Debug..."
 	$(foreach src, $(SRC_DOPENBOX), $(call compile_dbg, $(src)))
-	@echo "Linking"
-	@${CPPC} -o $@ $(OBJ_DOPENBOX) $(DBG_LDFLAGS) $(LIBSPATH) $(LIBS)
-	@echo $@
+	@echo "Linking..."
+	@${CPPC} -o $@.bin $(OBJ_DOPENBOX) $(DBG_LDFLAGS) $(LIBSPATH) $(LIBS)
+	@echo $@.bin
 
 clean:
 	@echo Cleaning
 	@rm -f $(OBJ_DOPENBOX)
-	@rm -f dopenbox dopenbox_dbg *.tmp *.core
+	@rm -f dopenbox.bin dopenbox_dbg.bin *.tmp *.core
