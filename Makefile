@@ -1,3 +1,4 @@
+EXEC = dobwm
 LOCAL = .
 LIBSPATH = -L $(LOCAL)/ -Wl,-R$(LOCAL)/ '-Wl,-R$$ORIGIN' -L /usr/lib64 -L /usr/local/lib
 INCS = -I /usr/local/include -I $(LOCAL)/
@@ -31,17 +32,17 @@ dopenbox:
 	@echo "Building Dopenbox Release..."
 	$(foreach src, $(SRC_DOPENBOX), $(call compile_rel, $(src)))
 	@echo "Linking..."
-	@${CPPC} -o $@.bin $(OBJ_DOPENBOX) $(REL_LDFLAGS) $(LIBSPATH) $(LIBS)
-	@echo $@.bin
+	@${CPPC} -o $(EXEC).bin $(OBJ_DOPENBOX) $(REL_LDFLAGS) $(LIBSPATH) $(LIBS)
+	@echo $(EXEC).bin
 
 dopenbox_dbg:
 	@echo "Building Dopenbox Debug..."
 	$(foreach src, $(SRC_DOPENBOX), $(call compile_dbg, $(src)))
 	@echo "Linking..."
-	@${CPPC} -o $@.bin $(OBJ_DOPENBOX) $(DBG_LDFLAGS) $(LIBSPATH) $(LIBS)
-	@echo $@.bin
+	@${CPPC} -o $(EXEC).bin $(OBJ_DOPENBOX) $(DBG_LDFLAGS) $(LIBSPATH) $(LIBS)
+	@echo $(EXEC)_dbg.bin
 
 clean:
 	@echo Cleaning
 	@rm -f $(OBJ_DOPENBOX)
-	@rm -f dopenbox.bin dopenbox_dbg.bin *.tmp *.core
+	@rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core

@@ -1,10 +1,12 @@
 #pragma once
 
 #include <list>
+#include <string>
 
 namespace dopenbox {
   struct Client {
-
+    std::string name;
+    unsigned x { }, y { }, w { }, h { };
   };
 
   struct Tag {
@@ -13,6 +15,7 @@ namespace dopenbox {
 
   struct Mon {
     std::list<Tag> T;
+    unsigned w { }, h { };
   };
 
   class Box {
