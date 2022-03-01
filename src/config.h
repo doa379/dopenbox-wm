@@ -1,6 +1,6 @@
 #pragma once
 
-namespace dopenbox {
+namespace dobwm {
   // Number of Monitors/Displays
   const auto Nm { 2 };
   // Number of Tags per Monitor

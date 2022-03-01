@@ -3,7 +3,7 @@
 #include <list>
 #include <string>
 
-namespace dopenbox {
+namespace dobwm {
   struct Client {
     std::string name;
     unsigned x { }, y { }, w { }, h { };

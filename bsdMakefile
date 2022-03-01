@@ -13,24 +13,27 @@ REL_LDFLAGS = -s
 CFLAGS = $(REL_CFLAGS)
 LDFLAGS = $(REL_LDFLAGS)
 
-SRC = src/main.cpp src/dobwm.cpp
+SRC = main.cpp dobwm.cpp
 OBJ = $(SRC:.cpp=.o)
 EXEC = dobwm
 
-.POSIX:
 all: $(EXEC)
 
-clean:
-	@echo Cleaning...
-	@rm -f $(OBJ)
-	@rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core
+.POSIX:
 
 $(EXEC): $(OBJ)
 	@echo Linking...
-	@$(CPPC) $(CPPC_FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@.bin
+	$(CPPC) $(CPPC_FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) rel/*.o -o $@.bin
 	@echo $(EXEC).bin
+
+$(OBJ): src/$(@:S/.o$/.cpp/:S/^rel\//src\//)
 
 .SUFFIXES: .cpp .o
 .cpp.o:
-	@echo CPPC $< "-->" $@
-	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o $@
+	@echo CPPC $< "-->" rel/$@
+	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o rel/$@
+
+clean:
+	@echo Cleaning...
+	@rm -f rel/*.o dbg/*.o
+	@rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core
