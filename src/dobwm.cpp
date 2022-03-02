@@ -1,9 +1,22 @@
-#include <dobwm.h>
+#include <X11/Xutil.h>
+#include <xlib.h>
+#include <config.h>
 
-dobwm::Box::Box(const unsigned char Nm, const unsigned char Nt) {
-  for (auto i { 0U }; i < Nm; i++) {
-    std::list<Tag> T(Nt);
-    Mon m { T };
-    M.emplace_back(std::move(m));
+static bool quit { };
+static dobwm::Box box { dobwm::Nm, dobwm::Nt };
+static ::Display *dpy { ::XOpenDisplay(nullptr) };
+
+int main(const int ARGC, const char *ARGV[]) {
+  if (!dpy) {
+    ::XCloseDisplay(dpy);
+    return -1;
   }
+
+  ::XEvent ev;
+  while (quit == false && !::XNextEvent(dpy, &ev)) {
+    if (true) ;
+  }
+
+  ::XCloseDisplay(dpy);
+  return 0;
 }

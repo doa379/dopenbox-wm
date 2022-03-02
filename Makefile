@@ -5,17 +5,25 @@ LIBS = -l X11 -l Xinerama
 
 CPPC = c++
 CPPC_FLAGS = -std=c++17 -Wall -fPIE -fPIC -pedantic
-DBG_CFLAGS = -O1 -g -fsanitize=address -fno-omit-frame-pointer
-DBG_LDFLAGS = -g -fsanitize=address
 REL_CFLAGS = -O3
 REL_LDFLAGS = -s
+#DBG_CFLAGS = -O1 -g -fsanitize=address -fno-omit-frame-pointer
+#DBG_LDFLAGS = -g -fsanitize=address
+DBG_CFLAGS = -O1 -g -fno-omit-frame-pointer
+DBG_LDFLAGS =
 
 CFLAGS = $(REL_CFLAGS)
 LDFLAGS = $(REL_LDFLAGS)
-
-SRC = src/main.cpp src/dobwm.cpp
-OBJ = $(SRC:.cpp=.o)
 EXEC = dobwm
+
+.if "$(DEBUG)" == "1"
+  CFLAGS = $(DBG_CFLAGS)
+  LDFLAGS = $(DBG_LDFLAGS)
+  EXEC = dobwm_dbg
+.endif
+
+SRC = src/xlib.cpp src/dobwm.cpp
+OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
 all: $(EXEC)
