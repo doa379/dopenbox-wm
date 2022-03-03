@@ -1,22 +1,32 @@
-#include <X11/Xutil.h>
-#include <xlib.h>
+#include <memory>
+#include <Xlib.h>
 #include <config.h>
 
 static bool quit { };
-static dobwm::Box box { dobwm::Nm, dobwm::Nt };
-static ::Display *dpy { ::XOpenDisplay(nullptr) };
+static std::unique_ptr<Xlib::Box> box;
 
 int main(const int ARGC, const char *ARGV[]) {
-  if (!dpy) {
-    ::XCloseDisplay(dpy);
+  try {
+    box = std::make_unique<Xlib::Box>(dobwm::Nm, dobwm::Nt);
+  } catch (const char []) {
     return -1;
   }
 
-  ::XEvent ev;
-  while (quit == false && !::XNextEvent(dpy, &ev)) {
-    if (true) ;
+  while (!quit || box->event()) {
+    if (box->type() == CreateNotify);
+    else if (box->type() == DestroyNotify);
+    else if (box->type() == ReparentNotify);
+    else if (box->type() == MapNotify);
+    else if (box->type() == UnmapNotify);
+    else if (box->type() == ConfigureNotify);
+    else if (box->type() == MapRequest);
+    else if (box->type() == ConfigureRequest);
+    else if (box->type() == ButtonPress);
+    else if (box->type() == ButtonRelease);
+    else if (box->type() == MotionNotify);
+    else if (box->type() == KeyPress);
+    else if (box->type() == KeyRelease);
   }
 
-  ::XCloseDisplay(dpy);
   return 0;
 }
