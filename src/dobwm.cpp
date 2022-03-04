@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <Xlib.h>
 #include <config.h>
 
@@ -8,7 +9,8 @@ static std::unique_ptr<Xlib::Box> box;
 int main(const int ARGC, const char *ARGV[]) {
   try {
     box = std::make_unique<Xlib::Box>(dobwm::Nm, dobwm::Nt);
-  } catch (const char []) {
+  } catch (const char E[]) {
+    std::cout << "EX: " + std::string(E) << "\n";
     return -1;
   }
 

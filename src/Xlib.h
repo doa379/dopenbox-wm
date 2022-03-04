@@ -6,6 +6,7 @@
 
 namespace Xlib {
   struct Client {
+    ::Window win;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
   };
@@ -35,13 +36,20 @@ namespace Xlib {
     KeyRelease
   };
 */
+  class Atom {
+
+  };
+
   class Box {
     ::Display *dpy { nullptr };
     ::XEvent ev { };
+    ::Window root;
     std::list<Xlib::Mon> M;
+    static bool error;
   public:
     Box(const unsigned char, const unsigned char);
     ~Box(void);
+    static int XError(::Display *, ::XErrorEvent *);
     int event(void) { return ::XNextEvent(dpy, &ev); }
     int type(void) { return ev.type; }
   };

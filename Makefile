@@ -30,8 +30,8 @@ all: $(EXEC)
 
 clean:
 	@echo Cleaning...
-	@rm -f $(OBJ)
-	@rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core
+	rm -f $(OBJ)
+	rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core
 
 $(EXEC): $(OBJ)
 	@echo Linking...
