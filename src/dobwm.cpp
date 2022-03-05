@@ -15,19 +15,32 @@ int main(const int ARGC, const char *ARGV[]) {
   }
 
   while (!quit || box->event()) {
-    if (box->type() == CreateNotify);
-    else if (box->type() == DestroyNotify);
-    else if (box->type() == ReparentNotify);
-    else if (box->type() == MapNotify);
-    else if (box->type() == UnmapNotify);
-    else if (box->type() == ConfigureNotify);
-    else if (box->type() == MapRequest);
-    else if (box->type() == ConfigureRequest);
-    else if (box->type() == ButtonPress);
-    else if (box->type() == ButtonRelease);
-    else if (box->type() == MotionNotify);
-    else if (box->type() == KeyPress);
-    else if (box->type() == KeyRelease);
+    if (box->type() == CreateNotify)
+      box->create_notify();
+    else if (box->type() == DestroyNotify)
+      box->destroy_notify();
+    else if (box->type() == ReparentNotify)
+      box->reparent_notify();
+    else if (box->type() == MapNotify)
+      box->map_notify();
+    else if (box->type() == UnmapNotify)
+      box->unmap_notify();
+    else if (box->type() == ConfigureNotify)
+      box->configure_notify();
+    else if (box->type() == MapRequest)
+      box->map_request();
+    else if (box->type() == ConfigureRequest)
+      box->configure_request();
+    else if (box->type() == ButtonPress)
+      box->button_press();
+    else if (box->type() == ButtonRelease)
+      box->button_release();
+    else if (box->type() == MotionNotify)
+      box->motion_notify();
+    else if (box->type() == KeyPress)
+      box->key_press();
+    else if (box->type() == KeyRelease)
+      box->key_release();
   }
 
   return 0;
