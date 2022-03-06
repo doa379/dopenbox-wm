@@ -6,9 +6,34 @@
 static bool quit { };
 static std::unique_ptr<Xlib::Box> box;
 
+namespace dobwm {
+  struct Client {
+    ::Window win;
+    std::string name;
+    unsigned x { }, y { }, w { }, h { };
+  };
+
+  struct Tag {
+    std::list<Client> C;
+  };
+
+  struct Mon {
+    std::list<Tag> T;
+    unsigned w { }, h { };
+  };
+}
+
+static std::list<dobwm::Mon> M;
+
 int main(const int ARGC, const char *ARGV[]) {
+  for (auto i { 0U }; i < dobwm::Nm; i++) {
+    std::list<dobwm::Tag> T(dobwm::Nt);
+    dobwm::Mon m { T };
+    M.emplace_back(std::move(m));
+  }
+
   try {
-    box = std::make_unique<Xlib::Box>(dobwm::Nm, dobwm::Nt);
+    box = std::make_unique<Xlib::Box>();
   } catch (const char E[]) {
     std::cout << "EX: " + std::string(E) << "\n";
     return -1;
