@@ -58,8 +58,15 @@ void Xlib::Box::configure_notify(void) {
 
 }
 
-void Xlib::Box::map_request(void) {
+void Xlib::Box::map_request(dobwm::Client &c) {
+  const ::XMapRequestEvent &ev { this->ev.xmaprequest };
+  ::Window w { ev.window };
+  ::XWindowAttributes wa { };
+  if (::XGetWindowAttributes(dpy, w, &wa) && wa.override_redirect)
+    return;
 
+  c = dobwm::Client { w, "Client", 0, 0, 80, 80, /* ::XGetTransientForHint(dpy, w, &w) */ };
+  ::XMapWindow(dpy, w);
 }
 
 void Xlib::Box::configure_request(void) {

@@ -5,9 +5,9 @@ An open plan X11 window manager written in C++. Features, adaptable and flexible
 
 Build prerequisites/Dependecies:
 
-BSD Make (bmake)
-libX (dev lib)
-libXinerama (dev lib)
-dbus-1 (dev lib)
+BSD Make (bmake)  
+libX11 (dev, devel)  
+libXinerama (dev, devel)  
+dbus-1 (dev, devel)
 
 Target(s): BSD, Linux

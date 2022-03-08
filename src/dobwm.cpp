@@ -1,3 +1,4 @@
+#include <dobwm.h>
 #include <memory>
 #include <iostream>
 #include <Xlib.h>
@@ -5,33 +6,23 @@
 
 static bool quit { };
 static std::unique_ptr<Xlib::Box> box;
+static dobwm::Dob wm;
 
-namespace dobwm {
-  struct Client {
-    ::Window win;
-    std::string name;
-    unsigned x { }, y { }, w { }, h { };
-  };
-
-  struct Tag {
-    std::list<Client> C;
-  };
-
-  struct Mon {
-    std::list<Tag> T;
-    unsigned w { }, h { };
-  };
-}
-
-static std::list<dobwm::Mon> M;
-
-int main(const int ARGC, const char *ARGV[]) {
+dobwm::Dob::Dob(void) {
   for (auto i { 0U }; i < dobwm::Nm; i++) {
-    std::list<dobwm::Tag> T(dobwm::Nt);
+    std::vector<dobwm::Tag> T(dobwm::Nt);
     dobwm::Mon m { T };
     M.emplace_back(std::move(m));
   }
+}
 
+void dobwm::Dob::map_request(void) {
+  Client c { };
+  box->map_request(c);
+  M[0].T[0].C.emplace_back(std::move(c));
+}
+
+int main(const int ARGC, const char *ARGV[]) {
   try {
     box = std::make_unique<Xlib::Box>();
   } catch (const char E[]) {
@@ -52,9 +43,9 @@ int main(const int ARGC, const char *ARGV[]) {
       box->unmap_notify();
     else if (box->type() == ConfigureNotify)
       box->configure_notify();
-    else if (box->type() == MapRequest)
-      box->map_request();
-    else if (box->type() == ConfigureRequest)
+    else if (box->type() == MapRequest) {
+      wm.map_request();
+    } else if (box->type() == ConfigureRequest)
       box->configure_request();
     else if (box->type() == ButtonPress)
       box->button_press();

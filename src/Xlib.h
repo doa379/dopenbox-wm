@@ -1,8 +1,6 @@
 #pragma once
 
-#include <list>
-#include <string>
-#include <X11/Xutil.h>
+#include <dobwm.h>
 
 namespace Xlib {
 /*
@@ -45,7 +43,7 @@ namespace Xlib {
     void map_notify(void);
     void unmap_notify(void);
     void configure_notify(void);
-    void map_request(void);
+    void map_request(dobwm::Client &);
     void configure_request(void);
     void button_press(void);
     void button_release(void);
