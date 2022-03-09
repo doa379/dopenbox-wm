@@ -22,7 +22,7 @@ EXEC = dobwm
   EXEC = dobwm_dbg
 .endif
 
-SRC = src/Xlib.cpp src/dobwm.cpp
+SRC = src/main.cpp src/dobwm.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
