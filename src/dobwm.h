@@ -5,6 +5,7 @@
 #include <X11/Xutil.h>
 
 namespace dobwm {
+  /*
   enum class Mode {
     TRANS,
     FLOAT,
@@ -12,12 +13,13 @@ namespace dobwm {
     CASC,
     MONO
   };
+  */
 
   struct Client {
     ::Window win;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
-    Mode mode;
+    //Mode mode;
   };
 
   struct Tag {

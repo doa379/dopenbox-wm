@@ -70,7 +70,19 @@ void dobwm::X::map_request(dobwm::Client &c) {
 }
 
 void dobwm::X::configure_request(void) {
-
+  const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
+  ::XWindowChanges wc {
+    ev.x, 
+    ev.y, 
+    ev.width, 
+    ev.height, 
+    ev.border_width, 
+    ev.above, 
+    ev.detail 
+  };
+  
+  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
+    XSync(dpy, false);
 }
 
 void dobwm::X::button_press(void) {
