@@ -34,42 +34,60 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
       ev->error_code == BadWindow));
 }
     
-void dobwm::X::create_notify(void) {
+void dobwm::X::create_notify(void) const {
   (void) ev.xcreatewindow;
 }
 
-void dobwm::X::destroy_notify(void) {
+void dobwm::X::destroy_notify(void) const {
   (void) ev.xdestroywindow;
 }
 
-void dobwm::X::reparent_notify(void) {
-
+void dobwm::X::reparent_notify(void) const {
+  (void) ev.xreparent;
 }
 
-void dobwm::X::map_notify(void) {
-
+void dobwm::X::map_notify(void) const {
+  (void) ev.xmap;
 }
 
-void dobwm::X::unmap_notify(void) {
-
+void dobwm::X::unmap_notify(void) const {
+  (void) ev.xunmap;
 }
 
-void dobwm::X::configure_notify(void) {
-
+void dobwm::X::configure_notify(void) const {
+  (void) ev.xconfigure;
 }
 
-void dobwm::X::map_request(dobwm::Client &c) {
+void dobwm::X::map_request(dobwm::Client &c, const unsigned bw, const unsigned bc, const unsigned bgc) const {
   const ::XMapRequestEvent &ev { this->ev.xmaprequest };
   ::Window w { ev.window };
   ::XWindowAttributes wa { };
-  if (::XGetWindowAttributes(dpy, w, &wa) && wa.override_redirect)
+  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect)
     return;
 
-  c = dobwm::Client { w, "Client", 0, 0, 80, 80, /* ::XGetTransientForHint(dpy, w, &w) */ };
+  c = dobwm::Client { 
+    manage(w, wa, bw, bc, bgc),
+    "Client", 0, 0, 80, 80, /* ::XGetTransientForHint(dpy, w, &w) */ 
+  };
+  
   ::XMapWindow(dpy, w);
 }
 
-void dobwm::X::configure_request(void) {
+::Window dobwm::X::manage(::Window w, ::XWindowAttributes &wa, const unsigned bw, const unsigned bc, const unsigned bgc) const {
+  const ::Window frame {
+    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
+  ::XSelectInput(dpy, frame, ROOTMASK);
+  ::XAddToSaveSet(dpy, w);
+  ::XReparentWindow(dpy, w, frame, 0, 0);
+  ::XMapWindow(dpy, frame);
+  return frame;
+}
+
+void dobwm::X::unmanage(void) const {
+
+}
+
+void dobwm::X::configure_request(void) const {
   const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
   ::XWindowChanges wc {
     ev.x, 

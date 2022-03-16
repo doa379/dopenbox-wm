@@ -70,15 +70,17 @@ namespace dobwm {
     ~X(void);
     static int XError(::Display *, ::XErrorEvent *);
     int event(void) { return ::XNextEvent(dpy, &ev); }
-    int type(void) { return ev.type; }
-    void create_notify(void);
-    void destroy_notify(void);
-    void reparent_notify(void);
-    void map_notify(void);
-    void unmap_notify(void);
-    void configure_notify(void);
-    void map_request(dobwm::Client &);
-    void configure_request(void);
+    int type(void) const { return ev.type; }
+    void create_notify(void) const;
+    void destroy_notify(void) const;
+    void reparent_notify(void) const;
+    void map_notify(void) const;
+    void unmap_notify(void) const;
+    void configure_notify(void) const;
+    void map_request(dobwm::Client &, const unsigned, const unsigned, const unsigned) const;
+    ::Window manage(::Window, ::XWindowAttributes &, const unsigned, const unsigned, const unsigned) const;
+    void unmanage(void) const;
+    void configure_request(void) const;
     void button_press(void);
     void button_release(void);
     void motion_notify(void);

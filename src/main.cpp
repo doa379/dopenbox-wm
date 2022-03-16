@@ -17,7 +17,7 @@ dobwm::Box::Box(void) {
 
 void dobwm::Box::map_request(void) {
   Client c { };
-  x->map_request(c);
+  x->map_request(c, BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
   M[0].T[0].C.emplace_back(std::move(c));
 }
 
