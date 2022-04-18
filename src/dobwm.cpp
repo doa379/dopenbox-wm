@@ -4,17 +4,13 @@
 bool dobwm::X::error { };
 
 dobwm::X::X(void) {
-  if (!(dpy = ::XOpenDisplay(nullptr)))
-    throw "Unable to open display";
-
+  if (!(dpy = ::XOpenDisplay(nullptr))) throw "Unable to open display";
   //Nm
   root = RootWindow(dpy, DefaultScreen(dpy));
   ::XSetErrorHandler(&X::XError);
   ::XSelectInput(dpy, root, ROOTMASK);
   ::XSync(dpy, false);
-  if (X::error)
-    throw "X error (XError)";
-
+  if (X::error) throw "X error (XError)";
   ::XSetErrorHandler(&X::XError);
   //::XSync(dpy, false);
 }
@@ -51,40 +47,39 @@ void dobwm::X::map_notify(void) const {
 }
 
 void dobwm::X::unmap_notify(void) const {
-  (void) ev.xunmap;
+  unmanage(ev.xunmap.window);
 }
 
 void dobwm::X::configure_notify(void) const {
   (void) ev.xconfigure;
 }
 
-void dobwm::X::map_request(dobwm::Client &c, const unsigned bw, const unsigned bc, const unsigned bgc) const {
+::dobwm::WAttr dobwm::X::map_request(::Window &w) const {
   const ::XMapRequestEvent &ev { this->ev.xmaprequest };
-  ::Window w { ev.window };
-  ::XWindowAttributes wa { };
+  w = ::Window { ev.window };
+  WAttr wa { };
   if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect)
-    return;
-
-  c = dobwm::Client { 
-    manage(w, wa, bw, bc, bgc),
-    "Client", 0, 0, 80, 80, /* ::XGetTransientForHint(dpy, w, &w) */ 
-  };
-  
+    return { };
   ::XMapWindow(dpy, w);
+  return wa;
 }
 
 ::Window dobwm::X::manage(::Window w, ::XWindowAttributes &wa, const unsigned bw, const unsigned bc, const unsigned bgc) const {
-  const ::Window frame {
+  const ::Window u {
     ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
-  ::XSelectInput(dpy, frame, ROOTMASK);
+  ::XSelectInput(dpy, u, ROOTMASK);
   ::XAddToSaveSet(dpy, w);
-  ::XReparentWindow(dpy, w, frame, 0, 0);
-  ::XMapWindow(dpy, frame);
-  return frame;
+  ::XReparentWindow(dpy, w, u, 0, 0);
+  ::XMapWindow(dpy, u);
+  return u;
 }
 
-void dobwm::X::unmanage(void) const {
-
+void dobwm::X::unmanage(::Window w) const {
+  ::XUnmapWindow(dpy, w);
+  ::Window u { };
+  ::XReparentWindow(dpy, u, root, 0, 0);
+  ::XRemoveFromSaveSet(dpy, w);
+  ::XDestroyWindow(dpy, u);
 }
 
 void dobwm::X::configure_request(void) const {
@@ -100,7 +95,7 @@ void dobwm::X::configure_request(void) const {
   };
   
   if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
-    XSync(dpy, false);
+    ::XSync(dpy, false);
 }
 
 void dobwm::X::button_press(void) {

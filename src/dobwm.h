@@ -5,21 +5,14 @@
 #include <X11/Xutil.h>
 
 namespace dobwm {
-  /*
-  enum class Mode {
-    TRANS,
-    FLOAT,
-    TILE,
-    CASC,
-    MONO
-  };
-  */
+  enum class Mode { DEF, TRA, MON };
 
   struct Client {
     ::Window win;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
-    //Mode mode;
+    Mode mode { dobwm::Mode::DEF };
+    bool sel { };
   };
 
   struct Tag {
@@ -58,11 +51,12 @@ namespace dobwm {
 
   };
 
+  using WAttr = ::XWindowAttributes;
   class X {
     static const auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
     //static const auto ROOTMASK {SubstructureRedirectMask | ButtonPressMask | SubstructureNotifyMask | PropertyChangeMask };
     static bool error;
-    ::Display *dpy { nullptr };
+    ::Display *dpy { };
     ::XEvent ev { };
     ::Window root { };
   public:
@@ -77,9 +71,9 @@ namespace dobwm {
     void map_notify(void) const;
     void unmap_notify(void) const;
     void configure_notify(void) const;
-    void map_request(dobwm::Client &, const unsigned, const unsigned, const unsigned) const;
+    WAttr map_request(::Window &) const;
     ::Window manage(::Window, ::XWindowAttributes &, const unsigned, const unsigned, const unsigned) const;
-    void unmanage(void) const;
+    void unmanage(::Window) const;
     void configure_request(void) const;
     void button_press(void);
     void button_release(void);

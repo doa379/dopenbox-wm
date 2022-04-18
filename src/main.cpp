@@ -16,8 +16,13 @@ dobwm::Box::Box(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  Client c { };
-  x->map_request(c, BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+  ::Window w { };
+  auto wa { x->map_request(w) };
+  Client c {
+    x->manage(w, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR),
+    "Client name", 0, 0, 80, 80
+  };
+
   M[0].T[0].C.emplace_back(std::move(c));
 }
 
@@ -30,32 +35,19 @@ int main(const int ARGC, const char *ARGV[]) {
   }
 
   while (!quit && x->event()) {
-    if (x->type() == CreateNotify)
-      x->create_notify();
-    else if (x->type() == DestroyNotify)
-      x->destroy_notify();
-    else if (x->type() == ReparentNotify)
-      x->reparent_notify();
-    else if (x->type() == MapNotify)
-      x->map_notify();
-    else if (x->type() == UnmapNotify)
-      x->unmap_notify();
-    else if (x->type() == ConfigureNotify)
-      x->configure_notify();
-    else if (x->type() == MapRequest) {
-      box.map_request();
-    } else if (x->type() == ConfigureRequest)
-      x->configure_request();
-    else if (x->type() == ButtonPress)
-      x->button_press();
-    else if (x->type() == ButtonRelease)
-      x->button_release();
-    else if (x->type() == MotionNotify)
-      x->motion_notify();
-    else if (x->type() == KeyPress)
-      x->key_press();
-    else if (x->type() == KeyRelease)
-      x->key_release();
+    if (x->type() == CreateNotify) x->create_notify();
+    else if (x->type() == DestroyNotify) x->destroy_notify();
+    else if (x->type() == ReparentNotify) x->reparent_notify();
+    else if (x->type() == MapNotify) x->map_notify();
+    else if (x->type() == UnmapNotify) x->unmap_notify();
+    else if (x->type() == ConfigureNotify) x->configure_notify();
+    else if (x->type() == MapRequest) box.map_request();
+    else if (x->type() == ConfigureRequest) x->configure_request();
+    else if (x->type() == ButtonPress) x->button_press();
+    else if (x->type() == ButtonRelease) x->button_release();
+    else if (x->type() == MotionNotify) x->motion_notify();
+    else if (x->type() == KeyPress) x->key_press();
+    else if (x->type() == KeyRelease) x->key_release();
   }
 
   return 0;
