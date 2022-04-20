@@ -8,7 +8,7 @@ namespace dobwm {
   enum class Mode { DEF, TRA, MON };
 
   struct Client {
-    ::Window win;
+    ::Window u;  // Frame window
     std::string name;
     unsigned x { }, y { }, w { }, h { };
     Mode mode { dobwm::Mode::DEF };
@@ -29,6 +29,7 @@ namespace dobwm {
   public:
     Box(void);
     void map_request(void);
+    void configure_request(void);
   };
 /*
   enum class Event {
@@ -63,8 +64,8 @@ namespace dobwm {
     X(void);
     ~X(void);
     static int XError(::Display *, ::XErrorEvent *);
-    int event(void) { return ::XNextEvent(dpy, &ev); }
-    int type(void) const { return ev.type; }
+    int next_event(void) { return ::XNextEvent(dpy, &ev); }
+    int &type(void) { return ev.type; }
     void create_notify(void) const;
     void destroy_notify(void) const;
     void reparent_notify(void) const;
@@ -72,7 +73,7 @@ namespace dobwm {
     void unmap_notify(void) const;
     void configure_notify(void) const;
     WAttr map_request(::Window &) const;
-    ::Window manage(::Window, ::XWindowAttributes &, const unsigned, const unsigned, const unsigned) const;
+    ::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
     void unmanage(::Window) const;
     void configure_request(void) const;
     void button_press(void);

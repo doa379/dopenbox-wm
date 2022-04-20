@@ -54,17 +54,16 @@ void dobwm::X::configure_notify(void) const {
   (void) ev.xconfigure;
 }
 
-::dobwm::WAttr dobwm::X::map_request(::Window &w) const {
+dobwm::WAttr dobwm::X::map_request(::Window &w) const {
   const ::XMapRequestEvent &ev { this->ev.xmaprequest };
   w = ::Window { ev.window };
   WAttr wa { };
-  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect)
-    return { };
+  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect) return { };
   ::XMapWindow(dpy, w);
   return wa;
 }
 
-::Window dobwm::X::manage(::Window w, ::XWindowAttributes &wa, const unsigned bw, const unsigned bc, const unsigned bgc) const {
+::Window dobwm::X::manage(::Window w, WAttr &wa, const unsigned bw, const unsigned bc, const unsigned bgc) const {
   const ::Window u {
     ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
   ::XSelectInput(dpy, u, ROOTMASK);
@@ -94,8 +93,7 @@ void dobwm::X::configure_request(void) const {
     ev.detail 
   };
   
-  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
-    ::XSync(dpy, false);
+  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
 void dobwm::X::button_press(void) {

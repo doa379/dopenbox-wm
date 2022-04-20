@@ -26,6 +26,10 @@ void dobwm::Box::map_request(void) {
   M[0].T[0].C.emplace_back(std::move(c));
 }
 
+void dobwm::Box::configure_request(void) {
+  x->configure_request();
+}
+
 int main(const int ARGC, const char *ARGV[]) {
   try {
     x = std::make_unique<dobwm::X>();
@@ -34,7 +38,7 @@ int main(const int ARGC, const char *ARGV[]) {
     return -1;
   }
 
-  while (!quit && x->event()) {
+  while (!quit && x->next_event()) {
     if (x->type() == CreateNotify) x->create_notify();
     else if (x->type() == DestroyNotify) x->destroy_notify();
     else if (x->type() == ReparentNotify) x->reparent_notify();
@@ -42,7 +46,7 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->type() == UnmapNotify) x->unmap_notify();
     else if (x->type() == ConfigureNotify) x->configure_notify();
     else if (x->type() == MapRequest) box.map_request();
-    else if (x->type() == ConfigureRequest) x->configure_request();
+    else if (x->type() == ConfigureRequest) box.configure_request();
     else if (x->type() == ButtonPress) x->button_press();
     else if (x->type() == ButtonRelease) x->button_release();
     else if (x->type() == MotionNotify) x->motion_notify();
