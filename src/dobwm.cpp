@@ -81,6 +81,24 @@ void dobwm::X::unmanage(::Window w) const {
   ::XDestroyWindow(dpy, u);
 }
 
+::XConfigureRequestEvent &dobwm::X::configure_request(void) {
+  return this->ev.xconfigurerequest;
+}
+
+void dobwm::X::configure_window(::XConfigureRequestEvent &ev, const ::Window w) const {
+  ::XWindowChanges wc {
+    ev.x, 
+    ev.y, 
+    ev.width, 
+    ev.height, 
+    ev.border_width, 
+    ev.above, 
+    ev.detail 
+  };
+  
+  if (::XConfigureWindow(dpy, w, ev.value_mask, &wc)) ::XSync(dpy, false);
+}
+/*
 void dobwm::X::configure_request(void) const {
   const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
   ::XWindowChanges wc {
@@ -96,6 +114,21 @@ void dobwm::X::configure_request(void) const {
   if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
+void dobwm::X::configure_request(::Window &u) const {
+  const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
+  ::XWindowChanges wc {
+    ev.x, 
+    ev.y, 
+    ev.width, 
+    ev.height, 
+    ev.border_width, 
+    ev.above, 
+    ev.detail 
+  };
+  
+  if (::XConfigureWindow(dpy, u, ev.value_mask, &wc)) ::XSync(dpy, false);
+}
+*/
 void dobwm::X::button_press(void) {
 
 }

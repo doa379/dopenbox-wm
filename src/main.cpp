@@ -1,5 +1,6 @@
 #include <memory>
 #include <iostream>
+#include <algorithm>
 #include <dobwm.h>
 #include <config.h>
 
@@ -19,7 +20,7 @@ void dobwm::Box::map_request(void) {
   ::Window w { };
   auto wa { x->map_request(w) };
   Client c {
-    x->manage(w, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR),
+    x->manage(w, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR), w,
     "Client name", 0, 0, 80, 80
   };
 
@@ -27,7 +28,16 @@ void dobwm::Box::map_request(void) {
 }
 
 void dobwm::Box::configure_request(void) {
-  x->configure_request();
+  auto ev { x->configure_request() };
+  for (auto &m : M)
+    for (auto &t : m.T)
+      if (auto c { std::find_if(t.C.begin(), t.C.end(),
+          [&](auto &c) -> bool { return c.v == ev.window; }) }; c < t.C.end()) {
+        x->configure_window(ev, c->u);
+        return;
+      }
+
+  x->configure_window(ev, ev.window);
 }
 
 int main(const int ARGC, const char *ARGV[]) {

@@ -8,7 +8,7 @@ namespace dobwm {
   enum class Mode { DEF, TRA, MON };
 
   struct Client {
-    ::Window u;  // Frame window
+    ::Window u, v;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
     Mode mode { dobwm::Mode::DEF };
@@ -75,7 +75,8 @@ namespace dobwm {
     WAttr map_request(::Window &) const;
     ::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
     void unmanage(::Window) const;
-    void configure_request(void) const;
+    ::XConfigureRequestEvent &configure_request(void);
+    void configure_window(::XConfigureRequestEvent &, ::Window) const;
     void button_press(void);
     void button_release(void);
     void motion_notify(void);
