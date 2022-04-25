@@ -5,18 +5,20 @@ bool dobwm::X::error { };
 
 dobwm::X::X(void) {
   if (!(dpy = ::XOpenDisplay(nullptr))) throw "Unable to open display";
-  //Nm
   root = RootWindow(dpy, DefaultScreen(dpy));
-  ::XSetErrorHandler(&X::XError);
+  ::XSetErrorHandler(&X::init_XError);
   ::XSelectInput(dpy, root, ROOTMASK);
   ::XSync(dpy, false);
-  if (X::error) throw "X error (XError)";
+  if (X::error) throw "Initialization XError (another wm running?)";
   ::XSetErrorHandler(&X::XError);
-  //::XSync(dpy, false);
 }
 
 dobwm::X::~X(void) {
   ::XCloseDisplay(dpy);
+}
+
+int dobwm::X::init_XError(::Display *dpy, ::XErrorEvent *ev) {
+  return !(dobwm::X::error = (ev->error_code == BadAccess));
 }
 
 int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
@@ -29,7 +31,7 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
           ev->request_code == X_PolyText8)) ||
       ev->error_code == BadWindow));
 }
-    
+ 
 void dobwm::X::create_notify(void) const {
   (void) ev.xcreatewindow;
 }
@@ -70,6 +72,7 @@ dobwm::WAttr dobwm::X::map_request(::Window &w) const {
   ::XAddToSaveSet(dpy, w);
   ::XReparentWindow(dpy, w, u, 0, 0);
   ::XMapWindow(dpy, u);
+  ::XSync(dpy, false);
   return u;
 }
 

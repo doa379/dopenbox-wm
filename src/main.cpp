@@ -2,7 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <dobwm.h>
-#include <config.h>
+#include <../config.h>
 
 static bool quit { };
 static std::unique_ptr<dobwm::X> x;
@@ -17,11 +17,11 @@ dobwm::Box::Box(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  ::Window w { };
-  auto wa { x->map_request(w) };
+  ::Window v { };
+  auto wa { x->map_request(v) };
   Client c {
-    x->manage(w, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR), w,
-    "Client name", 0, 0, 80, 80
+    x->manage(v, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR), v,
+    "Client name", 0, 0, 160, 80
   };
 
   M[0].T[0].C.emplace_back(std::move(c));
@@ -48,21 +48,22 @@ int main(const int ARGC, const char *ARGV[]) {
     return -1;
   }
 
-  while (!quit && x->next_event()) {
-    if (x->type() == CreateNotify) x->create_notify();
-    else if (x->type() == DestroyNotify) x->destroy_notify();
-    else if (x->type() == ReparentNotify) x->reparent_notify();
-    else if (x->type() == MapNotify) x->map_notify();
-    else if (x->type() == UnmapNotify) x->unmap_notify();
-    else if (x->type() == ConfigureNotify) x->configure_notify();
-    else if (x->type() == MapRequest) box.map_request();
-    else if (x->type() == ConfigureRequest) box.configure_request();
-    else if (x->type() == ButtonPress) x->button_press();
-    else if (x->type() == ButtonRelease) x->button_release();
-    else if (x->type() == MotionNotify) x->motion_notify();
-    else if (x->type() == KeyPress) x->key_press();
-    else if (x->type() == KeyRelease) x->key_release();
-  }
+  while (!quit) 
+    if (x->next_event()) {
+      if (x->event() == CreateNotify) x->create_notify();
+      else if (x->event() == DestroyNotify) x->destroy_notify();
+      else if (x->event() == ReparentNotify) x->reparent_notify();
+      else if (x->event() == MapNotify) x->map_notify();
+      else if (x->event() == UnmapNotify) x->unmap_notify();
+      else if (x->event() == ConfigureNotify) x->configure_notify();
+      else if (x->event() == MapRequest) box.map_request();
+      else if (x->event() == ConfigureRequest) box.configure_request();
+      else if (x->event() == ButtonPress) x->button_press();
+      else if (x->event() == ButtonRelease) x->button_release();
+      else if (x->event() == MotionNotify) x->motion_notify();
+      else if (x->event() == KeyPress) x->key_press();
+      else if (x->event() == KeyRelease) x->key_release();
+    }
 
   return 0;
 }

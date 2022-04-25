@@ -63,9 +63,10 @@ namespace dobwm {
   public:
     X(void);
     ~X(void);
+    static int init_XError(::Display *, ::XErrorEvent *);
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
-    int &type(void) { return ev.type; }
+    int &event(void) { return ev.type; }
     void create_notify(void) const;
     void destroy_notify(void) const;
     void reparent_notify(void) const;
@@ -82,5 +83,16 @@ namespace dobwm {
     void motion_notify(void);
     void key_press(void);
     void key_release(void);
+  };
+
+  class Xops {
+  public:
+  /*
+    WAttr map_request(::Window &) const;
+    ::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
+    void unmanage(::Window) const;
+    ::XConfigureRequestEvent &configure_request(void);
+    void configure_window(::XConfigureRequestEvent &, ::Window) const;
+    */
   };
 }
