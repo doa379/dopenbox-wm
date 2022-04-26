@@ -17,14 +17,17 @@ dobwm::Box::Box(void) {
 }
 
 void dobwm::Box::map_request(void) {
+  /*
   ::Window v { };
   auto wa { x->map_request(v) };
   Client c {
     x->manage(v, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR), v,
-    "Client name", 0, 0, 160, 80
+    "Client name", 50, 50, 160, 80
   };
 
   M[0].T[0].C.emplace_back(std::move(c));
+  */
+  x->map_request(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
 }
 
 void dobwm::Box::configure_request(void) {

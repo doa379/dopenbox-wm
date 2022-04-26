@@ -9,7 +9,11 @@ dobwm::X::X(void) {
   ::XSetErrorHandler(&X::init_XError);
   ::XSelectInput(dpy, root, ROOTMASK);
   ::XSync(dpy, false);
-  if (X::error) throw "Initialization XError (another wm running?)";
+  if (X::error) {
+    ::XCloseDisplay(dpy);
+    throw "Initialization XError (another wm running?)";
+  }
+
   ::XSetErrorHandler(&X::XError);
 }
 
@@ -55,7 +59,7 @@ void dobwm::X::unmap_notify(void) const {
 void dobwm::X::configure_notify(void) const {
   (void) ev.xconfigure;
 }
-
+/*
 dobwm::WAttr dobwm::X::map_request(::Window &w) const {
   const ::XMapRequestEvent &ev { this->ev.xmaprequest };
   w = ::Window { ev.window };
@@ -74,6 +78,19 @@ dobwm::WAttr dobwm::X::map_request(::Window &w) const {
   ::XMapWindow(dpy, u);
   ::XSync(dpy, false);
   return u;
+}
+*/
+void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
+  ::Window &w { ev.xmaprequest.window };
+  WAttr wa { };
+  if (::XGetWindowAttributes(dpy, w, &wa)/* || wa.override_redirect*/) return;
+  const ::Window v {
+    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
+  ::XSelectInput(dpy, v, SubstructureRedirectMask | SubstructureNotifyMask);
+  ::XAddToSaveSet(dpy, w);
+  ::XReparentWindow(dpy, w, v, 0, 0);
+  ::XMapWindow(dpy, v);
+  ::XMapWindow(dpy, w);
 }
 
 void dobwm::X::unmanage(::Window w) const {

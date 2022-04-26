@@ -73,8 +73,9 @@ namespace dobwm {
     void map_notify(void) const;
     void unmap_notify(void) const;
     void configure_notify(void) const;
-    WAttr map_request(::Window &) const;
-    ::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
+    void map_request(const unsigned, const unsigned, const unsigned);
+    //WAttr map_request(::Window &) const;
+    //::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
     void unmanage(::Window) const;
     ::XConfigureRequestEvent &configure_request(void);
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
