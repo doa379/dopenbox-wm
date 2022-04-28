@@ -78,7 +78,7 @@ namespace dobwm {
     //::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
     void unmanage(::Window) const;
     ::XConfigureRequestEvent &configure_request(void);
-    void configure_window(::XConfigureRequestEvent &, ::Window) const;
+    void configure_window(::XConfigureRequestEvent &) const;
     void button_press(void);
     void button_release(void);
     void motion_notify(void);

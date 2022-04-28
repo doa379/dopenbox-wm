@@ -83,7 +83,7 @@ dobwm::WAttr dobwm::X::map_request(::Window &w) const {
 void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
   ::Window &w { ev.xmaprequest.window };
   WAttr wa { };
-  if (::XGetWindowAttributes(dpy, w, &wa)/* || wa.override_redirect*/) return;
+  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect) return;
   const ::Window v {
     ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
   ::XSelectInput(dpy, v, SubstructureRedirectMask | SubstructureNotifyMask);
@@ -91,6 +91,7 @@ void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned 
   ::XReparentWindow(dpy, w, v, 0, 0);
   ::XMapWindow(dpy, v);
   ::XMapWindow(dpy, w);
+  ::XSync(dpy, false);
 }
 
 void dobwm::X::unmanage(::Window w) const {
@@ -105,7 +106,7 @@ void dobwm::X::unmanage(::Window w) const {
   return this->ev.xconfigurerequest;
 }
 
-void dobwm::X::configure_window(::XConfigureRequestEvent &ev, const ::Window w) const {
+void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
   ::XWindowChanges wc {
     ev.x, 
     ev.y, 
@@ -116,7 +117,7 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev, const ::Window w) 
     ev.detail 
   };
   
-  if (::XConfigureWindow(dpy, w, ev.value_mask, &wc)) ::XSync(dpy, false);
+  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 /*
 void dobwm::X::configure_request(void) const {

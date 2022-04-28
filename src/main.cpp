@@ -32,6 +32,7 @@ void dobwm::Box::map_request(void) {
 
 void dobwm::Box::configure_request(void) {
   auto ev { x->configure_request() };
+  /*
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
@@ -39,8 +40,8 @@ void dobwm::Box::configure_request(void) {
         x->configure_window(ev, c->u);
         return;
       }
-
-  x->configure_window(ev, ev.window);
+*/
+  x->configure_window(ev);
 }
 
 int main(const int ARGC, const char *ARGV[]) {
@@ -51,22 +52,23 @@ int main(const int ARGC, const char *ARGV[]) {
     return -1;
   }
 
-  while (!quit) 
-    if (x->next_event()) {
-      if (x->event() == CreateNotify) x->create_notify();
-      else if (x->event() == DestroyNotify) x->destroy_notify();
-      else if (x->event() == ReparentNotify) x->reparent_notify();
-      else if (x->event() == MapNotify) x->map_notify();
-      else if (x->event() == UnmapNotify) x->unmap_notify();
-      else if (x->event() == ConfigureNotify) x->configure_notify();
-      else if (x->event() == MapRequest) box.map_request();
-      else if (x->event() == ConfigureRequest) box.configure_request();
-      else if (x->event() == ButtonPress) x->button_press();
-      else if (x->event() == ButtonRelease) x->button_release();
-      else if (x->event() == MotionNotify) x->motion_notify();
-      else if (x->event() == KeyPress) x->key_press();
-      else if (x->event() == KeyRelease) x->key_release();
-    }
+  std::cout  << "Dopenbox Window Manager\n";
+  while (!quit) {
+    x->next_event();
+    if (x->event() == CreateNotify) x->create_notify();
+    else if (x->event() == DestroyNotify) x->destroy_notify();
+    else if (x->event() == ReparentNotify) x->reparent_notify();
+    else if (x->event() == MapNotify) x->map_notify();
+    else if (x->event() == UnmapNotify) x->unmap_notify();
+    else if (x->event() == ConfigureNotify) x->configure_notify();
+    else if (x->event() == MapRequest) box.map_request();
+    else if (x->event() == ConfigureRequest) box.configure_request();
+    else if (x->event() == ButtonPress) x->button_press();
+    else if (x->event() == ButtonRelease) x->button_release();
+    else if (x->event() == MotionNotify) x->motion_notify();
+    else if (x->event() == KeyPress) x->key_press();
+    else if (x->event() == KeyRelease) x->key_release();
+  }
 
   return 0;
 }
