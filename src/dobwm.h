@@ -8,7 +8,7 @@ namespace dobwm {
   enum class Mode { DEF, TRA, MON };
 
   struct Client {
-    ::Window u, v;
+    ::Window u, v;  // (parent, actual)
     std::string name;
     unsigned x { }, y { }, w { }, h { };
     Mode mode { dobwm::Mode::DEF };
@@ -29,6 +29,7 @@ namespace dobwm {
   public:
     Box(void);
     void map_request(void);
+    void unmap_request(void);
     void configure_request(void);
   };
 /*
@@ -52,7 +53,6 @@ namespace dobwm {
 
   };
 
-  using WAttr = ::XWindowAttributes;
   class X {
     static const auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
     //static const auto ROOTMASK {SubstructureRedirectMask | ButtonPressMask | SubstructureNotifyMask | PropertyChangeMask };
@@ -71,14 +71,11 @@ namespace dobwm {
     void destroy_notify(void) const;
     void reparent_notify(void) const;
     void map_notify(void) const;
-    void unmap_notify(void) const;
+    void unmap_notify(::Window) const;
     void configure_notify(void) const;
     void map_request(const unsigned, const unsigned, const unsigned);
-    //WAttr map_request(::Window &) const;
-    //::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
-    void unmanage(::Window) const;
-    ::XConfigureRequestEvent &configure_request(void);
-    void configure_window(::XConfigureRequestEvent &) const;
+    void unmap_request(::Window, ::Window) const;
+    void configure_window(void) const;
     void button_press(void);
     void button_release(void);
     void motion_notify(void);

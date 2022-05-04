@@ -30,8 +30,13 @@ void dobwm::Box::map_request(void) {
   x->map_request(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
 }
 
+void dobwm::Box::unmap_request(void) {
+  // Resolve parent first
+  ::Window u { };
+  x->unmap_notify(u);
+}
+
 void dobwm::Box::configure_request(void) {
-  auto ev { x->configure_request() };
   /*
   for (auto &m : M)
     for (auto &t : m.T)
@@ -41,7 +46,7 @@ void dobwm::Box::configure_request(void) {
         return;
       }
 */
-  x->configure_window(ev);
+  x->configure_window();
 }
 
 int main(const int ARGC, const char *ARGV[]) {
@@ -59,7 +64,7 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->event() == DestroyNotify) x->destroy_notify();
     else if (x->event() == ReparentNotify) x->reparent_notify();
     else if (x->event() == MapNotify) x->map_notify();
-    else if (x->event() == UnmapNotify) x->unmap_notify();
+    else if (x->event() == UnmapNotify) box.unmap_request();
     else if (x->event() == ConfigureNotify) x->configure_notify();
     else if (x->event() == MapRequest) box.map_request();
     else if (x->event() == ConfigureRequest) box.configure_request();

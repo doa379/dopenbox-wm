@@ -52,104 +52,50 @@ void dobwm::X::map_notify(void) const {
   (void) ev.xmap;
 }
 
-void dobwm::X::unmap_notify(void) const {
-  unmanage(ev.xunmap.window);
+void dobwm::X::unmap_notify(::Window u) const {
+  unmap_request(u, ev.xunmap.window);
 }
 
 void dobwm::X::configure_notify(void) const {
   (void) ev.xconfigure;
 }
-/*
-dobwm::WAttr dobwm::X::map_request(::Window &w) const {
-  const ::XMapRequestEvent &ev { this->ev.xmaprequest };
-  w = ::Window { ev.window };
-  WAttr wa { };
-  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect) return { };
-  ::XMapWindow(dpy, w);
-  return wa;
-}
 
-::Window dobwm::X::manage(::Window w, WAttr &wa, const unsigned bw, const unsigned bc, const unsigned bgc) const {
+void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
+  ::Window &v { ev.xmaprequest.window };
+  ::XWindowAttributes wa { };
+  if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
   const ::Window u {
     ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
-  ::XSelectInput(dpy, u, ROOTMASK);
-  ::XAddToSaveSet(dpy, w);
-  ::XReparentWindow(dpy, w, u, 0, 0);
+  ::XSelectInput(dpy, u, SubstructureRedirectMask | SubstructureNotifyMask);
+  //::XAddToSaveSet(dpy, w);
+  ::XReparentWindow(dpy, v, u, 0, 0);
   ::XMapWindow(dpy, u);
-  ::XSync(dpy, false);
-  return u;
-}
-*/
-void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
-  ::Window &w { ev.xmaprequest.window };
-  WAttr wa { };
-  if (!::XGetWindowAttributes(dpy, w, &wa) || wa.override_redirect) return;
-  const ::Window v {
-    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
-  ::XSelectInput(dpy, v, SubstructureRedirectMask | SubstructureNotifyMask);
-  ::XAddToSaveSet(dpy, w);
-  ::XReparentWindow(dpy, w, v, 0, 0);
   ::XMapWindow(dpy, v);
-  ::XMapWindow(dpy, w);
-  ::XSync(dpy, false);
 }
 
-void dobwm::X::unmanage(::Window w) const {
-  ::XUnmapWindow(dpy, w);
-  ::Window u { };
+void dobwm::X::unmap_request(::Window u, ::Window v) const {
+  ::XUnmapWindow(dpy, v);
   ::XReparentWindow(dpy, u, root, 0, 0);
-  ::XRemoveFromSaveSet(dpy, w);
+  //::XRemoveFromSaveSet(dpy, w);
   ::XDestroyWindow(dpy, u);
+  ::XDestroyWindow(dpy, v);
 }
 
-::XConfigureRequestEvent &dobwm::X::configure_request(void) {
-  return this->ev.xconfigurerequest;
-}
-
-void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
+void dobwm::X::configure_window(void) const {
+  auto &ev { this->ev.xconfigurerequest };
   ::XWindowChanges wc {
-    ev.x, 
-    ev.y, 
-    ev.width, 
-    ev.height, 
-    ev.border_width, 
-    ev.above, 
-    ev.detail 
-  };
-  
-  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
-}
-/*
-void dobwm::X::configure_request(void) const {
-  const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
-  ::XWindowChanges wc {
-    ev.x, 
-    ev.y, 
-    ev.width, 
-    ev.height, 
-    ev.border_width, 
-    ev.above, 
-    ev.detail 
+    ev.x,
+    ev.y,
+    ev.width,
+    ev.height,
+    ev.border_width,
+    ev.above,
+    ev.detail
   };
   
   if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
-void dobwm::X::configure_request(::Window &u) const {
-  const ::XConfigureRequestEvent &ev { this->ev.xconfigurerequest };
-  ::XWindowChanges wc {
-    ev.x, 
-    ev.y, 
-    ev.width, 
-    ev.height, 
-    ev.border_width, 
-    ev.above, 
-    ev.detail 
-  };
-  
-  if (::XConfigureWindow(dpy, u, ev.value_mask, &wc)) ::XSync(dpy, false);
-}
-*/
 void dobwm::X::button_press(void) {
 
 }
