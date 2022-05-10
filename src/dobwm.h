@@ -71,11 +71,12 @@ namespace dobwm {
     void destroy_notify(void) const;
     void reparent_notify(void) const;
     void map_notify(void) const;
-    void unmap_notify(::Window) const;
+    ::Window unmap_notify(void) const;
     void configure_notify(void) const;
     void map_request(const unsigned, const unsigned, const unsigned);
     void unmap_request(::Window, ::Window) const;
-    void configure_window(void) const;
+    ::XConfigureRequestEvent &configure_request(void);
+    void configure_window(::XConfigureRequestEvent &, ::Window) const;
     void button_press(void);
     void button_release(void);
     void motion_notify(void);

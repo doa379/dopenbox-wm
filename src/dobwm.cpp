@@ -52,8 +52,8 @@ void dobwm::X::map_notify(void) const {
   (void) ev.xmap;
 }
 
-void dobwm::X::unmap_notify(::Window u) const {
-  unmap_request(u, ev.xunmap.window);
+::Window dobwm::X::unmap_notify(void) const {
+  return ev.xunmap.window;
 }
 
 void dobwm::X::configure_notify(void) const {
@@ -71,6 +71,7 @@ void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned 
   ::XReparentWindow(dpy, v, u, 0, 0);
   ::XMapWindow(dpy, u);
   ::XMapWindow(dpy, v);
+  // return pair (u, v)
 }
 
 void dobwm::X::unmap_request(::Window u, ::Window v) const {
@@ -81,8 +82,11 @@ void dobwm::X::unmap_request(::Window u, ::Window v) const {
   ::XDestroyWindow(dpy, v);
 }
 
-void dobwm::X::configure_window(void) const {
-  auto &ev { this->ev.xconfigurerequest };
+::XConfigureRequestEvent &dobwm::X::configure_request(void) {
+  return ev.xconfigurerequest;
+}
+
+void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window u) const {
   ::XWindowChanges wc {
     ev.x,
     ev.y,
@@ -93,7 +97,7 @@ void dobwm::X::configure_window(void) const {
     ev.detail
   };
   
-  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc)) ::XSync(dpy, false);
+  if (::XConfigureWindow(dpy, u, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
 void dobwm::X::button_press(void) {

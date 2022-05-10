@@ -31,22 +31,26 @@ void dobwm::Box::map_request(void) {
 }
 
 void dobwm::Box::unmap_request(void) {
-  // Resolve parent first
-  ::Window u { };
-  x->unmap_notify(u);
-}
-
-void dobwm::Box::configure_request(void) {
-  /*
+  ::Window v { x->unmap_notify() };
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return c.v == ev.window; }) }; c < t.C.end()) {
+          [&](auto &c) -> bool { return v == c.v; }) }; c < t.C.end()) {
+        x->unmap_request(c->u, v);
+        t.C.erase(c);
+        return;
+      }
+}
+
+void dobwm::Box::configure_request(void) {
+  auto &ev { x->configure_request() };
+  for (auto &m : M)
+    for (auto &t : m.T)
+      if (auto c { std::find_if(t.C.begin(), t.C.end(),
+          [&](auto &c) -> bool { return ev.window == c.v; }) }; c < t.C.end()) {
         x->configure_window(ev, c->u);
         return;
       }
-*/
-  x->configure_window();
 }
 
 int main(const int ARGC, const char *ARGV[]) {
