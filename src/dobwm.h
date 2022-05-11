@@ -31,6 +31,7 @@ namespace dobwm {
     void map_request(void);
     void unmap_request(void);
     void configure_request(void);
+    void init_windows(void);
   };
 /*
   enum class Event {
@@ -73,10 +74,12 @@ namespace dobwm {
     void map_notify(void) const;
     ::Window unmap_notify(void) const;
     void configure_notify(void) const;
-    void map_request(const unsigned, const unsigned, const unsigned);
+    ::Window map_request(void) const;
+    void window(::Window, const unsigned, const unsigned, const unsigned);
     void unmap_request(::Window, ::Window) const;
     ::XConfigureRequestEvent &configure_request(void);
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
+    void query_tree(const unsigned, const unsigned, const unsigned);
     void button_press(void);
     void button_release(void);
     void motion_notify(void);

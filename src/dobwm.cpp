@@ -60,8 +60,25 @@ void dobwm::X::configure_notify(void) const {
   (void) ev.xconfigure;
 }
 
+::Window dobwm::X::map_request(void) const {
+  return ev.xmaprequest.window;
+}
+/*
 void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
   ::Window &v { ev.xmaprequest.window };
+  ::XWindowAttributes wa { };
+  if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
+  const ::Window u {
+    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
+  ::XSelectInput(dpy, u, SubstructureRedirectMask | SubstructureNotifyMask);
+  //::XAddToSaveSet(dpy, w);
+  ::XReparentWindow(dpy, v, u, 0, 0);
+  ::XMapWindow(dpy, u);
+  ::XMapWindow(dpy, v);
+  // return pair (u, v)
+}
+*/
+void dobwm::X::window(::Window v, const unsigned bw, const unsigned bc, const unsigned bgc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
   const ::Window u {
@@ -98,6 +115,20 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window u) const 
   };
   
   if (::XConfigureWindow(dpy, u, ev.value_mask, &wc)) ::XSync(dpy, false);
+}
+
+void dobwm::X::query_tree(const unsigned bw, const unsigned bc, const unsigned bgc) {
+  ::XGrabServer(dpy);
+  ::Window root { }, parent { };
+  ::Window *W { };  // Children
+  unsigned NW { };
+  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) && root == this->root)
+    for (auto i { 0U }; i < NW; i++)
+      window(W[i], bw, bc, bgc);
+
+  ::XFree(W);
+  ::XUngrabServer(dpy);
+  // return collection of (u, v) pairs
 }
 
 void dobwm::X::button_press(void) {

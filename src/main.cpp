@@ -17,17 +17,8 @@ dobwm::Box::Box(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  /*
-  ::Window v { };
-  auto wa { x->map_request(v) };
-  Client c {
-    x->manage(v, wa, BORDER_WIDTH, BORDER_COLOR, BG_COLOR), v,
-    "Client name", 50, 50, 160, 80
-  };
-
-  M[0].T[0].C.emplace_back(std::move(c));
-  */
-  x->map_request(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+  const ::Window v { x->map_request() };
+  x->window(v, BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -53,6 +44,10 @@ void dobwm::Box::configure_request(void) {
       }
 }
 
+void dobwm::Box::init_windows(void) {
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+}
+
 int main(const int ARGC, const char *ARGV[]) {
   try {
     x = std::make_unique<dobwm::X>();
@@ -61,7 +56,8 @@ int main(const int ARGC, const char *ARGV[]) {
     return -1;
   }
 
-  std::cout  << "Dopenbox Window Manager\n";
+  std::cout << "Dopenbox Window Manager\n";
+  box.init_windows();
   while (!quit) {
     x->next_event();
     if (x->event() == CreateNotify) x->create_notify();
