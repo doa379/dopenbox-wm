@@ -48,6 +48,14 @@ void dobwm::Box::init_windows(void) {
   x->query_tree(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
 }
 
+void dobwm::Box::grab_button(void) {
+  x->grab_button();
+}
+
+void dobwm::Box::grab_key(void) {
+  x->grab_key();
+}
+
 int main(const int ARGC, const char *ARGV[]) {
   try {
     x = std::make_unique<dobwm::X>();
@@ -56,8 +64,8 @@ int main(const int ARGC, const char *ARGV[]) {
     return -1;
   }
 
-  std::cout << "Dopenbox Window Manager\n";
   box.init_windows();
+  std::cout << "Dopenbox Window Manager\n";
   while (!quit) {
     x->next_event();
     if (x->event() == CreateNotify) x->create_notify();

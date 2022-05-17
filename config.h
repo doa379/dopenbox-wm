@@ -1,7 +1,6 @@
 #pragma once
 
 namespace dobwm {
-  const auto MOD_KEY { 037 };
   // Number of Monitors/Displays
   const auto Nm { 2 };
   // Number of Tags per Monitor
@@ -12,4 +11,9 @@ namespace dobwm {
   const auto BG_COLOR { 0x4A90E2 };
   const auto CLIENT_HGAP { 0 };
   const auto CLIENT_VGAP { 0 };
+  const auto MOD0_KEY { Mod4Mask };
+  const auto MOD1_KEY { Mod4Mask };
+  const auto MOD2_KEY { Mod4Mask };
+  const auto RESTART_KEY { MOD0_KEY & 'r' };
+  const auto QUIT_KEY { MOD0_KEY & 'q' };
 }

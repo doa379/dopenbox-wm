@@ -63,21 +63,7 @@ void dobwm::X::configure_notify(void) const {
 ::Window dobwm::X::map_request(void) const {
   return ev.xmaprequest.window;
 }
-/*
-void dobwm::X::map_request(const unsigned bw, const unsigned bc, const unsigned bgc) {
-  ::Window &v { ev.xmaprequest.window };
-  ::XWindowAttributes wa { };
-  if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
-  const ::Window u {
-    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
-  ::XSelectInput(dpy, u, SubstructureRedirectMask | SubstructureNotifyMask);
-  //::XAddToSaveSet(dpy, w);
-  ::XReparentWindow(dpy, v, u, 0, 0);
-  ::XMapWindow(dpy, u);
-  ::XMapWindow(dpy, v);
-  // return pair (u, v)
-}
-*/
+
 void dobwm::X::window(::Window v, const unsigned bw, const unsigned bc, const unsigned bgc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
@@ -126,27 +112,41 @@ void dobwm::X::query_tree(const unsigned bw, const unsigned bc, const unsigned b
     for (auto i { 0U }; i < NW; i++)
       window(W[i], bw, bc, bgc);
 
-  ::XFree(W);
+  if (W) ::XFree(W);
   ::XUngrabServer(dpy);
   // return collection of (u, v) pairs
 }
 
 void dobwm::X::button_press(void) {
-
+  const ::XButtonEvent &ev { this->ev.xbutton };
 }
 
 void dobwm::X::button_release(void) {
+  const ::XButtonEvent &ev { this->ev.xbutton };
+  (void) ev;
+}
 
+void dobwm::X::grab_button(void) {
+
+}
+
+void dobwm::X::grab_button(::Window v, const std::vector<int> &B) {
+  ::XGrabButton(dpy, B[1], B[0], v, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
 void dobwm::X::motion_notify(void) {
-
+  const ::XMotionEvent &ev { this->ev.xmotion };
 }
 
 void dobwm::X::key_press(void) {
-
+  const ::XKeyEvent &ev { this->ev.xkey };
 }
 
 void dobwm::X::key_release(void) {
+  const ::XKeyEvent &ev { this->ev.xkey };
+  (void) ev;
+}
+
+void dobwm::X::grab_key(void) {
 
 }

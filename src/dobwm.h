@@ -32,6 +32,8 @@ namespace dobwm {
     void unmap_request(void);
     void configure_request(void);
     void init_windows(void);
+    void grab_button(void);
+    void grab_key(void);
   };
 /*
   enum class Event {
@@ -54,9 +56,14 @@ namespace dobwm {
 
   };
 
-  class X {
+  class Event {
+  protected:
+  };
+
+  class X : private Event {
     static const auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
-    //static const auto ROOTMASK {SubstructureRedirectMask | ButtonPressMask | SubstructureNotifyMask | PropertyChangeMask };
+    static const auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
+    static const auto NOTIFMASK { PropertyChangeMask };
     static bool error;
     ::Display *dpy { };
     ::XEvent ev { };
@@ -82,9 +89,12 @@ namespace dobwm {
     void query_tree(const unsigned, const unsigned, const unsigned);
     void button_press(void);
     void button_release(void);
+    void grab_button(void);
+    void grab_button(::Window, const std::vector<int> &);
     void motion_notify(void);
     void key_press(void);
     void key_release(void);
+    void grab_key(void);
   };
 
   class Xops {
