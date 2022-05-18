@@ -3,6 +3,60 @@
 
 bool dobwm::X::error { };
 
+void dobwm::Event::create_notify(void) const {
+  (void) ev.xcreatewindow;
+}
+
+void dobwm::Event::destroy_notify(void) const {
+  (void) ev.xdestroywindow;
+}
+
+void dobwm::Event::reparent_notify(void) const {
+  (void) ev.xreparent;
+}
+
+void dobwm::Event::map_notify(void) const {
+  (void) ev.xmap;
+}
+
+::Window dobwm::Event::unmap_notify(void) const {
+  return ev.xunmap.window;
+}
+
+void dobwm::Event::configure_notify(void) const {
+  (void) ev.xconfigure;
+}
+
+::Window dobwm::Event::map_request(void) const {
+  return ev.xmaprequest.window;
+}
+
+::XConfigureRequestEvent &dobwm::Event::configure_request(void) {
+  return ev.xconfigurerequest;
+}
+
+void dobwm::Event::button_press(void) {
+  const ::XButtonEvent &ev { this->ev.xbutton };
+}
+
+void dobwm::Event::button_release(void) {
+  const ::XButtonEvent &ev { this->ev.xbutton };
+  (void) ev;
+}
+
+void dobwm::Event::motion_notify(void) {
+  const ::XMotionEvent &ev { this->ev.xmotion };
+}
+
+void dobwm::Event::key_press(void) {
+  const ::XKeyEvent &ev { this->ev.xkey };
+}
+
+void dobwm::Event::key_release(void) {
+  const ::XKeyEvent &ev { this->ev.xkey };
+  (void) ev;
+}
+///////////////////////////////////////////////////////////////////////////////
 dobwm::X::X(void) {
   if (!(dpy = ::XOpenDisplay(nullptr))) throw "Unable to open display";
   root = RootWindow(dpy, DefaultScreen(dpy));
@@ -36,34 +90,6 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
       ev->error_code == BadWindow));
 }
  
-void dobwm::X::create_notify(void) const {
-  (void) ev.xcreatewindow;
-}
-
-void dobwm::X::destroy_notify(void) const {
-  (void) ev.xdestroywindow;
-}
-
-void dobwm::X::reparent_notify(void) const {
-  (void) ev.xreparent;
-}
-
-void dobwm::X::map_notify(void) const {
-  (void) ev.xmap;
-}
-
-::Window dobwm::X::unmap_notify(void) const {
-  return ev.xunmap.window;
-}
-
-void dobwm::X::configure_notify(void) const {
-  (void) ev.xconfigure;
-}
-
-::Window dobwm::X::map_request(void) const {
-  return ev.xmaprequest.window;
-}
-
 void dobwm::X::window(::Window v, const unsigned bw, const unsigned bc, const unsigned bgc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, v, &wa) || wa.override_redirect) return;
@@ -83,10 +109,6 @@ void dobwm::X::unmap_request(::Window u, ::Window v) const {
   //::XRemoveFromSaveSet(dpy, w);
   ::XDestroyWindow(dpy, u);
   ::XDestroyWindow(dpy, v);
-}
-
-::XConfigureRequestEvent &dobwm::X::configure_request(void) {
-  return ev.xconfigurerequest;
 }
 
 void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window u) const {
@@ -117,34 +139,12 @@ void dobwm::X::query_tree(const unsigned bw, const unsigned bc, const unsigned b
   // return collection of (u, v) pairs
 }
 
-void dobwm::X::button_press(void) {
-  const ::XButtonEvent &ev { this->ev.xbutton };
-}
-
-void dobwm::X::button_release(void) {
-  const ::XButtonEvent &ev { this->ev.xbutton };
-  (void) ev;
-}
-
 void dobwm::X::grab_button(void) {
 
 }
 
 void dobwm::X::grab_button(::Window v, const std::vector<int> &B) {
   ::XGrabButton(dpy, B[1], B[0], v, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
-}
-
-void dobwm::X::motion_notify(void) {
-  const ::XMotionEvent &ev { this->ev.xmotion };
-}
-
-void dobwm::X::key_press(void) {
-  const ::XKeyEvent &ev { this->ev.xkey };
-}
-
-void dobwm::X::key_release(void) {
-  const ::XKeyEvent &ev { this->ev.xkey };
-  (void) ev;
 }
 
 void dobwm::X::grab_key(void) {

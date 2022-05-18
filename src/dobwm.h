@@ -58,15 +58,29 @@ namespace dobwm {
 
   class Event {
   protected:
+    ::XEvent ev { };
+  public:
+    void create_notify(void) const;
+    void destroy_notify(void) const;
+    void reparent_notify(void) const;
+    void map_notify(void) const;
+    ::Window unmap_notify(void) const;
+    void configure_notify(void) const;
+    ::Window map_request(void) const;
+    ::XConfigureRequestEvent &configure_request(void);
+    void button_press(void);
+    void button_release(void);
+    void motion_notify(void);
+    void key_press(void);
+    void key_release(void);
   };
 
-  class X : private Event {
+  class X : public Event {
     static const auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
     static const auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
     static const auto NOTIFMASK { PropertyChangeMask };
     static bool error;
     ::Display *dpy { };
-    ::XEvent ev { };
     ::Window root { };
   public:
     X(void);
@@ -75,36 +89,12 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     int &event(void) { return ev.type; }
-    void create_notify(void) const;
-    void destroy_notify(void) const;
-    void reparent_notify(void) const;
-    void map_notify(void) const;
-    ::Window unmap_notify(void) const;
-    void configure_notify(void) const;
-    ::Window map_request(void) const;
     void window(::Window, const unsigned, const unsigned, const unsigned);
     void unmap_request(::Window, ::Window) const;
-    ::XConfigureRequestEvent &configure_request(void);
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
     void query_tree(const unsigned, const unsigned, const unsigned);
-    void button_press(void);
-    void button_release(void);
     void grab_button(void);
     void grab_button(::Window, const std::vector<int> &);
-    void motion_notify(void);
-    void key_press(void);
-    void key_release(void);
     void grab_key(void);
-  };
-
-  class Xops {
-  public:
-  /*
-    WAttr map_request(::Window &) const;
-    ::Window manage(::Window, WAttr &, const unsigned, const unsigned, const unsigned) const;
-    void unmanage(::Window) const;
-    ::XConfigureRequestEvent &configure_request(void);
-    void configure_window(::XConfigureRequestEvent &, ::Window) const;
-    */
   };
 }
