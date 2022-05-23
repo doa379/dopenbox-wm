@@ -8,7 +8,7 @@ namespace dobwm {
   enum class Mode { DEF, TRA, MON };
 
   struct Client {
-    ::Window u, v;  // (parent, actual)
+    ::Window win;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
     Mode mode { dobwm::Mode::DEF };
@@ -60,14 +60,14 @@ namespace dobwm {
   protected:
     ::XEvent ev { };
   public:
-    void create_notify(void) const;
-    void destroy_notify(void) const;
-    void reparent_notify(void) const;
-    void map_notify(void) const;
-    ::Window unmap_notify(void) const;
-    void configure_notify(void) const;
-    ::Window map_request(void) const;
-    ::XConfigureRequestEvent &configure_request(void);
+    void create_notify(void) const { (void) ev.xcreatewindow; }
+    void destroy_notify(void) const { (void) ev.xdestroywindow; }
+    void reparent_notify(void) const { (void) ev.xreparent; }
+    void map_notify(void) const { (void) ev.xmap; }
+    ::Window unmap_notify(void) const { return ev.xunmap.window; }
+    void configure_notify(void) const { (void) ev.xconfigure; }
+    ::Window map_request(void) const { return ev.xmaprequest.window; }
+    ::XConfigureRequestEvent &configure_request(void) { return ev.xconfigurerequest; }
     void button_press(void);
     void button_release(void);
     void motion_notify(void);
@@ -89,10 +89,10 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     int &event(void) { return ev.type; }
-    void window(::Window, const unsigned, const unsigned, const unsigned);
-    void unmap_request(::Window, ::Window) const;
+    void window(::Window, const unsigned, const unsigned);
+    void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
-    void query_tree(const unsigned, const unsigned, const unsigned);
+    void query_tree(const unsigned, const unsigned);
     void grab_button(void);
     void grab_button(::Window, const std::vector<int> &);
     void grab_key(void);

@@ -17,17 +17,17 @@ dobwm::Box::Box(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  const ::Window v { x->map_request() };
-  x->window(v, BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+  const ::Window win { x->map_request() };
+  x->window(win, BORDER_WIDTH, BORDER_COLOR);
 }
 
 void dobwm::Box::unmap_request(void) {
-  ::Window v { x->unmap_notify() };
+  ::Window win { x->unmap_notify() };
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return v == c.v; }) }; c < t.C.end()) {
-        x->unmap_request(c->u, v);
+          [&](auto &c) -> bool { return win == c.win; }) }; c < t.C.end()) {
+        x->unmap_request(win);
         t.C.erase(c);
         return;
       }
@@ -38,14 +38,14 @@ void dobwm::Box::configure_request(void) {
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return ev.window == c.v; }) }; c < t.C.end()) {
-        x->configure_window(ev, c->u);
+          [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
+        x->configure_window(ev, c->win);
         return;
       }
 }
 
 void dobwm::Box::init_windows(void) {
-  x->query_tree(BORDER_WIDTH, BORDER_COLOR, BG_COLOR);
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR);
 }
 
 void dobwm::Box::grab_button(void) {
