@@ -18,7 +18,7 @@ dobwm::Box::Box(void) {
 
 void dobwm::Box::map_request(void) {
   const ::Window win { x->map_request() };
-  x->window(win, BORDER_WIDTH, BORDER_COLOR);
+  x->window(win, BORDER_WIDTH, BORDER_COLOR0);
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -45,7 +45,7 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::init_windows(void) {
-  x->query_tree(BORDER_WIDTH, BORDER_COLOR);
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
 }
 
 void dobwm::Box::grab_button(void) {
@@ -59,8 +59,8 @@ void dobwm::Box::grab_key(void) {
 int main(const int ARGC, const char *ARGV[]) {
   try {
     x = std::make_unique<dobwm::X>();
-  } catch (const char E[]) {
-    std::cerr << "EX: " + std::string(E) << "\n";
+  } catch (const std::exception &e) {
+    std::cerr << "EX: " + std::string(e.what()) << "\n";
     return -1;
   }
 

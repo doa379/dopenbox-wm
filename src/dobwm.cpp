@@ -1,5 +1,6 @@
 #include <dobwm.h>
 #include <X11/Xproto.h>
+#include <stdexcept>
 
 bool dobwm::X::error { };
 
@@ -26,14 +27,15 @@ void dobwm::Event::key_release(void) {
 }
 ///////////////////////////////////////////////////////////////////////////////
 dobwm::X::X(void) {
-  if (!(dpy = ::XOpenDisplay(nullptr))) throw "Unable to open display";
+  if (!(dpy = ::XOpenDisplay(nullptr)))
+    throw std::runtime_error("Unable to open display");
   root = RootWindow(dpy, DefaultScreen(dpy));
   ::XSetErrorHandler(&X::init_XError);
   ::XSelectInput(dpy, root, ROOTMASK);
   ::XSync(dpy, false);
   if (X::error) {
     ::XCloseDisplay(dpy);
-    throw "Initialization XError (another wm running?)";
+    throw std::runtime_error("Initialization XError (another wm running?)");
   }
 
   ::XSetErrorHandler(&X::XError);
@@ -61,26 +63,13 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
 void dobwm::X::window(::Window win, const unsigned bw, const unsigned bc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
-  /*
-  const ::Window u {
-    ::XCreateSimpleWindow(dpy, root, wa.x, wa.y, wa.width, wa.height, bw, bc, bgc) };
-  ::XSelectInput(dpy, u, SubstructureRedirectMask | SubstructureNotifyMask);
-  ::XReparentWindow(dpy, v, u, 0, 0);
-  ::XMapWindow(dpy, u);
-  ::XMapWindow(dpy, v);
-  // return pair (u, v)
-  */
+  ::XSetWindowBorder(dpy, win, bc);
+  ::XSetWindowBorderWidth(dpy, win, bw);
   ::XSelectInput(dpy, win, SubstructureRedirectMask | SubstructureNotifyMask);
   ::XMapWindow(dpy, win);
 }
 
 void dobwm::X::unmap_request(::Window win) const {
-  /*
-  ::XUnmapWindow(dpy, v);
-  ::XReparentWindow(dpy, u, root, 0, 0);
-  ::XDestroyWindow(dpy, u);
-  ::XDestroyWindow(dpy, v);
-  */
   ::XUnmapWindow(dpy, win);
   ::XReparentWindow(dpy, win, root, 0, 0);
   ::XDestroyWindow(dpy, win);
