@@ -28,6 +28,7 @@ namespace dobwm {
     std::vector<Mon> M;
   public:
     Box(void);
+    ~Box(void);
     void map_request(void);
     void unmap_request(void);
     void configure_request(void);
@@ -35,23 +36,23 @@ namespace dobwm {
     void grab_button(void);
     void grab_key(void);
   };
-/*
-  enum class Event {
-    CreateNotify,
-    DestroyNotify,
-    ReparentNotify,
-    MapNotify,
-    UnmapNotify,
-    ConfigureNotify,
-    MapRequest,
-    ConfigureRequest,
-    ButtonPress,
-    ButtonRelease,
-    MotionNotify,
-    KeyPress,
-    KeyRelease
+
+  enum class XEvent {
+    Create = CreateNotify,
+    Destroy = DestroyNotify,
+    Reparent = ReparentNotify,
+    Map = MapNotify,
+    Unmap = UnmapNotify,
+    Config = ConfigureNotify,
+    MapReq = MapRequest,
+    ConfigReq = ConfigureRequest,
+    BDown = ButtonPress,
+    BUp = ButtonRelease,
+    Motion = MotionNotify,
+    KDown = KeyPress,
+    KUp = KeyRelease
   };
-*/
+
   class Atom {
 
   };
@@ -88,11 +89,11 @@ namespace dobwm {
     static int init_XError(::Display *, ::XErrorEvent *);
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
-    int &event(void) { return ev.type; }
-    void window(::Window, const unsigned, const unsigned);
+    dobwm::XEvent event(void) const { return static_cast<dobwm::XEvent>(ev.type); }
+    void window(::Window, const unsigned, const unsigned long);
     void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
-    void query_tree(const unsigned, const unsigned);
+    void query_tree(const unsigned, const unsigned long);
     void grab_button(void);
     void grab_button(::Window, const std::vector<int> &);
     void grab_key(void);

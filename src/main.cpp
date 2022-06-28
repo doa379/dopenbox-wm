@@ -9,16 +9,25 @@ static std::unique_ptr<dobwm::X> x;
 static dobwm::Box box;
 
 dobwm::Box::Box(void) {
-  for (auto i { 0U }; i < dobwm::Nm; i++) {
-    std::vector<dobwm::Tag> T(dobwm::Nt);
-    dobwm::Mon m { T };
+  for (auto i { 0U }; i < Nm; i++) {
+    std::vector<Tag> T(Nt);
+    Mon m { T };
     M.emplace_back(std::move(m));
   }
 }
 
+dobwm::Box::~Box(void) {
+  /*
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto &c : t.C)
+        x->unmap_request(c.win);
+  */
+}
+
 void dobwm::Box::map_request(void) {
   const ::Window win { x->map_request() };
-  x->window(win, BORDER_WIDTH, BORDER_COLOR0);
+  x->window(win, BORDER_WIDTH, static_cast<unsigned long>(BORDER_COLOR0));
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -35,8 +44,8 @@ void dobwm::Box::unmap_request(void) {
 
 void dobwm::Box::configure_request(void) {
   auto &ev { x->configure_request() };
-  for (auto &m : M)
-    for (auto &t : m.T)
+  for (const auto &m : M)
+    for (const auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
           [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
         x->configure_window(ev, c->win);
@@ -45,7 +54,7 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::init_windows(void) {
-  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
+  x->query_tree(BORDER_WIDTH, static_cast<unsigned long>(BORDER_COLOR0));
 }
 
 void dobwm::Box::grab_button(void) {
@@ -68,19 +77,19 @@ int main(const int ARGC, const char *ARGV[]) {
   std::cout << "Dopenbox Window Manager\n";
   while (!quit) {
     x->next_event();
-    if (x->event() == CreateNotify) x->create_notify();
-    else if (x->event() == DestroyNotify) x->destroy_notify();
-    else if (x->event() == ReparentNotify) x->reparent_notify();
-    else if (x->event() == MapNotify) x->map_notify();
-    else if (x->event() == UnmapNotify) box.unmap_request();
-    else if (x->event() == ConfigureNotify) x->configure_notify();
-    else if (x->event() == MapRequest) box.map_request();
-    else if (x->event() == ConfigureRequest) box.configure_request();
-    else if (x->event() == ButtonPress) x->button_press();
-    else if (x->event() == ButtonRelease) x->button_release();
-    else if (x->event() == MotionNotify) x->motion_notify();
-    else if (x->event() == KeyPress) x->key_press();
-    else if (x->event() == KeyRelease) x->key_release();
+    if (x->event() == dobwm::XEvent::Create) x->create_notify();
+    else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
+    else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
+    else if (x->event() == dobwm::XEvent::Map) x->map_notify();
+    else if (x->event() == dobwm::XEvent::Unmap) box.unmap_request();
+    else if (x->event() == dobwm::XEvent::Config) x->configure_notify();
+    else if (x->event() == dobwm::XEvent::MapReq) box.map_request();
+    else if (x->event() == dobwm::XEvent::ConfigReq) box.configure_request();
+    else if (x->event() == dobwm::XEvent::BDown) x->button_press();
+    else if (x->event() == dobwm::XEvent::BUp) x->button_release();
+    else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
+    else if (x->event() == dobwm::XEvent::KDown) x->key_press();
+    else if (x->event() == dobwm::XEvent::KUp) x->key_release();
   }
 
   return 0;

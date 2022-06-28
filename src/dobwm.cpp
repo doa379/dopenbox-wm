@@ -46,11 +46,11 @@ dobwm::X::~X(void) {
 }
 
 int dobwm::X::init_XError(::Display *dpy, ::XErrorEvent *ev) {
-  return !(dobwm::X::error = (ev->error_code == BadAccess));
+  return !(X::error = (ev->error_code == BadAccess));
 }
 
 int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
-  return !(dobwm::X::error = ((ev->error_code == BadAccess && 
+  return !(X::error = ((ev->error_code == BadAccess && 
         (ev->request_code == X_GrabKey ||  ev->request_code == X_GrabButton)) ||
       (ev->error_code  == BadMatch && (ev->request_code == X_SetInputFocus ||
         ev->request_code == X_ConfigureWindow)) ||
@@ -60,7 +60,7 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
       ev->error_code == BadWindow));
 }
  
-void dobwm::X::window(::Window win, const unsigned bw, const unsigned bc) {
+void dobwm::X::window(::Window win, const unsigned bw, const unsigned long bc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
   ::XSetWindowBorder(dpy, win, bc);
@@ -89,17 +89,17 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window win) cons
   if (::XConfigureWindow(dpy, win, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
-void dobwm::X::query_tree(const unsigned bw, const unsigned bc) {
-  ::XGrabServer(dpy);
+void dobwm::X::query_tree(const unsigned bw, const unsigned long bc) {
   ::Window root { }, parent { };
   ::Window *W { };  // Children
   unsigned NW { };
+  ::XGrabServer(dpy);
   if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) && root == this->root)
     for (auto i { 0U }; i < NW; i++)
       window(W[i], bw, bc);
 
-  if (W) ::XFree(W);
   ::XUngrabServer(dpy);
+  if (W) ::XFree(W);
 }
 
 void dobwm::X::grab_button(void) {

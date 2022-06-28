@@ -1,5 +1,7 @@
 #pragma once
 
+#include <palette.h>
+
 namespace dobwm {
   // Number of Monitors/Displays
   const auto Nm { 2 };
@@ -7,9 +9,9 @@ namespace dobwm {
   const auto Nt { 4 };
   const auto BAR_HEIGHT { 8 };
   const auto BORDER_WIDTH { 4 };
-  const auto BORDER_COLOR0 { 0xD0021B };
-  const auto BORDER_COLOR1 { 0xD0021B };
-  const auto BORDER_COLOR2 { 0xD0021B };
+  const auto BORDER_COLOR0 { Palette::Red };
+  const auto BORDER_COLOR1 { Palette::Red };
+  const auto BORDER_COLOR2 { Palette::Red };
   const auto CLIENT_HGAP { 0 };
   const auto CLIENT_VGAP { 0 };
   // Key Bindings
