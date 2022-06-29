@@ -60,10 +60,10 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
       ev->error_code == BadWindow));
 }
  
-void dobwm::X::window(::Window win, const unsigned bw, const unsigned long bc) {
+void dobwm::X::window(::Window win, const unsigned bw, const Palette bc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
-  ::XSetWindowBorder(dpy, win, bc);
+  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(bc));
   ::XSetWindowBorderWidth(dpy, win, bw);
   ::XSelectInput(dpy, win, SubstructureRedirectMask | SubstructureNotifyMask);
   ::XMapWindow(dpy, win);
@@ -89,7 +89,7 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window win) cons
   if (::XConfigureWindow(dpy, win, ev.value_mask, &wc)) ::XSync(dpy, false);
 }
 
-void dobwm::X::query_tree(const unsigned bw, const unsigned long bc) {
+void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
   ::Window root { }, parent { };
   ::Window *W { };  // Children
   unsigned NW { };

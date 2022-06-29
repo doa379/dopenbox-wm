@@ -2,7 +2,11 @@
 
 #include <vector>
 #include <string>
+#include <string_view>
 #include <X11/Xutil.h>
+#include <palette.h>
+
+constexpr std::string_view VER { "-0.0" };
 
 namespace dobwm {
   enum class Mode { DEF, TRA, MON };
@@ -29,6 +33,7 @@ namespace dobwm {
   public:
     Box(void);
     ~Box(void);
+    void unmap_all(void);
     void map_request(void);
     void unmap_request(void);
     void configure_request(void);
@@ -90,10 +95,10 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     dobwm::XEvent event(void) const { return static_cast<dobwm::XEvent>(ev.type); }
-    void window(::Window, const unsigned, const unsigned long);
+    void window(::Window, const unsigned, const Palette);
     void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
-    void query_tree(const unsigned, const unsigned long);
+    void query_tree(const unsigned, const Palette);
     void grab_button(void);
     void grab_button(::Window, const std::vector<int> &);
     void grab_key(void);

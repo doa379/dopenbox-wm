@@ -25,13 +25,20 @@ dobwm::Box::~Box(void) {
   */
 }
 
+void dobwm::Box::unmap_all(void) {
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto &c : t.C)
+        x->unmap_request(c.win);
+}
+
 void dobwm::Box::map_request(void) {
-  const ::Window win { x->map_request() };
-  x->window(win, BORDER_WIDTH, static_cast<unsigned long>(BORDER_COLOR0));
+  const auto win { x->map_request() };
+  x->window(win, BORDER_WIDTH, BORDER_COLOR0);
 }
 
 void dobwm::Box::unmap_request(void) {
-  ::Window win { x->unmap_notify() };
+  auto win { x->unmap_notify() };
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
@@ -54,7 +61,7 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::init_windows(void) {
-  x->query_tree(BORDER_WIDTH, static_cast<unsigned long>(BORDER_COLOR0));
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
 }
 
 void dobwm::Box::grab_button(void) {
@@ -74,7 +81,7 @@ int main(const int ARGC, const char *ARGV[]) {
   }
 
   box.init_windows();
-  std::cout << "Dopenbox Window Manager\n";
+  std::cout << "Dopenbox Window Manager ver. " << VER << "\n";
   while (!quit) {
     x->next_event();
     if (x->event() == dobwm::XEvent::Create) x->create_notify();
@@ -92,5 +99,6 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->event() == dobwm::XEvent::KUp) x->key_release();
   }
 
+  box.unmap_all();
   return 0;
 }

@@ -1,7 +1,7 @@
-# dopenbox-wm
-DopeNbox X11 WM
+# dopenboxwm
+Dopenboxwm X11 WM
 
-An open plan X11 window manager written in C++. Features, adaptable and flexible usage criteria, essential config through source header, discretionary tiling, integrated panel, low overhead on resources.
+Dopenboxwm is an open plan X11 window manager written in modern C++. Features easily adaptable and flexible workflows, essential config settings through source header, discretionary tiling, integrated panel, minimal overheads on resources. Dopenboxwm is inspired by projects dwm, Openbox and JWM. This project is presently at version -0.0.
 
 Build prerequisites/deps:
 
