@@ -6,7 +6,7 @@
 #include <X11/Xutil.h>
 #include <palette.h>
 
-constexpr std::string_view VER { "-0.0" };
+static constexpr std::string_view VER { "-0.0" };
 
 namespace dobwm {
   enum class Mode { DEF, TRA, MON };
@@ -15,7 +15,7 @@ namespace dobwm {
     ::Window win;
     std::string name;
     unsigned x { }, y { }, w { }, h { };
-    Mode mode { dobwm::Mode::DEF };
+    Mode mode { Mode::DEF };
     bool sel { };
   };
 
@@ -38,8 +38,6 @@ namespace dobwm {
     void unmap_request(void);
     void configure_request(void);
     void init_windows(void);
-    void grab_button(void);
-    void grab_key(void);
   };
 
   enum class XEvent {
@@ -82,9 +80,9 @@ namespace dobwm {
   };
 
   class X : public Event {
-    static const auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
-    static const auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
-    static const auto NOTIFMASK { PropertyChangeMask };
+    static constexpr auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
+    static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
+    static constexpr auto NOTIFMASK { PropertyChangeMask };
     static bool error;
     ::Display *dpy { };
     ::Window root { };
@@ -99,8 +97,9 @@ namespace dobwm {
     void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
     void query_tree(const unsigned, const Palette);
-    void grab_button(void);
     void grab_button(::Window, const std::vector<int> &);
-    void grab_key(void);
+    void grab_buttons(void);
+    void grab_key(::Window, const int);
+    void grab_keys(const std::vector<int> &);
   };
 }

@@ -62,14 +62,11 @@ void dobwm::Box::configure_request(void) {
 
 void dobwm::Box::init_windows(void) {
   x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
-}
-
-void dobwm::Box::grab_button(void) {
-  x->grab_button();
-}
-
-void dobwm::Box::grab_key(void) {
-  x->grab_key();
+  x->grab_buttons();
+  const std::vector<int> K {
+    RESTART_KEY, 
+    QUIT_KEY };
+  x->grab_keys(K);
 }
 
 int main(const int ARGC, const char *ARGV[]) {

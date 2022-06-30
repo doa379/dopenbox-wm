@@ -31,7 +31,7 @@ dobwm::X::X(void) {
     throw std::runtime_error("Unable to open display");
   root = RootWindow(dpy, DefaultScreen(dpy));
   ::XSetErrorHandler(&X::init_XError);
-  ::XSelectInput(dpy, root, ROOTMASK);
+  ::XSelectInput(dpy, root, ROOTMASK | BUTTONMASK | NOTIFMASK);
   ::XSync(dpy, false);
   if (X::error) {
     ::XCloseDisplay(dpy);
@@ -65,7 +65,7 @@ void dobwm::X::window(::Window win, const unsigned bw, const Palette bc) {
   if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
   ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(bc));
   ::XSetWindowBorderWidth(dpy, win, bw);
-  ::XSelectInput(dpy, win, SubstructureRedirectMask | SubstructureNotifyMask);
+  ::XSelectInput(dpy, win, ROOTMASK);
   ::XMapWindow(dpy, win);
 }
 
@@ -102,14 +102,21 @@ void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
   if (W) ::XFree(W);
 }
 
-void dobwm::X::grab_button(void) {
+void dobwm::X::grab_button(::Window w, const std::vector<int> &B) {
+  ::XGrabButton(dpy, B[1], B[0], w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+}
+
+void dobwm::X::grab_buttons(void) {
 
 }
 
-void dobwm::X::grab_button(::Window v, const std::vector<int> &B) {
-  ::XGrabButton(dpy, B[1], B[0], v, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+void dobwm::X::grab_key(::Window w, const int k) {
+  const KeyCode code { ::XKeysymToKeycode(dpy, k) };
+  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
+  ::XGrabKey(dpy, code, k, w, True, GrabModeAsync, GrabModeAsync);
 }
 
-void dobwm::X::grab_key(void) {
-
+void dobwm::X::grab_keys(const std::vector<int> &K) {
+  for (const auto &k : K)
+    grab_key(root, k);
 }
