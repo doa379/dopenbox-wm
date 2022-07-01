@@ -5,13 +5,13 @@ constexpr auto MOD4_KEY { Mod4Mask };
 constexpr auto CTRL_KEY { ControlMask };
 constexpr auto SHIFT_KEY { ShiftMask };
 
-enum class Xkb {
-  a           = XK_a,
-  s           = XK_s,
-  Backspace   = XK_BackSpace,
-  Tab         = XK_Tab,
-  Return      = XK_Return,
-  F1          = XK_F1,
-  F2          = XK_F2,
+enum Xkb {
+  _a_         = XK_a,
+  _s_         = XK_s,
+  _Backspace_ = XK_BackSpace,
+  _Tab_       = XK_Tab,
+  _Return_    = XK_Return,
+  _F1_        = XK_F1,
+  _F2_        = XK_F2,
 };
 

@@ -111,7 +111,7 @@ void dobwm::X::grab_buttons(void) {
 }
 
 void dobwm::X::grab_key(::Window w, const int k) {
-  const KeyCode code { ::XKeysymToKeycode(dpy, k) };
+  const ::KeyCode code { ::XKeysymToKeycode(dpy, k) };
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
   ::XGrabKey(dpy, code, k, w, True, GrabModeAsync, GrabModeAsync);
 }

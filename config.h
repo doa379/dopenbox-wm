@@ -13,10 +13,10 @@ namespace dobwm {
   const auto BORDER_COLOR0 { Palette::Red };
   const auto BORDER_COLOR1 { Palette::Red };
   const auto BORDER_COLOR2 { Palette::Red };
-  const auto CLIENT_HGAP { 0 };
-  const auto CLIENT_VGAP { 0 };
+  const auto HGAPS { 0 };
+  const auto VGAPS { 0 };
   // Key Bindings
-  const auto RESTART_KEY { MOD1_KEY & MOD4_KEY & 'a' };
-  const auto QUIT_KEY { MOD1_KEY & MOD4_KEY & 's' };
+  const auto RESTART_KEY { MOD1_KEY & MOD4_KEY & _a_ };
+  const auto QUIT_KEY { MOD1_KEY & MOD4_KEY & _s_ };
   // Mouse Bindings
 }
