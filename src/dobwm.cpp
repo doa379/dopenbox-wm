@@ -1,5 +1,6 @@
 #include <dobwm.h>
 #include <X11/Xproto.h>
+#include <X11/XKBlib.h>
 #include <stdexcept>
 
 bool dobwm::X::error { };
@@ -15,15 +16,6 @@ void dobwm::Event::button_release(void) {
 
 void dobwm::Event::motion_notify(void) {
   const ::XMotionEvent &ev { this->ev.xmotion };
-}
-
-void dobwm::Event::key_press(void) {
-  const ::XKeyEvent &ev { this->ev.xkey };
-}
-
-void dobwm::Event::key_release(void) {
-  const ::XKeyEvent &ev { this->ev.xkey };
-  (void) ev;
 }
 ///////////////////////////////////////////////////////////////////////////////
 dobwm::X::X(void) {
@@ -111,12 +103,16 @@ void dobwm::X::grab_buttons(void) {
 }
 
 void dobwm::X::grab_key(::Window w, const int k) {
-  const ::KeyCode code { ::XKeysymToKeycode(dpy, k) };
+  const ::KeyCode kc { ::XKeysymToKeycode(dpy, k) };
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
-  ::XGrabKey(dpy, code, k, w, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, kc, k, w, True, GrabModeAsync, GrabModeAsync);
 }
 
 void dobwm::X::grab_keys(const std::vector<int> &K) {
   for (const auto &k : K)
     grab_key(root, k);
+}
+
+::KeySym dobwm::X::key_press(::KeyCode kc) {
+  return ::XkbKeycodeToKeysym(dpy, kc, 0, 0);
 }

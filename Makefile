@@ -31,7 +31,7 @@ EXEC = dobwm
 .if "$(DEBUG)" == "1"
   CFLAGS = $(DBG_CFLAGS)
   LDFLAGS = $(DBG_LDFLAGS)
-  EXEC = dobwm_dbg
+  EXEC = dobwm~dbg
 .endif
 
 SRC = src/main.cpp src/dobwm.cpp src/msg.cpp
@@ -43,7 +43,7 @@ all: $(EXEC)
 clean:
 	@echo Cleaning...
 	rm -f $(OBJ)
-	rm -f $(EXEC).bin $(EXEC)_dbg.bin *.tmp *.core
+	rm -f $(EXEC).bin $(EXEC)~dbg.bin *.tmp *.core
 
 $(EXEC): $(OBJ)
 	@echo Linking...

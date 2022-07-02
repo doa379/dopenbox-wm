@@ -2,11 +2,17 @@
 #include <iostream>
 #include <algorithm>
 #include <dobwm.h>
+#include <msg.h>
 #include <../config.h>
 
 static bool quit { };
 static std::unique_ptr<dobwm::X> x;
+static std::unique_ptr<dobwm::Msg> msg;
 static dobwm::Box box;
+
+void DBGMSG(const char MSG[]) {
+  msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
+}
 
 dobwm::Box::Box(void) {
   for (auto i { 0U }; i < Nm; i++) {
@@ -60,6 +66,13 @@ void dobwm::Box::configure_request(void) {
       }
 }
 
+void dobwm::Box::key(void) {
+  DBGMSG("Input handler");
+  auto key { x->key() };
+  if (x->key_press(key))
+    DBGMSG("Input handler");
+}
+
 void dobwm::Box::init_windows(void) {
   x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
   x->grab_buttons();
@@ -76,9 +89,16 @@ int main(const int ARGC, const char *ARGV[]) {
     std::cerr << "EX: " + std::string(e.what()) << "\n";
     return -1;
   }
+  
+  try {
+    msg = std::make_unique<dobwm::Msg>();
+  } catch (const std::exception &e) {
+    std::cerr << "EX: " + std::string(e.what()) << "\n";
+  }
 
   box.init_windows();
-  std::cout << "Dopenbox Window Manager ver. " << VER << "\n";
+  std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
+  ::DBGMSG("WM init.");
   while (!quit) {
     x->next_event();
     if (x->event() == dobwm::XEvent::Create) x->create_notify();
@@ -92,8 +112,8 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->event() == dobwm::XEvent::BDown) x->button_press();
     else if (x->event() == dobwm::XEvent::BUp) x->button_release();
     else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
-    else if (x->event() == dobwm::XEvent::KDown) x->key_press();
-    else if (x->event() == dobwm::XEvent::KUp) x->key_release();
+    else if (x->event() == dobwm::XEvent::KDown) box.key();
+    else if (x->event() == dobwm::XEvent::KUp) box.key();
   }
 
   box.unmap_all();

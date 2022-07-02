@@ -14,4 +14,3 @@ enum Xkb {
   _F1_        = XK_F1,
   _F2_        = XK_F2,
 };
-

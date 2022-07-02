@@ -1,7 +1,6 @@
 #pragma once
 
 #include <dbus-1.0/dbus/dbus.h>
-#include <memory>
 
 namespace dobwm {
   enum class Urg { LOW, NORMAL, CRITICAL };

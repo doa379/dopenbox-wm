@@ -6,9 +6,8 @@
 #include <X11/Xutil.h>
 #include <palette.h>
 
-static constexpr std::string_view VER { "-0.0" };
-
 namespace dobwm {
+  static constexpr std::string_view VER { "-0.0" };
   enum class Mode { DEF, TRA, MON };
 
   struct Client {
@@ -37,6 +36,7 @@ namespace dobwm {
     void map_request(void);
     void unmap_request(void);
     void configure_request(void);
+    void key(void);
     void init_windows(void);
   };
 
@@ -75,8 +75,7 @@ namespace dobwm {
     void button_press(void);
     void button_release(void);
     void motion_notify(void);
-    void key_press(void);
-    void key_release(void);
+    ::KeyCode key(void) { return ev.xkey.keycode; }
   };
 
   class X : public Event {
@@ -101,5 +100,6 @@ namespace dobwm {
     void grab_buttons(void);
     void grab_key(::Window, const int);
     void grab_keys(const std::vector<int> &);
+    ::KeySym key_press(::KeyCode);
   };
 }
