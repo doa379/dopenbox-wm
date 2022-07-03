@@ -49,13 +49,25 @@ namespace dobwm {
     Config = ConfigureNotify,
     MapReq = MapRequest,
     ConfigReq = ConfigureRequest,
-    BDown = ButtonPress,
-    BUp = ButtonRelease,
     Motion = MotionNotify,
-    KDown = KeyPress,
-    KUp = KeyRelease
+    Button = ButtonPress,
+    Key = KeyPress
   };
-
+/*
+  enum XEvent {
+    Create = CreateNotify,
+    Destroy = DestroyNotify,
+    Reparent = ReparentNotify,
+    Map = MapNotify,
+    Unmap = UnmapNotify,
+    Config = ConfigureNotify,
+    MapReq = MapRequest,
+    ConfigReq = ConfigureRequest,
+    Motion = MotionNotify,
+    Button = ButtonPress,
+    Key = KeyPress
+  };
+*/
   class Atom {
 
   };
@@ -72,10 +84,9 @@ namespace dobwm {
     void configure_notify(void) const { (void) ev.xconfigure; }
     ::Window map_request(void) const { return ev.xmaprequest.window; }
     ::XConfigureRequestEvent &configure_request(void) { return ev.xconfigurerequest; }
-    void button_press(void);
-    void button_release(void);
-    void motion_notify(void);
-    ::KeyCode key(void) { return ev.xkey.keycode; }
+    void motion_notify(void) const { const ::XMotionEvent &ev { this->ev.xmotion }; };
+    void button(void) const { const ::XButtonEvent &ev { this->ev.xbutton };}
+    ::KeyCode key(void) const { return ev.xkey.keycode; }
   };
 
   class X : public Event {
@@ -92,6 +103,7 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     dobwm::XEvent event(void) const { return static_cast<dobwm::XEvent>(ev.type); }
+    //int event(void) const { return ev.type; }
     void window(::Window, const unsigned, const Palette);
     void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;

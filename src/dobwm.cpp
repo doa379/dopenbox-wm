@@ -5,19 +5,6 @@
 
 bool dobwm::X::error { };
 
-void dobwm::Event::button_press(void) {
-  const ::XButtonEvent &ev { this->ev.xbutton };
-}
-
-void dobwm::Event::button_release(void) {
-  const ::XButtonEvent &ev { this->ev.xbutton };
-  (void) ev;
-}
-
-void dobwm::Event::motion_notify(void) {
-  const ::XMotionEvent &ev { this->ev.xmotion };
-}
-///////////////////////////////////////////////////////////////////////////////
 dobwm::X::X(void) {
   if (!(dpy = ::XOpenDisplay(nullptr)))
     throw std::runtime_error("Unable to open display");

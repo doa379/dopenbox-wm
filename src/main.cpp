@@ -99,8 +99,7 @@ int main(const int ARGC, const char *ARGV[]) {
   box.init_windows();
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
-  while (!quit) {
-    x->next_event();
+  while(!quit && !x->next_event()) {
     if (x->event() == dobwm::XEvent::Create) x->create_notify();
     else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
     else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
@@ -109,11 +108,9 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->event() == dobwm::XEvent::Config) x->configure_notify();
     else if (x->event() == dobwm::XEvent::MapReq) box.map_request();
     else if (x->event() == dobwm::XEvent::ConfigReq) box.configure_request();
-    else if (x->event() == dobwm::XEvent::BDown) x->button_press();
-    else if (x->event() == dobwm::XEvent::BUp) x->button_release();
     else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
-    else if (x->event() == dobwm::XEvent::KDown) box.key();
-    else if (x->event() == dobwm::XEvent::KUp) box.key();
+    else if (x->event() == dobwm::XEvent::Button) x->button();
+    else if (x->event() == dobwm::XEvent::Key) box.key();
   }
 
   box.unmap_all();
