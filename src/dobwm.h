@@ -53,21 +53,7 @@ namespace dobwm {
     Button = ButtonPress,
     Key = KeyPress
   };
-/*
-  enum XEvent {
-    Create = CreateNotify,
-    Destroy = DestroyNotify,
-    Reparent = ReparentNotify,
-    Map = MapNotify,
-    Unmap = UnmapNotify,
-    Config = ConfigureNotify,
-    MapReq = MapRequest,
-    ConfigReq = ConfigureRequest,
-    Motion = MotionNotify,
-    Button = ButtonPress,
-    Key = KeyPress
-  };
-*/
+  
   class Atom {
 
   };
@@ -103,15 +89,14 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     dobwm::XEvent event(void) const { return static_cast<dobwm::XEvent>(ev.type); }
-    //int event(void) const { return ev.type; }
     void window(::Window, const unsigned, const Palette);
     void unmap_request(::Window) const;
     void configure_window(::XConfigureRequestEvent &, ::Window) const;
     void query_tree(const unsigned, const Palette);
     void grab_button(::Window, const std::vector<int> &);
     void grab_buttons(void);
-    void grab_key(::Window, const int);
-    void grab_keys(const std::vector<int> &);
+    void grab_key(::Window, const int, const int);
+    void grab_keys(const std::vector<std::pair<int, int>> &);
     ::KeySym key_press(::KeyCode);
   };
 }

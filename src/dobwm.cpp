@@ -89,15 +89,15 @@ void dobwm::X::grab_buttons(void) {
 
 }
 
-void dobwm::X::grab_key(::Window w, const int k) {
-  const ::KeyCode kc { ::XKeysymToKeycode(dpy, k) };
+void dobwm::X::grab_key(::Window w, const int MOD, const int K) {
+  const ::KeyCode kc { ::XKeysymToKeycode(dpy, K) };
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
-  ::XGrabKey(dpy, kc, k, w, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, MOD, kc, w, True, GrabModeAsync, GrabModeAsync);
 }
 
-void dobwm::X::grab_keys(const std::vector<int> &K) {
+void dobwm::X::grab_keys(const std::vector<std::pair<int, int>> &K) {
   for (const auto &k : K)
-    grab_key(root, k);
+    grab_key(root, k.first, k.second);
 }
 
 ::KeySym dobwm::X::key_press(::KeyCode kc) {

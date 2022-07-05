@@ -67,16 +67,15 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::key(void) {
-  DBGMSG("Input handler");
   auto key { x->key() };
-  if (x->key_press(key))
-    DBGMSG("Input handler");
+  //if (x->key_press(key) == SOME_KEY)
+    //DBGMSG("Input handler");
 }
 
 void dobwm::Box::init_windows(void) {
   x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
   x->grab_buttons();
-  const std::vector<int> K {
+  const std::vector<std::pair<int, int>> K {
     RESTART_KEY, 
     QUIT_KEY };
   x->grab_keys(K);
