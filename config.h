@@ -17,12 +17,12 @@ namespace dobwm {
   static const auto VGAPS { 0 };
   // Key Bindings
   static const auto MOD04 { MOD4_KEY };
-  static const auto MOD14 { MOD1_KEY & MOD4_KEY };
-  static const auto MODS4 { SHIFT_KEY & MOD4_KEY };
-  static const auto MODC4 { CTRL_KEY & MOD4_KEY };
-  static const auto MODSC4 { SHIFT_KEY & CTRL_KEY & MOD4_KEY };
-  static const auto RESTART_KEY { std::pair(MOD14, _a_) };
-  static const auto QUIT_KEY { std::pair(MOD14, _s_) };
-  static const auto SOME_KEY { std::pair(MOD04, _a_ & _s_) };
+  static const auto MOD14 { MOD1_KEY | MOD4_KEY };
+  static const auto MODS4 { SHIFT_KEY | MOD4_KEY };
+  static const auto MODC4 { CTRL_KEY | MOD4_KEY };
+  static const auto MODSC4 { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
+  static const unsigned RESTART_KEY[] { MOD14, _r_ };
+  static const unsigned QUIT_KEY[] { MOD14, _q_ };
+  static const unsigned SOME_KEY[] { MOD14, _s_ };
   // Mouse Bindings
 }

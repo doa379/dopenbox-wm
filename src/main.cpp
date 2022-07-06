@@ -5,7 +5,7 @@
 #include <msg.h>
 #include <../config.h>
 
-static bool quit { };
+static bool quit { }, restart { };
 static std::unique_ptr<dobwm::X> x;
 static std::unique_ptr<dobwm::Msg> msg;
 static dobwm::Box box;
@@ -67,21 +67,28 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::key(void) {
-  auto key { x->key() };
-  //if (x->key_press(key) == SOME_KEY)
-    //DBGMSG("Input handler");
+  const auto kc { x->key_code() };
+  if (x->key_state() == QUIT_KEY[0] && x->key_press(kc) == QUIT_KEY[1]) {
+    DBGMSG("Quit WM");
+    quit = true;
+  } else if (x->key_state() == RESTART_KEY[0] && x->key_press(kc) == RESTART_KEY[1]) {
+    DBGMSG("Restart WM");
+    restart = true;
+  } else if (x->key_state() == SOME_KEY[0] && x->key_press(kc) == SOME_KEY[1]) {
+    DBGMSG("...");
+  }
 }
 
 void dobwm::Box::init_windows(void) {
   x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
   x->grab_buttons();
-  const std::vector<std::pair<int, int>> K {
-    RESTART_KEY, 
-    QUIT_KEY };
-  x->grab_keys(K);
+  x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
+  x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
+  x->grab_key(SOME_KEY[0], SOME_KEY[1]);
 }
 
 int main(const int ARGC, const char *ARGV[]) {
+__restart__:
   try {
     x = std::make_unique<dobwm::X>();
   } catch (const std::exception &e) {
@@ -112,6 +119,11 @@ int main(const int ARGC, const char *ARGV[]) {
     else if (x->event() == dobwm::XEvent::Key) box.key();
   }
 
-  box.unmap_all();
+  //box.unmap_all();
+  if (restart) {
+    restart = false;
+    goto __restart__;
+  }
+
   return 0;
 }

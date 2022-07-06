@@ -11,6 +11,7 @@ dobwm::X::X(void) {
   root = RootWindow(dpy, DefaultScreen(dpy));
   ::XSetErrorHandler(&X::init_XError);
   ::XSelectInput(dpy, root, ROOTMASK | BUTTONMASK | NOTIFMASK);
+  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
   ::XSync(dpy, false);
   if (X::error) {
     ::XCloseDisplay(dpy);
@@ -81,25 +82,19 @@ void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
   if (W) ::XFree(W);
 }
 
-void dobwm::X::grab_button(::Window w, const std::vector<int> &B) {
-  ::XGrabButton(dpy, B[1], B[0], w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+void dobwm::X::grab_button(::Window w, const int MOD, const int B) {
+  ::XGrabButton(dpy, B, MOD, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
 void dobwm::X::grab_buttons(void) {
 
 }
 
-void dobwm::X::grab_key(::Window w, const int MOD, const int K) {
+void dobwm::X::grab_key(const int MOD, const int K) const {
   const ::KeyCode kc { ::XKeysymToKeycode(dpy, K) };
-  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
-  ::XGrabKey(dpy, MOD, kc, w, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, kc, MOD, root, True, GrabModeAsync, GrabModeAsync);
 }
 
-void dobwm::X::grab_keys(const std::vector<std::pair<int, int>> &K) {
-  for (const auto &k : K)
-    grab_key(root, k.first, k.second);
-}
-
-::KeySym dobwm::X::key_press(::KeyCode kc) {
+::KeySym dobwm::X::key_press(const ::KeyCode kc) {
   return ::XkbKeycodeToKeysym(dpy, kc, 0, 0);
 }
