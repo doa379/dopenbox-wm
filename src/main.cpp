@@ -10,6 +10,14 @@ static std::unique_ptr<dobwm::X> x;
 static std::unique_ptr<dobwm::Msg> msg;
 static dobwm::Box box;
 
+///////////////////////////////////////////////////////////////////
+// Notation
+// Arrays/Vects Uppercase
+// const primitives Uppercase
+// Structs Capital
+// Objects Lowercase
+///////////////////////////////////////////////////////////////////
+
 void DBGMSG(const char MSG[]) {
   msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
 }
@@ -73,6 +81,7 @@ void dobwm::Box::key(void) {
     quit = true;
   } else if (x->key_state() == RESTART_KEY[0] && x->key_press(kc) == RESTART_KEY[1]) {
     DBGMSG("Restart WM");
+    quit = true;
     restart = true;
   } else if (x->key_state() == SOME_KEY[0] && x->key_press(kc) == SOME_KEY[1]) {
     DBGMSG("...");
@@ -122,6 +131,7 @@ __restart__:
   //box.unmap_all();
   if (restart) {
     restart = false;
+    quit = false;
     goto __restart__;
   }
 

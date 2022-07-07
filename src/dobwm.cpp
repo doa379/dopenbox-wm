@@ -91,10 +91,10 @@ void dobwm::X::grab_buttons(void) {
 }
 
 void dobwm::X::grab_key(const int MOD, const int K) const {
-  const ::KeyCode kc { ::XKeysymToKeycode(dpy, K) };
-  ::XGrabKey(dpy, kc, MOD, root, True, GrabModeAsync, GrabModeAsync);
+  const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
+  ::XGrabKey(dpy, KC, MOD, root, True, GrabModeAsync, GrabModeAsync);
 }
 
-::KeySym dobwm::X::key_press(const ::KeyCode kc) {
-  return ::XkbKeycodeToKeysym(dpy, kc, 0, 0);
+::KeySym dobwm::X::key_press(const ::KeyCode KC) {
+  return ::XkbKeycodeToKeysym(dpy, KC, 0, 0);
 }

@@ -21,8 +21,8 @@ namespace dobwm {
   static const auto MODS4 { SHIFT_KEY | MOD4_KEY };
   static const auto MODC4 { CTRL_KEY | MOD4_KEY };
   static const auto MODSC4 { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
-  static const unsigned RESTART_KEY[] { MOD14, _r_ };
-  static const unsigned QUIT_KEY[] { MOD14, _q_ };
-  static const unsigned SOME_KEY[] { MOD14, _s_ };
+  static const unsigned RESTART_KEY[] { MOD14, _R_ };
+  static const unsigned QUIT_KEY[] { MOD14, _Q_ };
+  static const unsigned SOME_KEY[] { MOD14, _S_ };
   // Mouse Bindings
 }
