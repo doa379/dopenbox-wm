@@ -8,15 +8,7 @@
 static bool quit { }, restart { };
 static std::unique_ptr<dobwm::X> x;
 static std::unique_ptr<dobwm::Msg> msg;
-static dobwm::Box box;
-
-///////////////////////////////////////////////////////////////////
-// Notation
-// Arrays/Vects Uppercase
-// const primitives Uppercase
-// Structs Capital
-// Objects Lowercase
-///////////////////////////////////////////////////////////////////
+static std::unique_ptr<dobwm::Box> box;
 
 void DBGMSG(const char MSG[]) {
   msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
@@ -37,6 +29,7 @@ dobwm::Box::~Box(void) {
       for (auto &c : t.C)
         x->unmap_request(c.win);
   */
+  unmap_all();
 }
 
 void dobwm::Box::unmap_all(void) {
@@ -111,7 +104,8 @@ __restart__:
     std::cerr << "EX: " + std::string(e.what()) << "\n";
   }
 
-  box.init_windows();
+  box = std::make_unique<dobwm::Box>();
+  box->init_windows();
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
   while(!quit && !x->next_event()) {
@@ -119,16 +113,16 @@ __restart__:
     else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
     else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
     else if (x->event() == dobwm::XEvent::Map) x->map_notify();
-    else if (x->event() == dobwm::XEvent::Unmap) box.unmap_request();
+    else if (x->event() == dobwm::XEvent::Unmap) box->unmap_request();
     else if (x->event() == dobwm::XEvent::Config) x->configure_notify();
-    else if (x->event() == dobwm::XEvent::MapReq) box.map_request();
-    else if (x->event() == dobwm::XEvent::ConfigReq) box.configure_request();
+    else if (x->event() == dobwm::XEvent::MapReq) box->map_request();
+    else if (x->event() == dobwm::XEvent::ConfigReq) box->configure_request();
     else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
     else if (x->event() == dobwm::XEvent::Button) x->button();
-    else if (x->event() == dobwm::XEvent::Key) box.key();
+    else if (x->event() == dobwm::XEvent::Key) box->key();
   }
 
-  //box.unmap_all();
+  //box->unmap_all();
   if (restart) {
     restart = false;
     quit = false;

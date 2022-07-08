@@ -26,18 +26,18 @@ dobwm::X::~X(void) {
 }
 
 int dobwm::X::init_XError(::Display *dpy, ::XErrorEvent *ev) {
-  return !(X::error = (ev->error_code == BadAccess));
+  return X::error = (ev->error_code == BadAccess);
 }
 
 int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
-  return !(X::error = ((ev->error_code == BadAccess && 
+  return X::error = ((ev->error_code == BadAccess && 
         (ev->request_code == X_GrabKey ||  ev->request_code == X_GrabButton)) ||
       (ev->error_code  == BadMatch && (ev->request_code == X_SetInputFocus ||
         ev->request_code == X_ConfigureWindow)) ||
       (ev->error_code  == BadDrawable && (ev->request_code == X_PolyFillRectangle || 
         ev->request_code == X_CopyArea  || ev->request_code == X_PolySegment ||
           ev->request_code == X_PolyText8)) ||
-      ev->error_code == BadWindow));
+      ev->error_code == BadWindow);
 }
  
 void dobwm::X::window(::Window win, const unsigned bw, const Palette bc) {
