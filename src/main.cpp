@@ -74,7 +74,6 @@ void dobwm::Box::key(void) {
     quit = true;
   } else if (x->key_state() == RESTART_KEY[0] && x->key_press(kc) == RESTART_KEY[1]) {
     DBGMSG("Restart WM");
-    quit = true;
     restart = true;
   } else if (x->key_state() == SOME_KEY[0] && x->key_press(kc) == SOME_KEY[1]) {
     DBGMSG("...");
@@ -90,7 +89,7 @@ void dobwm::Box::init_windows(void) {
 }
 
 int main(const int ARGC, const char *ARGV[]) {
-__restart__:
+__start__:
   try {
     x = std::make_unique<dobwm::X>();
   } catch (const std::exception &e) {
@@ -108,7 +107,7 @@ __restart__:
   box->init_windows();
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
-  while(!quit && !x->next_event()) {
+  while(!quit && !restart && !x->next_event()) {
     if (x->event() == dobwm::XEvent::Create) x->create_notify();
     else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
     else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
@@ -124,9 +123,11 @@ __restart__:
 
   //box->unmap_all();
   if (restart) {
+    x.reset();
+    msg.reset();
+    box.reset();
     restart = false;
-    quit = false;
-    goto __restart__;
+    goto __start__;
   }
 
   return 0;

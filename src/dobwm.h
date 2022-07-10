@@ -82,12 +82,11 @@ namespace dobwm {
     static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
     static constexpr auto NOTIFMASK { PropertyChangeMask };
     static bool error;
-    ::Display *dpy { };
-    ::Window root { };
+    ::Display *dpy { ::XOpenDisplay(nullptr) };
+    ::Window root { RootWindow(dpy, DefaultScreen(dpy)) };
   public:
     X(void);
     ~X(void);
-    static int init_XError(::Display *, ::XErrorEvent *);
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     void window(::Window, const unsigned, const Palette);

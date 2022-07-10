@@ -6,40 +6,28 @@
 bool dobwm::X::error { };
 
 dobwm::X::X(void) {
-  if (!(dpy = ::XOpenDisplay(nullptr)))
-    throw std::runtime_error("Unable to open display");
-  root = RootWindow(dpy, DefaultScreen(dpy));
-  ::XSetErrorHandler(&X::init_XError);
+  if (!dpy) throw std::runtime_error("Unable to open display");
+  ::XSetErrorHandler(&X::XError);
   ::XSelectInput(dpy, root, ROOTMASK | BUTTONMASK | NOTIFMASK);
-  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
   ::XSync(dpy, false);
-  if (X::error) {
+  if (error) {
     ::XCloseDisplay(dpy);
-    throw std::runtime_error("Initialization XError (another wm running?)");
+    throw std::runtime_error("Initialization error (another wm running?)");
   }
 
-  ::XSetErrorHandler(&X::XError);
+  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
+  ::XSync(dpy, false);
 }
 
 dobwm::X::~X(void) {
   ::XCloseDisplay(dpy);
 }
 
-int dobwm::X::init_XError(::Display *dpy, ::XErrorEvent *ev) {
-  return X::error = (ev->error_code == BadAccess);
+int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
+  error = bool { ev->error_code == BadAccess };
+  return 0;
 }
 
-int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
-  return X::error = ((ev->error_code == BadAccess && 
-        (ev->request_code == X_GrabKey ||  ev->request_code == X_GrabButton)) ||
-      (ev->error_code  == BadMatch && (ev->request_code == X_SetInputFocus ||
-        ev->request_code == X_ConfigureWindow)) ||
-      (ev->error_code  == BadDrawable && (ev->request_code == X_PolyFillRectangle || 
-        ev->request_code == X_CopyArea  || ev->request_code == X_PolySegment ||
-          ev->request_code == X_PolyText8)) ||
-      ev->error_code == BadWindow);
-}
- 
 void dobwm::X::window(::Window win, const unsigned bw, const Palette bc) {
   ::XWindowAttributes wa { };
   if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
