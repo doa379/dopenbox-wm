@@ -1,6 +1,7 @@
 #include <dobwm.h>
 #include <X11/Xproto.h>
 #include <X11/XKBlib.h>
+#include <X11/Xatom.h>
 #include <stdexcept>
 
 bool dobwm::X::error { };
@@ -8,6 +9,16 @@ bool dobwm::X::error { };
 dobwm::X::X(void) {
   if (!dpy) throw std::runtime_error("Unable to open display");
   ::XSetErrorHandler(&X::XError);
+
+  ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
+  unsigned numlockmask { };
+  for (auto k { 0U }; k < 8; k++)
+    for (auto j { 0 }; j < modmap->max_keypermod; j++)
+      if (modmap->modifiermap[modmap->max_keypermod * k + j] == ::XKeysymToKeycode(dpy, XK_Num_Lock))
+        numlockmask = (1 << k);
+  ::XFreeModifiermap(modmap);
+  modmask = unsigned { ~(numlockmask | LockMask) };
+
   ::XSelectInput(dpy, root, ROOTMASK | BUTTONMASK | NOTIFMASK);
   ::XSync(dpy, false);
   if (error) {
@@ -16,6 +27,9 @@ dobwm::X::X(void) {
   }
 
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
+  ::XChangeProperty(dpy, root, 
+    NET[static_cast<unsigned>(Net::NET_SUPPORTED)], XA_ATOM, 32,
+    PropModeReplace, (unsigned char *) NET, NNET);
   ::XSync(dpy, false);
 }
 
@@ -71,7 +85,7 @@ void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
 }
 
 void dobwm::X::grab_button(::Window w, const int MOD, const int B) {
-  ::XGrabButton(dpy, B, MOD, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+  ::XGrabButton(dpy, B, MOD & modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
 void dobwm::X::grab_buttons(void) {
@@ -80,7 +94,7 @@ void dobwm::X::grab_buttons(void) {
 
 void dobwm::X::grab_key(const int MOD, const int K) const {
   const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
-  ::XGrabKey(dpy, KC, MOD, root, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, KC, MOD & modmask, root, True, GrabModeAsync, GrabModeAsync);
 }
 
 ::KeySym dobwm::X::key_press(const ::KeyCode KC) {

@@ -54,8 +54,15 @@ namespace dobwm {
     Key = KeyPress
   };
   
-  class Atom {
+  enum class Wm { 
+    WM_PROTOCOLS, WM_DELETE_WINDOW, 
+    COUNT
+  };
 
+  enum class Net { 
+    NET_SUPPORTED, NET_FULLSCREEN, 
+    NET_WM_STATE, NET_ACTIVE,
+    COUNT
   };
 
   class Event {
@@ -81,9 +88,18 @@ namespace dobwm {
     static constexpr auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
     static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
     static constexpr auto NOTIFMASK { PropertyChangeMask };
+    static constexpr auto NWM { static_cast<unsigned>(dobwm::Wm::COUNT) }, NNET { static_cast<unsigned>(dobwm::Net::COUNT) };
     static bool error;
+    unsigned modmask { };
     ::Display *dpy { ::XOpenDisplay(nullptr) };
     ::Window root { RootWindow(dpy, DefaultScreen(dpy)) };
+    ::Atom WM[NWM] { ::XInternAtom(dpy, "WM_PROTOCOLS", false),
+      ::XInternAtom(dpy, "WM_DELETE_WINDOW", false) },
+      NET[NNET] { ::XInternAtom(dpy, "_NET_SUPPORTED", false),
+        ::XInternAtom(dpy, "_NET_WM_STATE", false),
+        ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false),
+        ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false)
+      };
   public:
     X(void);
     ~X(void);
