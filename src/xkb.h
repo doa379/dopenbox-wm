@@ -1,14 +1,7 @@
 #pragma once
 
-//static constexpr auto NUMLOCK_KEY { };
-//static constexpr auto LOCK_KEY { ~LockMask };
-//static constexpr auto LOCK_KEY { ~(numlockmask | LockMask) };
-/*
-static constexpr auto MOD1_KEY { Mod1Mask & LOCK_KEY };
-static constexpr auto MOD4_KEY { Mod4Mask & LOCK_KEY };
-static constexpr auto CTRL_KEY { ControlMask & LOCK_KEY };
-static constexpr auto SHIFT_KEY { ShiftMask & LOCK_KEY };
-*/
+#include <X11/XKBlib.h>
+
 static constexpr auto MOD1_KEY { Mod1Mask };
 static constexpr auto MOD4_KEY { Mod4Mask };
 static constexpr auto CTRL_KEY { ControlMask };

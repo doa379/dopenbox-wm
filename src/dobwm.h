@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <string>
 #include <string_view>
 #include <X11/Xutil.h>
@@ -55,13 +56,12 @@ namespace dobwm {
   };
   
   enum class Wm { 
-    WM_PROTOCOLS, WM_DELETE_WINDOW, 
+    PROTOCOLS, DELWIN, 
     COUNT
   };
 
   enum class Net { 
-    NET_SUPPORTED, NET_FULLSCREEN, 
-    NET_WM_STATE, NET_ACTIVE,
+    SUPPORTED, STATE, ACTIVE, FULLSCRN,
     COUNT
   };
 
@@ -88,18 +88,14 @@ namespace dobwm {
     static constexpr auto ROOTMASK { SubstructureRedirectMask | SubstructureNotifyMask };
     static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
     static constexpr auto NOTIFMASK { PropertyChangeMask };
-    static constexpr auto NWM { static_cast<unsigned>(dobwm::Wm::COUNT) }, NNET { static_cast<unsigned>(dobwm::Net::COUNT) };
+    static constexpr auto NWM { static_cast<unsigned>(dobwm::Wm::COUNT) };
+    static constexpr auto NNET { static_cast<unsigned>(dobwm::Net::COUNT) };
     static bool error;
     unsigned modmask { };
     ::Display *dpy { ::XOpenDisplay(nullptr) };
-    ::Window root { RootWindow(dpy, DefaultScreen(dpy)) };
-    ::Atom WM[NWM] { ::XInternAtom(dpy, "WM_PROTOCOLS", false),
-      ::XInternAtom(dpy, "WM_DELETE_WINDOW", false) },
-      NET[NNET] { ::XInternAtom(dpy, "_NET_SUPPORTED", false),
-        ::XInternAtom(dpy, "_NET_WM_STATE", false),
-        ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false),
-        ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false)
-      };
+    ::Window root { };
+    std::array<::Atom, NWM> WM;
+    std::array<::Atom, NNET> NET;
   public:
     X(void);
     ~X(void);

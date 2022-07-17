@@ -1,102 +1,134 @@
+#include <memory>
+#include <iostream>
+#include <algorithm>
 #include <dobwm.h>
-#include <X11/Xproto.h>
-#include <X11/XKBlib.h>
-#include <X11/Xatom.h>
-#include <stdexcept>
+#include <msg.h>
+#include <../config.h>
 
-bool dobwm::X::error { };
+static bool quit { }, restart { };
+static std::unique_ptr<dobwm::X> x;
+static std::unique_ptr<dobwm::Msg> msg;
+static std::unique_ptr<dobwm::Box> box;
 
-dobwm::X::X(void) {
-  if (!dpy) throw std::runtime_error("Unable to open display");
-  ::XSetErrorHandler(&X::XError);
+void DBGMSG(const char MSG[]) {
+  msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
+}
 
-  ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
-  unsigned numlockmask { };
-  for (auto k { 0U }; k < 8; k++)
-    for (auto j { 0 }; j < modmap->max_keypermod; j++)
-      if (modmap->modifiermap[modmap->max_keypermod * k + j] == ::XKeysymToKeycode(dpy, XK_Num_Lock))
-        numlockmask = (1 << k);
-  ::XFreeModifiermap(modmap);
-  modmask = unsigned { ~(numlockmask | LockMask) };
+dobwm::Box::Box(void) {
+  for (auto i { 0U }; i < Nm; i++) {
+    std::vector<Tag> T(Nt);
+    Mon m { T };
+    M.emplace_back(std::move(m));
+  }
+}
 
-  ::XSelectInput(dpy, root, ROOTMASK | BUTTONMASK | NOTIFMASK);
-  ::XSync(dpy, false);
-  if (error) {
-    ::XCloseDisplay(dpy);
-    throw std::runtime_error("Initialization error (another wm running?)");
+dobwm::Box::~Box(void) {
+  /*
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto &c : t.C)
+        x->unmap_request(c.win);
+  */
+  unmap_all();
+}
+
+void dobwm::Box::unmap_all(void) {
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto &c : t.C)
+        x->unmap_request(c.win);
+}
+
+void dobwm::Box::map_request(void) {
+  const auto win { x->map_request() };
+  x->window(win, BORDER_WIDTH, BORDER_COLOR0);
+}
+
+void dobwm::Box::unmap_request(void) {
+  auto win { x->unmap_notify() };
+  for (auto &m : M)
+    for (auto &t : m.T)
+      if (auto c { std::find_if(t.C.begin(), t.C.end(),
+          [&](auto &c) -> bool { return win == c.win; }) }; c < t.C.end()) {
+        x->unmap_request(win);
+        t.C.erase(c);
+        return;
+      }
+}
+
+void dobwm::Box::configure_request(void) {
+  auto &ev { x->configure_request() };
+  for (const auto &m : M)
+    for (const auto &t : m.T)
+      if (auto c { std::find_if(t.C.begin(), t.C.end(),
+          [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
+        x->configure_window(ev, c->win);
+        return;
+      }
+}
+
+void dobwm::Box::key(void) {
+  const auto kc { x->key_code() };
+  if (x->key_state() == QUIT_KEY[0] && x->key_press(kc) == QUIT_KEY[1]) {
+    DBGMSG("Quit WM");
+    quit = true;
+  } else if (x->key_state() == RESTART_KEY[0] && x->key_press(kc) == RESTART_KEY[1]) {
+    DBGMSG("Restart WM");
+    restart = true;
+  } else if (x->key_state() == SOME_KEY[0] && x->key_press(kc) == SOME_KEY[1]) {
+    DBGMSG("...");
+  }
+}
+
+void dobwm::Box::init_windows(void) {
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
+  x->grab_buttons();
+  x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
+  x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
+  x->grab_key(SOME_KEY[0], SOME_KEY[1]);
+}
+
+int main(const int ARGC, const char *ARGV[]) {
+__start__:
+  try {
+    x = std::make_unique<dobwm::X>();
+  } catch (const std::exception &e) {
+    std::cerr << "EX: " + std::string(e.what()) << "\n";
+    return -1;
+  }
+  
+  try {
+    msg = std::make_unique<dobwm::Msg>();
+  } catch (const std::exception &e) {
+    std::cerr << "EX: " + std::string(e.what()) << "\n";
   }
 
-  ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
-  ::XChangeProperty(dpy, root, 
-    NET[static_cast<unsigned>(Net::NET_SUPPORTED)], XA_ATOM, 32,
-    PropModeReplace, (unsigned char *) NET, NNET);
-  ::XSync(dpy, false);
-}
+  box = std::make_unique<dobwm::Box>();
+  box->init_windows();
+  std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
+  ::DBGMSG("WM init.");
+  while(!quit && !restart && !x->next_event()) {
+    if (x->event() == dobwm::XEvent::Create) x->create_notify();
+    else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
+    else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
+    else if (x->event() == dobwm::XEvent::Map) x->map_notify();
+    else if (x->event() == dobwm::XEvent::Unmap) box->unmap_request();
+    else if (x->event() == dobwm::XEvent::Config) x->configure_notify();
+    else if (x->event() == dobwm::XEvent::MapReq) box->map_request();
+    else if (x->event() == dobwm::XEvent::ConfigReq) box->configure_request();
+    else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
+    else if (x->event() == dobwm::XEvent::Button) x->button();
+    else if (x->event() == dobwm::XEvent::Key) box->key();
+  }
 
-dobwm::X::~X(void) {
-  ::XCloseDisplay(dpy);
-}
+  //box->unmap_all();
+  if (restart) {
+    x.reset();
+    msg.reset();
+    box.reset();
+    restart = false;
+    goto __start__;
+  }
 
-int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
-  error = bool { ev->error_code == BadAccess };
   return 0;
-}
-
-void dobwm::X::window(::Window win, const unsigned bw, const Palette bc) {
-  ::XWindowAttributes wa { };
-  if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect) return;
-  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(bc));
-  ::XSetWindowBorderWidth(dpy, win, bw);
-  ::XSelectInput(dpy, win, ROOTMASK);
-  ::XMapWindow(dpy, win);
-}
-
-void dobwm::X::unmap_request(::Window win) const {
-  ::XUnmapWindow(dpy, win);
-  ::XReparentWindow(dpy, win, root, 0, 0);
-  ::XDestroyWindow(dpy, win);
-}
-
-void dobwm::X::configure_window(::XConfigureRequestEvent &ev, ::Window win) const {
-  ::XWindowChanges wc {
-    ev.x,
-    ev.y,
-    ev.width,
-    ev.height,
-    ev.border_width,
-    ev.above,
-    ev.detail
-  };
-  
-  if (::XConfigureWindow(dpy, win, ev.value_mask, &wc)) ::XSync(dpy, false);
-}
-
-void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
-  ::Window root { }, parent { };
-  ::Window *W { };  // Children
-  unsigned NW { };
-  ::XGrabServer(dpy);
-  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) && root == this->root)
-    for (auto i { 0U }; i < NW; i++)
-      window(W[i], bw, bc);
-
-  ::XUngrabServer(dpy);
-  if (W) ::XFree(W);
-}
-
-void dobwm::X::grab_button(::Window w, const int MOD, const int B) {
-  ::XGrabButton(dpy, B, MOD & modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
-}
-
-void dobwm::X::grab_buttons(void) {
-
-}
-
-void dobwm::X::grab_key(const int MOD, const int K) const {
-  const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
-  ::XGrabKey(dpy, KC, MOD & modmask, root, True, GrabModeAsync, GrabModeAsync);
-}
-
-::KeySym dobwm::X::key_press(const ::KeyCode KC) {
-  return ::XkbKeycodeToKeysym(dpy, KC, 0, 0);
 }
