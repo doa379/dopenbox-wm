@@ -33,12 +33,13 @@ namespace dobwm {
   public:
     Box(void);
     ~Box(void);
-    void unmap_all(void);
-    void map_request(void);
-    void unmap_request(void);
-    void configure_request(void);
     void key(void);
-    void init_windows(void);
+    void init_clients(void);
+    void map_request(void);
+    void configure_request(void);
+    void unmap_request(void);
+    void unmap_all(void);
+    void swfocus(void) const;
   };
 
   enum class XEvent {
@@ -101,9 +102,9 @@ namespace dobwm {
     ~X(void);
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
-    void window(::Window, const unsigned, const Palette);
-    void unmap_request(::Window) const;
-    void configure_window(::XConfigureRequestEvent &, ::Window) const;
+    void client(::Window, const unsigned, const Palette);
+    void unmap_request(const ::Window) const;
+    void configure_window(::XConfigureRequestEvent &, const ::Window) const;
     void query_tree(const unsigned, const Palette);
     void grab_button(::Window, const int, const int);
     void grab_buttons(void);

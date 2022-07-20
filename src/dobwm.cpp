@@ -23,25 +23,48 @@ dobwm::Box::Box(void) {
 }
 
 dobwm::Box::~Box(void) {
-  /*
-  for (auto &m : M)
-    for (auto &t : m.T)
-      for (auto &c : t.C)
-        x->unmap_request(c.win);
-  */
-  unmap_all();
+
 }
 
-void dobwm::Box::unmap_all(void) {
-  for (auto &m : M)
-    for (auto &t : m.T)
-      for (auto &c : t.C)
-        x->unmap_request(c.win);
+void dobwm::Box::key(void) {
+  const auto KC { x->key_code() };
+  if (x->key_state() == QUIT_KEY[0] && x->key_press(KC) == QUIT_KEY[1]) {
+    DBGMSG("Quit WM");
+    quit = true;
+  } else if (x->key_state() == RESTART_KEY[0] && x->key_press(KC) == RESTART_KEY[1]) {
+    DBGMSG("Restart WM");
+    restart = true;
+  } else if (x->key_state() == KILLCLI_KEY[0] && x->key_press(KC) == KILLCLI_KEY[1]) {
+    DBGMSG("Killall");
+    unmap_all();
+  } else if (x->key_state() == SWCLIFOCUS_KEY[0] && x->key_press(KC) == SWCLIFOCUS_KEY[1]) {
+    swfocus();
+  }
+}
+
+void dobwm::Box::init_clients(void) {
+  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
+  x->grab_buttons();
+  x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
+  x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
+  x->grab_key(KILLCLI_KEY[0], KILLCLI_KEY[1]);
+  x->grab_key(SWCLIFOCUS_KEY[0], SWCLIFOCUS_KEY[1]);
 }
 
 void dobwm::Box::map_request(void) {
   const auto win { x->map_request() };
-  x->window(win, BORDER_WIDTH, BORDER_COLOR0);
+  x->client(win, BORDER_WIDTH, BORDER_COLOR0);
+}
+
+void dobwm::Box::configure_request(void) {
+  auto &ev { x->configure_request() };
+  for (const auto &m : M)
+    for (const auto &t : m.T)
+      if (auto c { std::find_if(t.C.begin(), t.C.end(),
+          [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
+        x->configure_window(ev, c->win);
+        return;
+      }
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -56,36 +79,15 @@ void dobwm::Box::unmap_request(void) {
       }
 }
 
-void dobwm::Box::configure_request(void) {
-  auto &ev { x->configure_request() };
-  for (const auto &m : M)
-    for (const auto &t : m.T)
-      if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
-        x->configure_window(ev, c->win);
-        return;
-      }
+void dobwm::Box::unmap_all(void) {
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto &c : t.C)
+        x->unmap_request(c.win);
 }
 
-void dobwm::Box::key(void) {
-  const auto kc { x->key_code() };
-  if (x->key_state() == QUIT_KEY[0] && x->key_press(kc) == QUIT_KEY[1]) {
-    DBGMSG("Quit WM");
-    quit = true;
-  } else if (x->key_state() == RESTART_KEY[0] && x->key_press(kc) == RESTART_KEY[1]) {
-    DBGMSG("Restart WM");
-    restart = true;
-  } else if (x->key_state() == SOME_KEY[0] && x->key_press(kc) == SOME_KEY[1]) {
-    DBGMSG("...");
-  }
-}
+void dobwm::Box::swfocus(void) const {
 
-void dobwm::Box::init_windows(void) {
-  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
-  x->grab_buttons();
-  x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
-  x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
-  x->grab_key(SOME_KEY[0], SOME_KEY[1]);
 }
 
 int main(const int ARGC, const char *ARGV[]) {
@@ -104,7 +106,7 @@ __start__:
   }
 
   box = std::make_unique<dobwm::Box>();
-  box->init_windows();
+  box->init_clients();
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
   while(!quit && !restart && !x->next_event()) {
