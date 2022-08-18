@@ -27,52 +27,73 @@ dobwm::Box::~Box(void) {
 }
 
 void dobwm::Box::key(void) {
-  const auto KC { x->key_code() };
-  if (x->key_state() == QUIT_KEY[0] && x->key_press(KC) == QUIT_KEY[1]) {
+  const auto kc { x->key_code() };
+  if (x->key_state() == QUIT_KEY[0] &&
+      x->key_press(kc) == QUIT_KEY[1]) {
     DBGMSG("Quit WM");
     quit = true;
-  } else if (x->key_state() == RESTART_KEY[0] && x->key_press(KC) == RESTART_KEY[1]) {
+  } else if (x->key_state() == RESTART_KEY[0] &&
+              x->key_press(kc) == RESTART_KEY[1]) {
     DBGMSG("Restart WM");
     restart = true;
-  } else if (x->key_state() == KILLCLI_KEY[0] && x->key_press(KC) == KILLCLI_KEY[1]) {
-    DBGMSG("Killall");
+  } else if (x->key_state() == KILLCLI_KEY[0] &&
+              x->key_press(kc) == KILLCLI_KEY[1]) {
+    DBGMSG("Kill all");
+  } else if (x->key_state() == UNMAPALL_KEY[0] &&
+              x->key_press(kc) == UNMAPALL_KEY[1]) {
+    DBGMSG("Unmap all");
     unmap_all();
-  } else if (x->key_state() == SWCLIFOCUS_KEY[0] && x->key_press(KC) == SWCLIFOCUS_KEY[1]) {
+  } else if (x->key_state() == REMAPALL_KEY[0] &&
+              x->key_press(kc) == REMAPALL_KEY[1]) {
+    DBGMSG("Remap all");
+    x->query_tree(BRDR_WIDTH, INACTBRDR_COLOR);
+  } else if (x->key_state() == SWCLIFOCUS_KEY[0] &&
+              x->key_press(kc) == SWCLIFOCUS_KEY[1]) {
     swfocus();
   }
 }
 
 void dobwm::Box::init_clients(void) {
-  x->query_tree(BORDER_WIDTH, BORDER_COLOR0);
+  //x->query_tree(BRDR_WIDTH, INACTBRDR_COLOR);
   x->grab_buttons();
   x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
   x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
+  x->grab_key(UNMAPALL_KEY[0], UNMAPALL_KEY[1]);
+  x->grab_key(REMAPALL_KEY[0], REMAPALL_KEY[1]);
   x->grab_key(KILLCLI_KEY[0], KILLCLI_KEY[1]);
   x->grab_key(SWCLIFOCUS_KEY[0], SWCLIFOCUS_KEY[1]);
 }
 
 void dobwm::Box::map_request(void) {
-  const auto win { x->map_request() };
-  x->client(win, BORDER_WIDTH, BORDER_COLOR0);
+  auto win { x->map_request() };
+  x->client(win, BRDR_WIDTH, ACTBRDR_COLOR);
+  M.back().T.back().C.emplace_back(dobwm::Client { win });
 }
 
 void dobwm::Box::configure_request(void) {
+  DBGMSG("Config Req Event");
   auto &ev { x->configure_request() };
+  //auto win { M.back().T.back().C.back().win };
+  x->configure_window(ev);
+  /*
   for (const auto &m : M)
     for (const auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return ev.window == c.win; }) }; c < t.C.end()) {
+          [&](auto &c) -> bool { 
+            return ev.window == c.win; }) }; c < t.C.end()) {
         x->configure_window(ev, c->win);
         return;
       }
+  */
 }
 
 void dobwm::Box::unmap_request(void) {
-  auto win { x->unmap_notify() };
+  const auto win { x->unmap_notify() };
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { return win == c.win; }) }; c < t.C.end()) {
+          [&](auto &c) -> bool { 
+            return win == c.win; }) }; c < t.C.end()) {
         x->unmap_request(win);
         t.C.erase(c);
         return;
@@ -109,18 +130,31 @@ __start__:
   box->init_clients();
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
-  while(!quit && !restart && !x->next_event()) {
-    if (x->event() == dobwm::XEvent::Create) x->create_notify();
-    else if (x->event() == dobwm::XEvent::Destroy) x->destroy_notify();
-    else if (x->event() == dobwm::XEvent::Reparent) x->reparent_notify();
-    else if (x->event() == dobwm::XEvent::Map) x->map_notify();
-    else if (x->event() == dobwm::XEvent::Unmap) box->unmap_request();
-    else if (x->event() == dobwm::XEvent::Config) x->configure_notify();
-    else if (x->event() == dobwm::XEvent::MapReq) box->map_request();
-    else if (x->event() == dobwm::XEvent::ConfigReq) box->configure_request();
-    else if (x->event() == dobwm::XEvent::Motion) x->motion_notify();
-    else if (x->event() == dobwm::XEvent::Button) x->button();
-    else if (x->event() == dobwm::XEvent::Key) box->key();
+  while (!quit && !restart && !x->next_event()) {
+    if (x->event() == dobwm::XEvent::Create)
+      x->create_notify();
+    else if (x->event() == dobwm::XEvent::Destroy)
+      x->destroy_notify();
+    else if (x->event() == dobwm::XEvent::Reparent)
+      x->reparent_notify();
+    else if (x->event() == dobwm::XEvent::Map)
+      x->map_notify();
+    else if (x->event() == dobwm::XEvent::Unmap)
+      box->unmap_request();
+    else if (x->event() == dobwm::XEvent::CliMsg)
+      ;
+    else if (x->event() == dobwm::XEvent::Config)
+      x->configure_notify();
+    else if (x->event() == dobwm::XEvent::MapReq)
+      box->map_request();
+    else if (x->event() == dobwm::XEvent::ConfigReq)
+      box->configure_request();
+    else if (x->event() == dobwm::XEvent::Motion)
+      x->motion_notify();
+    else if (x->event() == dobwm::XEvent::Button)
+      x->button();
+    else if (x->event() == dobwm::XEvent::Key)
+      box->key();
   }
 
   //box->unmap_all();

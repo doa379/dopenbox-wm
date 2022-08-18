@@ -8,6 +8,7 @@ static constexpr auto CTRL_KEY { ControlMask };
 static constexpr auto SHIFT_KEY { ShiftMask };
 
 enum Xkb {
+  _Esc_       = XK_Escape,
   _F1_        = XK_F1,
   _F2_        = XK_F2,
   _F3_        = XK_F3,

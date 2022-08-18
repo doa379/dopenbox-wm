@@ -22,31 +22,31 @@ dobwm::X::X(void) {
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
   // Modifier Mask
   ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
-  unsigned numlockmask { };
-  for (auto k { 0U }; k < 8; k++)
-    for (auto j { 0 }; j < modmap->max_keypermod; j++)
+  int numlockmask { };
+  for (int k { }; k < 8; k++)
+    for (int j { }; j < modmap->max_keypermod; j++)
       if (modmap->modifiermap[modmap->max_keypermod * k + j] ==
           ::XKeysymToKeycode(dpy, _Numlock_))
         numlockmask = (1 << k);
   ::XFreeModifiermap(modmap);
   modmask = ~(numlockmask | LockMask);
   // Atoms
-  WM[static_cast<unsigned>(Wm::PROTOCOLS)] =
+  WM[static_cast<int>(Wm::PROTO)] =
     ::XInternAtom(dpy, "WM_PROTOCOLS", false);
-  WM[static_cast<unsigned>(Wm::DELWIN)] =
+  WM[static_cast<int>(Wm::DELWIN)] =
     ::XInternAtom(dpy, "WM_DELETE_WINDOW", false);
-  NET[static_cast<unsigned>(Net::SUPPORTED)] =
+  NET[static_cast<int>(Net::SUPP)] =
     ::XInternAtom(dpy, "_NET_SUPPORTED", false);
-  NET[static_cast<unsigned>(Net::STATE)] =
+  NET[static_cast<int>(Net::STATE)] =
     ::XInternAtom(dpy, "_NET_WM_STATE", false);
-  NET[static_cast<unsigned>(Net::ACTIVE)] =
+  NET[static_cast<int>(Net::ACT)] =
     ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
-  NET[static_cast<unsigned>(Net::FULLSCRN)] =
+  NET[static_cast<int>(Net::FSCRN)] =
     ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
-  ::XChangeProperty(dpy, root, 
-    NET[static_cast<unsigned>(Net::SUPPORTED)], XA_ATOM, 32,
-      PropModeReplace, reinterpret_cast<unsigned char *>(NET.data()), NNET);
-
+  ::XChangeProperty(dpy, root,
+    NET[static_cast<int>(Net::SUPP)], XA_ATOM, 32,
+      PropModeReplace, reinterpret_cast<unsigned char *>(NET.data()),
+      static_cast<int>(dobwm::Net::CNT));
   ::XSync(dpy, false);
 }
 
@@ -59,27 +59,31 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
   return 0;
 }
 
-void dobwm::X::client(::Window win, const unsigned bw, const Palette bc) {
-  ::XWindowAttributes wa { };
-  if (!::XGetWindowAttributes(dpy, win, &wa) || wa.override_redirect)
-    return;
-  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(bc));
-  ::XSetWindowBorderWidth(dpy, win, bw);
+void dobwm::X::client(::Window win, const int BW, const Palette BC) {
+  //::XWindowAttributes wa { };
+  //if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
+    //return;
+  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
+  ::XSetWindowBorderWidth(dpy, win, BW);
   //::XSelectInput(dpy, win, ROOTMASK | BUTTONMASK | NOTIFMASK);
-  ::XSelectInput(dpy, win, PropertyChangeMask | FocusChangeMask | EnterWindowMask);
+  ::XChangeProperty(dpy, root,
+    NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
+      PropModeReplace, reinterpret_cast<unsigned char *>(&win), 1);
+  ::XSelectInput(dpy, win,
+    PropertyChangeMask | FocusChangeMask | EnterWindowMask);
   ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
-  ::XChangeProperty(dpy, root, NET[static_cast<unsigned>(Net::ACTIVE)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&win), 1);
   ::XMapWindow(dpy, win);
-}
-
-void dobwm::X::unmap_request(const ::Window win) const {
-  ::XUnmapWindow(dpy, win);
-  ::XReparentWindow(dpy, win, root, 0, 0);
-  ::XDestroyWindow(dpy, win);
   ::XSync(dpy, false);
 }
 
-void dobwm::X::configure_window(::XConfigureRequestEvent &ev, const ::Window win) const {
+void dobwm::X::unmap_request(const ::Window WIN) const {
+  ::XUnmapWindow(dpy, WIN);
+  ::XReparentWindow(dpy, WIN, root, 0, 0);
+  ::XDestroyWindow(dpy, WIN);
+  ::XSync(dpy, false);
+}
+
+void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
   ::XWindowChanges wc {
     ev.x,
     ev.y,
@@ -89,28 +93,31 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev, const ::Window win
     ev.above,
     ev.detail
   };
-  
-  if (::XConfigureWindow(dpy, win, ev.value_mask, &wc))
+
+  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
     ::XSync(dpy, false);
 }
 
-void dobwm::X::query_tree(const unsigned bw, const Palette bc) {
+void dobwm::X::query_tree(const int BW, const Palette BC) {
   ::Window root { }, parent { };
   ::Window *W { };  // Children
   unsigned NW { };
   ::XGrabServer(dpy);
-  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) && 
-      root == this->root)
+  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) &&
+        root == this->root)
     for (auto i { 0U }; i < NW; i++)
-      client(W[i], bw, bc);
+      client(W[i], BW, BC);
 
   ::XUngrabServer(dpy);
   if (W)
     ::XFree(W);
+  
+  ::XSync(dpy, false);
 }
 
-void dobwm::X::grab_button(::Window w, const int MOD, const int B) {
-  ::XGrabButton(dpy, B, MOD & modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+void dobwm::X::grab_button(const ::Window WIN, const int MOD, const int B) {
+  ::XGrabButton(dpy, B, MOD & modmask, WIN, false, 
+      BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
   //::XGrabButton(dpy, B, MOD | modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
@@ -120,7 +127,8 @@ void dobwm::X::grab_buttons(void) {
 
 void dobwm::X::grab_key(const int MOD, const int K) const {
   const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
-  ::XGrabKey(dpy, KC, MOD & modmask, root, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, KC, MOD & modmask, root, True,
+      GrabModeAsync, GrabModeAsync);
   //::XGrabKey(dpy, KC, MOD | modmask, root, True, GrabModeAsync, GrabModeAsync);
 }
 
