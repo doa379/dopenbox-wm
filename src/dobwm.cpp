@@ -46,7 +46,7 @@ void dobwm::Box::key(void) {
   } else if (x->key_state() == REMAPALL_KEY[0] &&
               x->key_press(kc) == REMAPALL_KEY[1]) {
     DBGMSG("Remap all");
-    x->query_tree(BRDR_WIDTH, INACTBRDR_COLOR);
+    init_clients();
   } else if (x->key_state() == SWCLIFOCUS_KEY[0] &&
               x->key_press(kc) == SWCLIFOCUS_KEY[1]) {
     swfocus();
@@ -54,7 +54,11 @@ void dobwm::Box::key(void) {
 }
 
 void dobwm::Box::init_clients(void) {
-  //x->query_tree(BRDR_WIDTH, INACTBRDR_COLOR);
+  for (const auto &C : x->query_tree()) {
+    x->client(C, BRDR_WIDTH, INACTBRDR_COLOR);
+    M.back().T.back().C.emplace_back(dobwm::Client { C });
+  }
+
   x->grab_buttons();
   x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
   x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
@@ -65,46 +69,38 @@ void dobwm::Box::init_clients(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  auto win { x->map_request() };
-  x->client(win, BRDR_WIDTH, ACTBRDR_COLOR);
-  M.back().T.back().C.emplace_back(dobwm::Client { win });
+  const auto WIN { x->map_request() };
+  x->client(WIN, BRDR_WIDTH, ACTBRDR_COLOR);
+  M.back().T.back().C.emplace_back(dobwm::Client { WIN });
 }
 
 void dobwm::Box::configure_request(void) {
   DBGMSG("Config Req Event");
   auto &ev { x->configure_request() };
-  //auto win { M.back().T.back().C.back().win };
   x->configure_window(ev);
+}
+
+void dobwm::Box::unmap_request(void) {
+  const auto WIN { x->unmap_notify() };
+  x->unmap_request(WIN);
   /*
-  for (const auto &m : M)
-    for (const auto &t : m.T)
-      if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { 
-            return ev.window == c.win; }) }; c < t.C.end()) {
-        x->configure_window(ev, c->win);
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      if (auto c { std::find_if(T.C.begin(), T.C.end(),
+          [&](const auto &C) -> bool { return C.win == WIN; }) }; 
+            c < T.C.end()) {
+        x->unmap_request(WIN);
+        T.C.erase(c);
         return;
       }
   */
 }
 
-void dobwm::Box::unmap_request(void) {
-  const auto win { x->unmap_notify() };
-  for (auto &m : M)
-    for (auto &t : m.T)
-      if (auto c { std::find_if(t.C.begin(), t.C.end(),
-          [&](auto &c) -> bool { 
-            return win == c.win; }) }; c < t.C.end()) {
-        x->unmap_request(win);
-        t.C.erase(c);
-        return;
-      }
-}
-
 void dobwm::Box::unmap_all(void) {
-  for (auto &m : M)
-    for (auto &t : m.T)
-      for (auto &c : t.C)
-        x->unmap_request(c.win);
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      for (const auto &C : T.C)
+        x->unmap_request(C.win);
 }
 
 void dobwm::Box::swfocus(void) const {
@@ -115,15 +111,15 @@ int main(const int ARGC, const char *ARGV[]) {
 __start__:
   try {
     x = std::make_unique<dobwm::X>();
-  } catch (const std::exception &e) {
-    std::cerr << "EX: " + std::string(e.what()) << "\n";
+  } catch (const std::exception &E) {
+    std::cerr << "EX: " + std::string(E.what()) << "\n";
     return -1;
   }
   
   try {
     msg = std::make_unique<dobwm::Msg>();
-  } catch (const std::exception &e) {
-    std::cerr << "EX: " + std::string(e.what()) << "\n";
+  } catch (const std::exception &E) {
+    std::cerr << "EX: " + std::string(E.what()) << "\n";
   }
 
   box = std::make_unique<dobwm::Box>();
@@ -157,7 +153,6 @@ __start__:
       box->key();
   }
 
-  //box->unmap_all();
   if (restart) {
     x.reset();
     msg.reset();

@@ -15,9 +15,15 @@ Target(s): BSD, Linux
 TODO
 
 Lifecycle of the window mgmt process
+
 Preliminary Xinerama
+
 Preliminary client arrangements
+
 Impl status bar
+
 Further arrangements
-# ~Integrate acpi mgmt (Linux only)
-# (Optional) Integrate acpi dbus
+
+~Integrate acpi mgmt (Linux only)
+
+(Optional) Integrate acpi dbus

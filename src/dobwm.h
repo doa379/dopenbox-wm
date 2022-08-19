@@ -103,7 +103,7 @@ namespace dobwm {
     void client(::Window, const int, const Palette);
     void unmap_request(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
-    void query_tree(const int, const Palette);
+    std::vector<::Window> query_tree(void);
     void grab_button(const ::Window, const int, const int);
     void grab_buttons(void);
     void grab_key(const int, const int) const;

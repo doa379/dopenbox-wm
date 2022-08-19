@@ -28,6 +28,7 @@ dobwm::X::X(void) {
       if (modmap->modifiermap[modmap->max_keypermod * k + j] ==
           ::XKeysymToKeycode(dpy, _Numlock_))
         numlockmask = (1 << k);
+  
   ::XFreeModifiermap(modmap);
   modmask = ~(numlockmask | LockMask);
   // Atoms
@@ -60,10 +61,12 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
 }
 
 void dobwm::X::client(::Window win, const int BW, const Palette BC) {
-  //::XWindowAttributes wa { };
-  //if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
-    //return;
+  ::XWindowAttributes wa { };
+  if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
+    return;
+  // Offset to focus()  
   ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
+  //
   ::XSetWindowBorderWidth(dpy, win, BW);
   //::XSelectInput(dpy, win, ROOTMASK | BUTTONMASK | NOTIFMASK);
   ::XChangeProperty(dpy, root,
@@ -78,8 +81,8 @@ void dobwm::X::client(::Window win, const int BW, const Palette BC) {
 
 void dobwm::X::unmap_request(const ::Window WIN) const {
   ::XUnmapWindow(dpy, WIN);
-  ::XReparentWindow(dpy, WIN, root, 0, 0);
-  ::XDestroyWindow(dpy, WIN);
+  //::XReparentWindow(dpy, WIN, root, 0, 0);
+  //::XDestroyWindow(dpy, WIN);
   ::XSync(dpy, false);
 }
 
@@ -98,21 +101,22 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
     ::XSync(dpy, false);
 }
 
-void dobwm::X::query_tree(const int BW, const Palette BC) {
+std::vector<::Window> dobwm::X::query_tree(void) {
   ::Window root { }, parent { };
   ::Window *W { };  // Children
   unsigned NW { };
+  std::vector<::Window> C;
   ::XGrabServer(dpy);
   if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) &&
         root == this->root)
     for (auto i { 0U }; i < NW; i++)
-      client(W[i], BW, BC);
+      C.emplace_back(W[i]);
 
   ::XUngrabServer(dpy);
   if (W)
     ::XFree(W);
   
-  ::XSync(dpy, false);
+  return C;
 }
 
 void dobwm::X::grab_button(const ::Window WIN, const int MOD, const int B) {
