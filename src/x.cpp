@@ -44,10 +44,10 @@ dobwm::X::X(void) {
     ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
   NET[static_cast<int>(Net::FSCRN)] =
     ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
-  ::XChangeProperty(dpy, root,
-    NET[static_cast<int>(Net::SUPP)], XA_ATOM, 32,
-      PropModeReplace, reinterpret_cast<unsigned char *>(NET.data()),
-      static_cast<int>(dobwm::Net::CNT));
+  ::XChangeProperty(dpy, root, NET[static_cast<int>(Net::SUPP)],
+    XA_ATOM, 32, PropModeReplace,
+      reinterpret_cast<unsigned char *>(NET.data()),
+        static_cast<int>(dobwm::Net::CNT));
   ::XSync(dpy, false);
 }
 
@@ -61,9 +61,9 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
 }
 
 void dobwm::X::client(::Window win, const int BW, const Palette BC) {
-  ::XWindowAttributes wa { };
-  if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
-    return;
+  //::XWindowAttributes wa { };
+  //if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
+    //return;
   // Offset to focus()  
   ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
   //
@@ -138,4 +138,25 @@ void dobwm::X::grab_key(const int MOD, const int K) const {
 
 ::KeySym dobwm::X::key_press(const ::KeyCode KC) {
   return ::XkbKeycodeToKeysym(dpy, KC, 0, 0);
+}
+
+void dobwm::X::kill_msg(const ::Window WIN) const {
+  ::XEvent ev { };
+  ev.type = static_cast<int>(XEvent::CliMsg);
+  ev.xclient.window = WIN;
+  ev.xclient.format = 32;
+  ev.xclient.message_type = WM[static_cast<int>(Wm::PROTO)];
+  ev.xclient.data.l[0] = WM[static_cast<int>(Wm::DELWIN)];
+  ev.xclient.data.l[1] = CurrentTime;
+  ::XSendEvent(dpy, WIN, false, NoEventMask, &ev);
+}
+
+void dobwm::X::kill_msg(void) const {
+  if (ev.xclient.message_type == WM[static_cast<int>(Wm::PROTO)] && 
+    ev.xclient.data.l[0] == WM[static_cast<int>(Wm::DELWIN)])
+      kill_client(ev.xclient.window);
+}
+
+void dobwm::X::kill_client(const ::Window WIN) const {
+  ::XKillClient(dpy, WIN);
 }

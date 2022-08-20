@@ -30,15 +30,17 @@ namespace dobwm {
 
   class Box {
     std::vector<Mon> M;
+    ::Window focus;
   public:
     Box(void);
     ~Box(void);
     void key(void);
-    void init_clients(void);
+    void init(void);
     void map_request(void);
     void configure_request(void);
     void unmap_request(void);
     void unmap_all(void);
+    void cli_msg(void) const;
     void swfocus(void) const;
   };
 
@@ -78,6 +80,9 @@ namespace dobwm {
       const ::XButtonEvent &ev { this->ev.xbutton };}
     int key_state(void) const { return ev.xkey.state; }
     ::KeyCode key_code(void) const { return ev.xkey.keycode; }
+    //::Window client(void) const { return ev.xclient.window; }
+    //::Atom msg_type(void) const { return ev.xclient.message_type; }
+
   };
 
   enum class Wm { PROTO, DELWIN, CNT };
@@ -108,5 +113,8 @@ namespace dobwm {
     void grab_buttons(void);
     void grab_key(const int, const int) const;
     ::KeySym key_press(::KeyCode);
+    void kill_msg(const ::Window) const;
+    void kill_msg(void) const;
+    void kill_client(const ::Window) const;
   };
 }

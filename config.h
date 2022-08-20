@@ -15,6 +15,7 @@ namespace dobwm {
   static constexpr auto SELBRDR_COLOR     { Palette::Yellow };
   static constexpr auto GAP               { 0 };
   // Key Bindings
+  static constexpr auto MOD01             { MOD1_KEY };
   static constexpr auto MOD04             { MOD4_KEY };
   static constexpr auto MOD14             { MOD1_KEY | MOD4_KEY };
   static constexpr auto MODS4             { SHIFT_KEY | MOD4_KEY };
@@ -25,15 +26,12 @@ namespace dobwm {
   static constexpr int RESTART_KEY[]      { MOD, _R_ };
   static constexpr int UNMAPALL_KEY[]     { MOD, _U_ };
   static constexpr int REMAPALL_KEY[]     { MOD, _V_ };
+  static constexpr int LAUNCHER_KEY[]     { MOD, _Esc_ };
   static constexpr int KILLCLI_KEY[]      { MOD, _K_ };
   static constexpr int SWCLIFOCUS_KEY[]   { MOD, _Tab_ };
-  static constexpr int SELTOGGLE_KEY[]    { MOD, _S_ }; // Grpset select
-  static constexpr int SELCLEAR_KEY[]     { MOD, _C_ }; // Grpset clear
+  static constexpr int SELTOGGLE_KEY[]    { MOD, _Space_ };
+  static constexpr int SELCLEAR_KEY[]     { MOD, _C_ };
   // Mouse Bindings
   // Cmd Bindings
-  /*
-  static const char *CMD0[]               { "/usr/local/bin/cmd~0.bin" };
-  static const char *CMD1[]               { "/usr/local/bin/cmd~1.bin" };
-  static const char *CMD2[]               { "/usr/local/bin/cmd~2.bin" };
-  */
+  static constexpr char LAUNCHER[]        { "dmenu_run" };
 }

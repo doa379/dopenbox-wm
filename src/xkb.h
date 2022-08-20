@@ -67,5 +67,6 @@ enum Xkb {
   _M_         = XK_m,
   _Comma_     = XK_comma,
   _Period_    = XK_period,
+  _Space_     = XK_space,
   _Return_    = XK_Return,
 };
