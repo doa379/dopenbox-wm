@@ -1,7 +1,6 @@
 #pragma once
 
-#include <palette.h>
-#include <xkb.h>
+#include <defns.h>
 
 namespace dobwm {
   // Number of Monitors/Displays
@@ -15,23 +14,16 @@ namespace dobwm {
   static constexpr auto SELBRDR_COLOR     { Palette::Yellow };
   static constexpr auto GAP               { 0 };
   // Key Bindings
-  static constexpr auto MOD01             { MOD1_KEY };
-  static constexpr auto MOD04             { MOD4_KEY };
-  static constexpr auto MOD14             { MOD1_KEY | MOD4_KEY };
-  static constexpr auto MODS4             { SHIFT_KEY | MOD4_KEY };
-  static constexpr auto MODC4             { CTRL_KEY | MOD4_KEY };
-  static constexpr auto MODSC4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
-  static constexpr auto MOD               { MOD14 };
-  static constexpr int QUIT_KEY[]         { MOD, _Q_ };
-  static constexpr int RESTART_KEY[]      { MOD, _R_ };
-  static constexpr int UNMAPALL_KEY[]     { MOD, _U_ };
-  static constexpr int REMAPALL_KEY[]     { MOD, _V_ };
-  static constexpr int LAUNCHER_KEY[]     { MOD, _Esc_ };
-  static constexpr int KILLCLI_KEY[]      { MOD, _K_ };
-  static constexpr int SWCLIFOCUS_KEY[]   { MOD, _Tab_ };
-  static constexpr int SELTOGGLE_KEY[]    { MOD, _Space_ };
-  static constexpr int SELCLEAR_KEY[]     { MOD, _C_ };
+  static constexpr Kb QUIT                { MOD14, Key::Q };
+  static constexpr Kb RESTART             { MOD14, Key::R };
+  static constexpr Kb UNMAPALL            { MOD14, Key::U };
+  static constexpr Kb REMAPALL            { MOD14, Key::V };
+  static constexpr Kb LAUNCHER            { MOD14, Key::Esc };
+  static constexpr Kb KILLCLI             { MOD14, Key::K };
+  static constexpr Kb SWCLIFOCUS          { MOD14, Key::Tab };
+  static constexpr Kb SELTOGGLE           { MOD14, Key::Space };
+  static constexpr Kb SELCLEAR            { MOD14, Key::C };
   // Mouse Bindings
   // Cmd Bindings
-  static constexpr char LAUNCHER[]        { "dmenu_run" };
+  static constexpr char LAUNCHER_CMD[]    { "dmenu_run" };
 }

@@ -30,7 +30,6 @@ namespace dobwm {
 
   class Box {
     std::vector<Mon> M;
-    ::Window focus;
   public:
     Box(void);
     ~Box(void);
@@ -42,6 +41,7 @@ namespace dobwm {
     void unmap_all(void);
     void cli_msg(void) const;
     void swfocus(void) const;
+    void focus(const Client &) const;
   };
 
   enum class XEvent {

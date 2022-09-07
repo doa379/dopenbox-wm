@@ -15,6 +15,8 @@ Target(s): BSD, Linux
 TODO
 
 Lifecycle of the window mgmt process
+|- Focus
+|- Unmap/Remap All
 
 Preliminary Xinerama
 

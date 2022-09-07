@@ -29,35 +29,35 @@ dobwm::Box::~Box(void) {
 
 void dobwm::Box::key(void) {
   const auto KC { x->key_code() };
-  if (x->key_state() == QUIT_KEY[0] &&
-      x->key_press(KC) == QUIT_KEY[1]) {
-    DBGMSG("Quit WM");
-    quit = true;
-  } else if (x->key_state() == RESTART_KEY[0] &&
-              x->key_press(KC) == RESTART_KEY[1]) {
-    DBGMSG("Restart WM");
-    restart = true;
-  } else if (x->key_state() == KILLCLI_KEY[0] &&
-              x->key_press(KC) == KILLCLI_KEY[1]) {
-    DBGMSG("Kill Last");
-    const auto C { M.back().T.back().C.back() };
-    x->kill_msg(C.win);
-    M.back().T.back().C.pop_back();
-  } else if (x->key_state() == UNMAPALL_KEY[0] &&
-              x->key_press(KC) == UNMAPALL_KEY[1]) {
-    DBGMSG("Unmap all");
-    unmap_all();
-  } else if (x->key_state() == REMAPALL_KEY[0] &&
-              x->key_press(KC) == REMAPALL_KEY[1]) {
-    DBGMSG("Remap all");
-    init();
-  } else if (x->key_state() == LAUNCHER_KEY[0] &&
-              x->key_press(KC) == LAUNCHER_KEY[1]) {
-    DBGMSG("Launcher");
-    ::system(dobwm::LAUNCHER);
-  } else if (x->key_state() == SWCLIFOCUS_KEY[0] &&
-              x->key_press(KC) == SWCLIFOCUS_KEY[1]) {
-    swfocus();
+  if (x->key_state() == QUIT.first && 
+    x->key_press(KC) == static_cast<int>(QUIT.second)) {
+      DBGMSG("Quit WM");
+      quit = true;
+  } else if (x->key_state() == RESTART.first &&
+    x->key_press(KC) == static_cast<int>(RESTART.second)) {
+      DBGMSG("Restart WM");
+      restart = true;
+  } else if (x->key_state() == KILLCLI.first &&
+    x->key_press(KC) == static_cast<int>(KILLCLI.second)) {
+      DBGMSG("Kill Last");
+      const auto C { M.back().T.back().C.back() };
+      x->kill_msg(C.win);
+      M.back().T.back().C.pop_back();
+  } else if (x->key_state() == UNMAPALL.first &&
+    x->key_press(KC) == static_cast<int>(UNMAPALL.second)) {
+      DBGMSG("Unmap all");
+      unmap_all();
+  } else if (x->key_state() == REMAPALL.first &&
+    x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
+      DBGMSG("Remap all");
+      init();
+  } else if (x->key_state() == LAUNCHER.first &&
+    x->key_press(KC) == static_cast<int>(LAUNCHER.second)) {
+      DBGMSG("Launcher");
+      ::system(dobwm::LAUNCHER_CMD);
+  } else if (x->key_state() == SWCLIFOCUS.first &&
+    x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
+      swfocus();
   }
 }
 
@@ -65,26 +65,25 @@ void dobwm::Box::init(void) {
   for (const auto &C : x->query_tree()) {
     x->client(C, BRDR_WIDTH, INACTBRDR_COLOR);
     M.back().T.back().C.emplace_back(dobwm::Client { C });
-    focus = C;
   }
 
   x->grab_buttons();
-  x->grab_key(RESTART_KEY[0], RESTART_KEY[1]);
-  x->grab_key(QUIT_KEY[0], QUIT_KEY[1]);
-  x->grab_key(UNMAPALL_KEY[0], UNMAPALL_KEY[1]);
-  x->grab_key(REMAPALL_KEY[0], REMAPALL_KEY[1]);
-  x->grab_key(LAUNCHER_KEY[0], LAUNCHER_KEY[1]);
-  x->grab_key(KILLCLI_KEY[0], KILLCLI_KEY[1]);
-  x->grab_key(SWCLIFOCUS_KEY[0], SWCLIFOCUS_KEY[1]);
-  x->grab_key(SELTOGGLE_KEY[0], SELTOGGLE_KEY[1]);
-  x->grab_key(SELCLEAR_KEY[0], SELCLEAR_KEY[1]);
+  x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
+  x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
+  x->grab_key(UNMAPALL.first, static_cast<int>(UNMAPALL.second));
+  x->grab_key(REMAPALL.first, static_cast<int>(REMAPALL.second));
+  x->grab_key(LAUNCHER.first, static_cast<int>(LAUNCHER.second));
+  x->grab_key(KILLCLI.first, static_cast<int>(KILLCLI.second));
+  x->grab_key(SWCLIFOCUS.first, static_cast<int>(SWCLIFOCUS.second));
+  x->grab_key(SELTOGGLE.first, static_cast<int>(SELTOGGLE.second));
+  x->grab_key(SELCLEAR.first, static_cast<int>(SELCLEAR.second));
 }
 
 void dobwm::Box::map_request(void) {
   const auto WIN { x->map_request() };
-  x->client(WIN, BRDR_WIDTH, ACTBRDR_COLOR);
+  x->client(WIN, BRDR_WIDTH, INACTBRDR_COLOR);
   M.back().T.back().C.emplace_back(dobwm::Client { WIN });
-  focus = WIN;
+  focus(M.back().T.back().C.back());
 }
 
 void dobwm::Box::configure_request(void) {
@@ -123,6 +122,17 @@ void dobwm::Box::cli_msg(void) const {
 
 void dobwm::Box::swfocus(void) const {
 
+}
+
+void dobwm::Box::focus(const Client &C) const {
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      for (auto &c : T.C) {
+          //unfocus(c.win);
+          ;
+      }
+
+  // set focus on C.win
 }
 
 int main(const int ARGC, const char *ARGV[]) {
