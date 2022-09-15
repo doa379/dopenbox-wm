@@ -1,6 +1,8 @@
 #pragma once
 
 #include <utility>
+#include <string_view>
+#include <vector>
 #include <palette.h>
 #include <xkb.h>
 
@@ -12,4 +14,6 @@ namespace dobwm {
   static constexpr auto MODC4             { CTRL_KEY | MOD4_KEY };
   static constexpr auto MODSC4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
   using Kb = std::pair<int, Key>;
+  using Cmd = std::tuple<int, Key, std::string_view>;
+  using Cmds = std::vector<Cmd>;
 }

@@ -51,14 +51,17 @@ void dobwm::Box::key(void) {
     x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
       DBGMSG("Remap all");
       init();
-  } else if (x->key_state() == LAUNCHER.first &&
-    x->key_press(KC) == static_cast<int>(LAUNCHER.second)) {
-      DBGMSG("Launcher");
-      ::system(dobwm::LAUNCHER_CMD);
   } else if (x->key_state() == SWCLIFOCUS.first &&
     x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
       swfocus();
   }
+
+  for (const auto &CMD : CMDS)
+    if (x->key_state() == std::get<0>(CMD) &&
+        x->key_press(KC) == static_cast<int>(std::get<1>(CMD))) {
+      ::system(std::string(std::get<2>(CMD)).c_str());
+      break;
+    }
 }
 
 void dobwm::Box::init(void) {
@@ -72,11 +75,12 @@ void dobwm::Box::init(void) {
   x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
   x->grab_key(UNMAPALL.first, static_cast<int>(UNMAPALL.second));
   x->grab_key(REMAPALL.first, static_cast<int>(REMAPALL.second));
-  x->grab_key(LAUNCHER.first, static_cast<int>(LAUNCHER.second));
   x->grab_key(KILLCLI.first, static_cast<int>(KILLCLI.second));
   x->grab_key(SWCLIFOCUS.first, static_cast<int>(SWCLIFOCUS.second));
   x->grab_key(SELTOGGLE.first, static_cast<int>(SELTOGGLE.second));
   x->grab_key(SELCLEAR.first, static_cast<int>(SELCLEAR.second));
+  for (const auto &CMD : CMDS)
+    x->grab_key(std::get<0>(CMD), static_cast<int>(std::get<1>(CMD)));
 }
 
 void dobwm::Box::map_request(void) {

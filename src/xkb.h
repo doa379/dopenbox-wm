@@ -1,6 +1,7 @@
 #pragma once
 
 #include <X11/XKBlib.h>
+#include <X11/XF86keysym.h>
 
 static constexpr auto MOD1_KEY { Mod1Mask };
 static constexpr auto MOD4_KEY { Mod4Mask };
@@ -69,4 +70,5 @@ enum class Key {
   Period    = XK_period,
   Space     = XK_space,
   Return    = XK_Return,
+  Sleep     = XF86XK_Sleep,
 };

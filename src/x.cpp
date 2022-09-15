@@ -26,7 +26,7 @@ dobwm::X::X(void) {
   for (int k { }; k < 8; k++)
     for (int j { }; j < modmap->max_keypermod; j++)
       if (modmap->modifiermap[modmap->max_keypermod * k + j] ==
-          ::XKeysymToKeycode(dpy, _Numlock_))
+          ::XKeysymToKeycode(dpy, static_cast<int>(Key::Numlock)))
         numlockmask = (1 << k);
   
   ::XFreeModifiermap(modmap);

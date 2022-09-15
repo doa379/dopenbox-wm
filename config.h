@@ -18,12 +18,15 @@ namespace dobwm {
   static constexpr Kb RESTART             { MOD14, Key::R };
   static constexpr Kb UNMAPALL            { MOD14, Key::U };
   static constexpr Kb REMAPALL            { MOD14, Key::V };
-  static constexpr Kb LAUNCHER            { MOD14, Key::Esc };
   static constexpr Kb KILLCLI             { MOD14, Key::K };
   static constexpr Kb SWCLIFOCUS          { MOD14, Key::Tab };
   static constexpr Kb SELTOGGLE           { MOD14, Key::Space };
   static constexpr Kb SELCLEAR            { MOD14, Key::C };
   // Mouse Bindings
   // Cmd Bindings
-  static constexpr char LAUNCHER_CMD[]    { "dmenu_run" };
+  static const Cmds CMDS                  {
+      Cmd { MOD14, Key::Esc,   "dmenu_run" },
+      Cmd { MOD14, Key::L,     "slock" },
+      Cmd { MOD14, Key::Sleep, "slock & yyy M" }
+  };
 }
