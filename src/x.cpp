@@ -75,7 +75,10 @@ void dobwm::X::client(::Window win, const int BW, const Palette BC) {
   ::XSelectInput(dpy, win,
     PropertyChangeMask | FocusChangeMask | EnterWindowMask);
   ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
-  ::XMapWindow(dpy, win);
+}
+
+void dobwm::X::map_request(const ::Window WIN) const {
+  ::XMapWindow(dpy, WIN);
   ::XSync(dpy, false);
 }
 

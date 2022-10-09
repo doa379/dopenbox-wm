@@ -35,10 +35,11 @@ namespace dobwm {
     ~Box(void);
     void key(void);
     void init(void);
-    void map_request(void);
     void configure_request(void);
+    void map_request(void);
     void unmap_request(void);
-    void unmap_all(void);
+    void map_all(void) const;
+    void unmap_all(void) const;
     void cli_msg(void) const;
     void swfocus(void) const;
     void focus(const Client &) const;
@@ -106,6 +107,7 @@ namespace dobwm {
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     void client(::Window, const int, const Palette);
+    void map_request(const ::Window) const;
     void unmap_request(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);

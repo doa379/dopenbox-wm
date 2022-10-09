@@ -27,6 +27,7 @@ namespace dobwm {
   static const Cmds CMDS                  {
       Cmd { MOD14, Key::Esc,   "dmenu_run" },
       Cmd { MOD14, Key::L,     "slock" },
-      Cmd { MOD14, Key::Sleep, "slock & yyy M" }
+      Cmd { MOD14, Key::Sleep, "slock & yyy M" },
+      Cmd { 0, Key::N, "notify-send \"No Modkey\"" }
   };
 }

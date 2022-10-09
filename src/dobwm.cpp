@@ -50,7 +50,7 @@ void dobwm::Box::key(void) {
   } else if (x->key_state() == REMAPALL.first &&
     x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
       DBGMSG("Remap all");
-      init();
+      map_all();
   } else if (x->key_state() == SWCLIFOCUS.first &&
     x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
       swfocus();
@@ -67,6 +67,7 @@ void dobwm::Box::key(void) {
 void dobwm::Box::init(void) {
   for (const auto &C : x->query_tree()) {
     x->client(C, BRDR_WIDTH, INACTBRDR_COLOR);
+    x->map_request(C);
     M.back().T.back().C.emplace_back(dobwm::Client { C });
   }
 
@@ -83,17 +84,18 @@ void dobwm::Box::init(void) {
     x->grab_key(std::get<0>(CMD), static_cast<int>(std::get<1>(CMD)));
 }
 
-void dobwm::Box::map_request(void) {
-  const auto WIN { x->map_request() };
-  x->client(WIN, BRDR_WIDTH, INACTBRDR_COLOR);
-  M.back().T.back().C.emplace_back(dobwm::Client { WIN });
-  focus(M.back().T.back().C.back());
-}
-
 void dobwm::Box::configure_request(void) {
   DBGMSG("Config Req Event");
   auto &ev { x->configure_request() };
   x->configure_window(ev);
+}
+
+void dobwm::Box::map_request(void) {
+  const auto WIN { x->Event::map_request() };
+  x->client(WIN, BRDR_WIDTH, INACTBRDR_COLOR);
+  x->map_request(WIN);
+  M.back().T.back().C.emplace_back(dobwm::Client { WIN });
+  focus(M.back().T.back().C.back());
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -112,7 +114,14 @@ void dobwm::Box::unmap_request(void) {
   */
 }
 
-void dobwm::Box::unmap_all(void) {
+void dobwm::Box::map_all(void) const {
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      for (const auto &C : T.C)
+        x->map_request(C.win);
+}
+
+void dobwm::Box::unmap_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       for (const auto &C : T.C)

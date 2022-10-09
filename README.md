@@ -16,7 +16,7 @@ TODO
 
 Lifecycle of the window mgmt process
 |- Focus
-|- Unmap/Remap All
+|- Refactor X
 
 Preliminary Xinerama
 
