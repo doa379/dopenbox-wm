@@ -30,6 +30,9 @@ namespace dobwm {
 
   class Box {
     std::vector<Mon> M;
+    //Init as ref to root Window
+    //std::reference_wrapper<Client> curr;
+    Client curr;
   public:
     Box(void);
     ~Box(void);
@@ -106,7 +109,8 @@ namespace dobwm {
     ~X(void);
     static int XError(::Display *, ::XErrorEvent *);
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
-    void client(::Window, const int, const Palette);
+    void client(::Window, const int, const Palette) const;
+    void focus(::Window) const;
     void map_request(const ::Window) const;
     void unmap_request(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;

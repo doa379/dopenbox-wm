@@ -59,7 +59,7 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
   error = ev->error_code == BadAccess;
   return 0;
 }
-
+/*
 void dobwm::X::client(::Window win, const int BW, const Palette BC) {
   //::XWindowAttributes wa { };
   //if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
@@ -75,6 +75,21 @@ void dobwm::X::client(::Window win, const int BW, const Palette BC) {
   ::XSelectInput(dpy, win,
     PropertyChangeMask | FocusChangeMask | EnterWindowMask);
   ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+}
+*/
+void dobwm::X::client(::Window win, const int BW, const Palette BC) const {
+  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
+  ::XSetWindowBorderWidth(dpy, win, BW);
+}
+
+void dobwm::X::focus(::Window win) const {
+  ::XChangeProperty(dpy, root,
+    NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
+      PropModeReplace, reinterpret_cast<unsigned char *>(&win), 1);
+  ::XSelectInput(dpy, win,
+    PropertyChangeMask | FocusChangeMask | EnterWindowMask);
+  ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+  ::XRaiseWindow(dpy, win);
 }
 
 void dobwm::X::map_request(const ::Window WIN) const {
@@ -156,7 +171,7 @@ void dobwm::X::kill_msg(const ::Window WIN) const {
 
 void dobwm::X::kill_msg(void) const {
   if (ev.xclient.message_type == WM[static_cast<int>(Wm::PROTO)] && 
-    ev.xclient.data.l[0] == WM[static_cast<int>(Wm::DELWIN)])
+    ev.xclient.data.l[0] == static_cast<long>(WM[static_cast<int>(Wm::DELWIN)]))
       kill_client(ev.xclient.window);
 }
 

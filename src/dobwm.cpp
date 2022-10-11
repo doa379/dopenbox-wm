@@ -58,7 +58,7 @@ void dobwm::Box::key(void) {
 
   for (const auto &CMD : CMDS)
     if (x->key_state() == std::get<0>(CMD) &&
-        x->key_press(KC) == static_cast<int>(std::get<1>(CMD))) {
+        x->key_press(KC) == static_cast<unsigned long>(std::get<1>(CMD))) {
       ::system(std::string(std::get<2>(CMD)).c_str());
       break;
     }
@@ -69,6 +69,12 @@ void dobwm::Box::init(void) {
     x->client(C, BRDR_WIDTH, INACTBRDR_COLOR);
     x->map_request(C);
     M.back().T.back().C.emplace_back(dobwm::Client { C });
+  }
+  
+  if (M.back().T.back().C.size()) {
+    x->client(M.back().T.back().C.back().win, BRDR_WIDTH, ACTBRDR_COLOR);
+    x->focus(M.back().T.back().C.back().win);
+    curr = M.back().T.back().C.back();
   }
 
   x->grab_buttons();
@@ -92,10 +98,11 @@ void dobwm::Box::configure_request(void) {
 
 void dobwm::Box::map_request(void) {
   const auto WIN { x->Event::map_request() };
-  x->client(WIN, BRDR_WIDTH, INACTBRDR_COLOR);
   x->map_request(WIN);
+  x->client(WIN, BRDR_WIDTH, ACTBRDR_COLOR);
+  x->focus(WIN);
   M.back().T.back().C.emplace_back(dobwm::Client { WIN });
-  focus(M.back().T.back().C.back());
+  curr = M.back().T.back().C.back();
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -136,7 +143,7 @@ void dobwm::Box::cli_msg(void) const {
 void dobwm::Box::swfocus(void) const {
 
 }
-
+/*
 void dobwm::Box::focus(const Client &C) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
@@ -147,7 +154,7 @@ void dobwm::Box::focus(const Client &C) const {
 
   // set focus on C.win
 }
-
+*/
 int main(const int ARGC, const char *ARGV[]) {
 __start__:
   try {
