@@ -59,48 +59,32 @@ int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
   error = ev->error_code == BadAccess;
   return 0;
 }
-/*
-void dobwm::X::client(::Window win, const int BW, const Palette BC) {
-  //::XWindowAttributes wa { };
-  //if (::XGetWindowAttributes(dpy, win, &wa) && wa.override_redirect)
-    //return;
-  // Offset to focus()  
-  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
-  //
-  ::XSetWindowBorderWidth(dpy, win, BW);
-  //::XSelectInput(dpy, win, ROOTMASK | BUTTONMASK | NOTIFMASK);
-  ::XChangeProperty(dpy, root,
-    NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
-      PropModeReplace, reinterpret_cast<unsigned char *>(&win), 1);
-  ::XSelectInput(dpy, win,
-    PropertyChangeMask | FocusChangeMask | EnterWindowMask);
-  ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
-}
-*/
-void dobwm::X::client(::Window win, const int BW, const Palette BC) const {
-  ::XSetWindowBorder(dpy, win, static_cast<unsigned long>(BC));
-  ::XSetWindowBorderWidth(dpy, win, BW);
+
+void dobwm::X::client(::Window w, const int BW, const Palette BC) const {
+  ::XSetWindowBorder(dpy, w, static_cast<unsigned long>(BC));
+  ::XSetWindowBorderWidth(dpy, w, BW);
 }
 
-void dobwm::X::focus(::Window win) const {
+void dobwm::X::focus(::Window w) const {
+	//::XDeleteProperty(dpy, root, NET[static_cast<int>(Net::ACT)]);
   ::XChangeProperty(dpy, root,
     NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
-      PropModeReplace, reinterpret_cast<unsigned char *>(&win), 1);
-  ::XSelectInput(dpy, win,
+      PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XSelectInput(dpy, w,
     PropertyChangeMask | FocusChangeMask | EnterWindowMask);
-  ::XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
-  ::XRaiseWindow(dpy, win);
+  ::XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
+  ::XRaiseWindow(dpy, w);
 }
 
-void dobwm::X::map_request(const ::Window WIN) const {
-  ::XMapWindow(dpy, WIN);
+void dobwm::X::map_window(const ::Window W) const {
+  ::XMapWindow(dpy, W);
   ::XSync(dpy, false);
 }
 
-void dobwm::X::unmap_request(const ::Window WIN) const {
-  ::XUnmapWindow(dpy, WIN);
-  //::XReparentWindow(dpy, WIN, root, 0, 0);
-  //::XDestroyWindow(dpy, WIN);
+void dobwm::X::unmap_window(const ::Window W) const {
+  ::XUnmapWindow(dpy, W);
+  //::XReparentWindow(dpy, W, root, 0, 0);
+  //::XDestroyWindow(dpy, W);
   ::XSync(dpy, false);
 }
 
@@ -125,10 +109,15 @@ std::vector<::Window> dobwm::X::query_tree(void) {
   unsigned NW { };
   std::vector<::Window> C;
   ::XGrabServer(dpy);
-  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW) &&
-        root == this->root)
-    for (auto i { 0U }; i < NW; i++)
-      C.emplace_back(W[i]);
+  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
+    for (auto i { 0U }; i < NW; i++) {
+      ::XWindowAttributes wa { };
+      if (::XGetWindowAttributes(dpy, W[i], &wa) &&
+          !wa.override_redirect && 
+            !XGetTransientForHint(dpy, W[i], &root) &&
+              wa.map_state == IsViewable)
+        C.emplace_back(W[i]);
+    }
 
   ::XUngrabServer(dpy);
   if (W)
@@ -137,8 +126,8 @@ std::vector<::Window> dobwm::X::query_tree(void) {
   return C;
 }
 
-void dobwm::X::grab_button(const ::Window WIN, const int MOD, const int B) {
-  ::XGrabButton(dpy, B, MOD & modmask, WIN, false, 
+void dobwm::X::grab_button(const ::Window W, const int MOD, const int B) {
+  ::XGrabButton(dpy, B, MOD & modmask, W, false, 
       BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
   //::XGrabButton(dpy, B, MOD | modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
@@ -158,15 +147,15 @@ void dobwm::X::grab_key(const int MOD, const int K) const {
   return ::XkbKeycodeToKeysym(dpy, KC, 0, 0);
 }
 
-void dobwm::X::kill_msg(const ::Window WIN) const {
+void dobwm::X::kill_msg(const ::Window W) const {
   ::XEvent ev { };
   ev.type = static_cast<int>(XEvent::CliMsg);
-  ev.xclient.window = WIN;
+  ev.xclient.window = W;
   ev.xclient.format = 32;
   ev.xclient.message_type = WM[static_cast<int>(Wm::PROTO)];
   ev.xclient.data.l[0] = WM[static_cast<int>(Wm::DELWIN)];
   ev.xclient.data.l[1] = CurrentTime;
-  ::XSendEvent(dpy, WIN, false, NoEventMask, &ev);
+  ::XSendEvent(dpy, W, false, NoEventMask, &ev);
 }
 
 void dobwm::X::kill_msg(void) const {
@@ -175,6 +164,6 @@ void dobwm::X::kill_msg(void) const {
       kill_client(ev.xclient.window);
 }
 
-void dobwm::X::kill_client(const ::Window WIN) const {
-  ::XKillClient(dpy, WIN);
+void dobwm::X::kill_client(const ::Window W) const {
+  ::XKillClient(dpy, W);
 }

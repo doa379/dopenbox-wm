@@ -65,15 +65,16 @@ void dobwm::Box::key(void) {
 }
 
 void dobwm::Box::init(void) {
-  for (const auto &C : x->query_tree()) {
-    x->client(C, BRDR_WIDTH, INACTBRDR_COLOR);
-    x->map_request(C);
-    M.back().T.back().C.emplace_back(dobwm::Client { C });
+  DBGMSG(std::to_string(x->query_tree().size()).c_str());
+  for (const auto &W : x->query_tree()) {
+    x->client(W, BDR_WIDTH, INACTBDR_COLOR);
+    x->map_window(W);
+    M.back().T.back().C.emplace_back(dobwm::Client { W });
   }
   
   if (M.back().T.back().C.size()) {
-    x->client(M.back().T.back().C.back().win, BRDR_WIDTH, ACTBRDR_COLOR);
-    x->focus(M.back().T.back().C.back().win);
+    x->focus(M.back().T.back().C.front().win);
+    x->client(M.back().T.back().C.front().win, BDR_WIDTH, ACTBDR_COLOR);
     curr = M.back().T.back().C.back();
   }
 
@@ -97,42 +98,31 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::map_request(void) {
-  const auto WIN { x->Event::map_request() };
-  x->map_request(WIN);
-  x->client(WIN, BRDR_WIDTH, ACTBRDR_COLOR);
-  x->focus(WIN);
-  M.back().T.back().C.emplace_back(dobwm::Client { WIN });
+  const auto W { x->Event::map_request() };
+  x->map_window(W);
+  x->focus(W);
+  x->client(W, BDR_WIDTH, ACTBDR_COLOR);
+  M.back().T.back().C.emplace_back(dobwm::Client { W });
   curr = M.back().T.back().C.back();
 }
 
 void dobwm::Box::unmap_request(void) {
-  const auto WIN { x->unmap_notify() };
-  x->unmap_request(WIN);
-  /*
-  for (const auto &M : this->M)
-    for (const auto &T : M.T)
-      if (auto c { std::find_if(T.C.begin(), T.C.end(),
-          [&](const auto &C) -> bool { return C.win == WIN; }) }; 
-            c < T.C.end()) {
-        x->unmap_request(WIN);
-        T.C.erase(c);
-        return;
-      }
-  */
+  const auto W { x->unmap_notify() };
+  x->unmap_window(W);
 }
 
 void dobwm::Box::map_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       for (const auto &C : T.C)
-        x->map_request(C.win);
+        x->map_window(C.win);
 }
 
 void dobwm::Box::unmap_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       for (const auto &C : T.C)
-        x->unmap_request(C.win);
+        x->unmap_window(C.win);
 }
 
 void dobwm::Box::cli_msg(void) const {
@@ -140,21 +130,29 @@ void dobwm::Box::cli_msg(void) const {
   x->kill_msg();
 }
 
-void dobwm::Box::swfocus(void) const {
-
-}
-/*
-void dobwm::Box::focus(const Client &C) const {
+void dobwm::Box::swfocus(void) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      for (auto &c : T.C) {
-          //unfocus(c.win);
-          ;
+      for (auto c { T.C.begin() }; c < T.C.end(); c++) {
+        if (c->win == curr.win && c < T.C.end() - 1) {
+          x->focus((c + 1)->win);
+          x->client((c + 1)->win, BDR_WIDTH, ACTBDR_COLOR);
+          curr = *(c + 1);
+          x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
+          return;
+        } else if (c->win == curr.win && 
+              T.C.size() > 1 && c == T.C.end() - 1) {
+          x->focus((c - 1)->win);
+          x->client((c - 1)->win, BDR_WIDTH, ACTBDR_COLOR);
+          curr = *(c - 1);
+          x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
+          return;
+        }
+        
+        x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
       }
-
-  // set focus on C.win
 }
-*/
+
 int main(const int ARGC, const char *ARGV[]) {
 __start__:
   try {

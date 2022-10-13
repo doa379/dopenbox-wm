@@ -8,11 +8,11 @@ namespace dobwm {
   // Number of Tags per Monitor
   static constexpr auto Nt                { 4 };
   static constexpr auto BAR_HEIGHT        { 8 };
-  static constexpr auto BRDR_WIDTH        { 4 };
-  static constexpr auto ACTBRDR_COLOR     { Palette::Red };
-  static constexpr auto INACTBRDR_COLOR   { Palette::Cyan };
-  static constexpr auto SELBRDR_COLOR     { Palette::Yellow };
-  static constexpr auto GAP               { 0 };
+  static constexpr auto BDR_WIDTH         { 4 };
+  static constexpr auto ACTBDR_COLOR      { Palette::Red };
+  static constexpr auto INACTBDR_COLOR    { Palette::Cyan };
+  static constexpr auto SELBDR_COLOR      { Palette::Yellow };
+  static constexpr auto WINDOW_GAP        { 0 };
   // Key Bindings
   static constexpr Kb QUIT                { MOD14, Key::Q };
   static constexpr Kb RESTART             { MOD14, Key::R };

@@ -15,7 +15,7 @@ namespace dobwm {
     ::Window win;
     std::string name;
     int x { }, y { }, w { }, h { };
-    Mode mode { Mode::DEF };
+    Mode mode { };
     bool sel { };
   };
 
@@ -44,8 +44,7 @@ namespace dobwm {
     void map_all(void) const;
     void unmap_all(void) const;
     void cli_msg(void) const;
-    void swfocus(void) const;
-    void focus(const Client &) const;
+    void swfocus(void);
   };
 
   enum class XEvent {
@@ -111,8 +110,8 @@ namespace dobwm {
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     void client(::Window, const int, const Palette) const;
     void focus(::Window) const;
-    void map_request(const ::Window) const;
-    void unmap_request(const ::Window) const;
+    void map_window(const ::Window) const;
+    void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);
     void grab_button(const ::Window, const int, const int);
