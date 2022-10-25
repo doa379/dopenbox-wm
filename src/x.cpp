@@ -70,10 +70,14 @@ void dobwm::X::focus(::Window w) const {
   ::XChangeProperty(dpy, root,
     NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
       PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-  ::XSelectInput(dpy, w,
-    PropertyChangeMask | FocusChangeMask | EnterWindowMask);
+  ::XSelectInput(dpy, w, PropertyChangeMask | FocusChangeMask | EnterWindowMask);
   ::XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
   ::XRaiseWindow(dpy, w);
+}
+
+bool dobwm::X::isactive(const ::Window w) const {
+// Maybe use post refactoring Xinerama
+  return false;
 }
 
 void dobwm::X::map_window(const ::Window W) const {
@@ -114,7 +118,7 @@ std::vector<::Window> dobwm::X::query_tree(void) {
       ::XWindowAttributes wa { };
       if (::XGetWindowAttributes(dpy, W[i], &wa) &&
           !wa.override_redirect && 
-            !XGetTransientForHint(dpy, W[i], &root) &&
+            /*!XGetTransientForHint(dpy, W[i], &root) &&*/
               wa.map_state == IsViewable)
         C.emplace_back(W[i]);
     }

@@ -39,10 +39,13 @@ void dobwm::Box::key(void) {
       restart = true;
   } else if (x->key_state() == KILLCLI.first &&
     x->key_press(KC) == static_cast<int>(KILLCLI.second)) {
-      DBGMSG("Kill Last");
-      const auto C { M.back().T.back().C.back() };
-      x->kill_msg(C.win);
-      M.back().T.back().C.pop_back();
+      DBGMSG("Kill Curr");
+      if (curr.has_value()) {
+        const auto W { curr.value() };
+        sw_focus();
+        x->kill_client(W);
+        del_client(W);
+      }
   } else if (x->key_state() == UNMAPALL.first &&
     x->key_press(KC) == static_cast<int>(UNMAPALL.second)) {
       DBGMSG("Unmap all");
@@ -53,7 +56,8 @@ void dobwm::Box::key(void) {
       map_all();
   } else if (x->key_state() == SWCLIFOCUS.first &&
     x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
-      swfocus();
+      if (curr.has_value())
+        sw_focus();
   }
 
   for (const auto &CMD : CMDS)
@@ -72,11 +76,8 @@ void dobwm::Box::init(void) {
     M.back().T.back().C.emplace_back(dobwm::Client { W });
   }
   
-  if (M.back().T.back().C.size()) {
-    x->focus(M.back().T.back().C.front().win);
-    x->client(M.back().T.back().C.front().win, BDR_WIDTH, ACTBDR_COLOR);
-    curr = M.back().T.back().C.back();
-  }
+  if (M.back().T.back().C.size())
+    focus(M.back().T.back().C.back());
 
   x->grab_buttons();
   x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
@@ -103,7 +104,6 @@ void dobwm::Box::map_request(void) {
   x->focus(W);
   x->client(W, BDR_WIDTH, ACTBDR_COLOR);
   M.back().T.back().C.emplace_back(dobwm::Client { W });
-  curr = M.back().T.back().C.back();
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -114,43 +114,63 @@ void dobwm::Box::unmap_request(void) {
 void dobwm::Box::map_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      for (const auto &C : T.C)
-        x->map_window(C.win);
+      std::ranges::for_each(T.C, [&](const Client &C) {
+        x->map_window(C.win); });
 }
 
 void dobwm::Box::unmap_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      for (const auto &C : T.C)
-        x->unmap_window(C.win);
+      std::ranges::for_each(T.C, [&](const Client &C) {
+        x->unmap_window(C.win); });
 }
 
 void dobwm::Box::cli_msg(void) const {
   DBGMSG("Client Msg Event");
-  x->kill_msg();
+  //x->kill_msg();
 }
 
-void dobwm::Box::swfocus(void) {
+void dobwm::Box::focus(const Client &C) {
+  const auto W { C.win };
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      std::ranges::for_each(T.C, [&](const Client &C) mutable { 
+        if (C.win == W) {
+          x->focus(W);
+          x->client(W, BDR_WIDTH, ACTBDR_COLOR);
+          curr = W;
+        } else
+          x->client(C.win, BDR_WIDTH, INACTBDR_COLOR);
+      });
+}
+
+void dobwm::Box::sw_focus(void) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       for (auto c { T.C.begin() }; c < T.C.end(); c++) {
-        if (c->win == curr.win && c < T.C.end() - 1) {
-          x->focus((c + 1)->win);
-          x->client((c + 1)->win, BDR_WIDTH, ACTBDR_COLOR);
-          curr = *(c + 1);
-          x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
+        if (c->win != curr.value())
+          continue;
+        else if (c < T.C.end() - 1) {
+          focus(*(c + 1));
+          curr = (c + 1)->win;
           return;
-        } else if (c->win == curr.win && 
-              T.C.size() > 1 && c == T.C.end() - 1) {
-          x->focus((c - 1)->win);
-          x->client((c - 1)->win, BDR_WIDTH, ACTBDR_COLOR);
-          curr = *(c - 1);
-          x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
+        } else if (T.C.size() > 1 && c == T.C.end() - 1) {
+          focus(*(c - 1));
+          curr = (c - 1)->win;
           return;
         }
-        
-        x->client(c->win, BDR_WIDTH, INACTBDR_COLOR);
       }
+}
+
+void dobwm::Box::del_client(const ::Window W) {
+  for (auto &M : this->M)
+    for (auto &T : M.T)
+      if (const auto C { 
+        std::ranges::find_if(T.C, [&](const Client &C) -> bool {
+          return C.win == W; }) }; C < T.C.end()) {
+          T.C.erase(C);
+          return;
+        }
 }
 
 int main(const int ARGC, const char *ARGV[]) {

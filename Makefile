@@ -15,8 +15,8 @@ LIBSPATH = -L $(LOCAL)/ -Wl,-R$(LOCAL)/ '-Wl,-R$$ORIGIN' \
 
 LIBS = -l X11 -l Xinerama -l dbus-1
 
-CPPC = c++
-CPPC_FLAGS = -std=c++17 -Wall -fPIE -fPIC -pedantic
+CPPC = clang++
+CPPC_FLAGS = -std=c++2b -Wall -fPIE -fPIC -pedantic -stdlib=libstdc++
 REL_CFLAGS = -O3
 REL_LDFLAGS = -s
 #DBG_CFLAGS = -O1 -g -fsanitize=address -fno-omit-frame-pointer

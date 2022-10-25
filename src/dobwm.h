@@ -4,6 +4,8 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <optional>
+#include <utility>
 #include <X11/Xutil.h>
 #include <palette.h>
 
@@ -30,9 +32,7 @@ namespace dobwm {
 
   class Box {
     std::vector<Mon> M;
-    //Init as ref to root Window
-    //std::reference_wrapper<Client> curr;
-    Client curr;
+    std::optional<::Window> curr { std::nullopt };
   public:
     Box(void);
     ~Box(void);
@@ -44,7 +44,9 @@ namespace dobwm {
     void map_all(void) const;
     void unmap_all(void) const;
     void cli_msg(void) const;
-    void swfocus(void);
+    void focus(const Client &);
+    void sw_focus(void);
+    void del_client(const ::Window);
   };
 
   enum class XEvent {
@@ -88,8 +90,8 @@ namespace dobwm {
 
   };
 
-  enum class Wm { PROTO, DELWIN, CNT };
-  enum class Net { SUPP, STATE, ACT, FSCRN, CNT };
+  enum class Wm : int { PROTO, DELWIN, CNT };
+  enum class Net : int { SUPP, STATE, ACT, FSCRN, CNT };
 
   class X : public Event {
     static constexpr auto ROOTMASK {
@@ -101,8 +103,10 @@ namespace dobwm {
     int modmask { };
     ::Display *dpy { ::XOpenDisplay(nullptr) };
     ::Window root { };
-    std::array<::Atom, static_cast<int>(dobwm::Wm::CNT)> WM;
-    std::array<::Atom, static_cast<int>(dobwm::Net::CNT)> NET;
+    std::array<::Atom, static_cast<int>(Wm::CNT)> WM;
+    //std::array<::Atom, std::to_underlying(Wm::CNT)> WM;
+    std::array<::Atom, static_cast<int>(Net::CNT)> NET;
+    //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
   public:
     X(void);
     ~X(void);
@@ -110,6 +114,7 @@ namespace dobwm {
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     void client(::Window, const int, const Palette) const;
     void focus(::Window) const;
+    bool isactive(const ::Window) const;
     void map_window(const ::Window) const;
     void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
