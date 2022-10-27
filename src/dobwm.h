@@ -46,13 +46,15 @@ namespace dobwm {
     void cli_msg(void) const;
     void focus(const Client &);
     void sw_focus(void);
+    std::optional<std::reference_wrapper<Client>> client(const ::Window);
     void del_client(const ::Window);
+    void enter_notify(void);
   };
 
   enum class XEvent {
-    Create = CreateNotify,
-    Destroy = DestroyNotify,
-    Reparent = ReparentNotify,
+    //Create = CreateNotify,
+    //Destroy = DestroyNotify,
+    //Reparent = ReparentNotify,
     Map = MapNotify,
     Unmap = UnmapNotify,
     CliMsg = ClientMessage,
@@ -61,7 +63,8 @@ namespace dobwm {
     ConfigReq = ConfigureRequest,
     Motion = MotionNotify,
     Button = ButtonPress,
-    Key = KeyPress
+    Key = KeyPress,
+    Enter = EnterNotify
   };
   
   class Event {
@@ -70,9 +73,9 @@ namespace dobwm {
   public:
     dobwm::XEvent event(void) const {
       return static_cast<dobwm::XEvent>(ev.type); }
-    void create_notify(void) const { (void) ev.xcreatewindow; }
-    void destroy_notify(void) const { (void) ev.xdestroywindow; }
-    void reparent_notify(void) const { (void) ev.xreparent; }
+    //void create_notify(void) const { (void) ev.xcreatewindow; }
+    //void destroy_notify(void) const { (void) ev.xdestroywindow; }
+    //void reparent_notify(void) const { (void) ev.xreparent; }
     void map_notify(void) const { (void) ev.xmap; }
     ::Window unmap_notify(void) const { return ev.xunmap.window; }
     void configure_notify(void) const { (void) ev.xconfigure; }
@@ -87,6 +90,7 @@ namespace dobwm {
     ::KeyCode key_code(void) const { return ev.xkey.keycode; }
     //::Window client(void) const { return ev.xclient.window; }
     //::Atom msg_type(void) const { return ev.xclient.message_type; }
+    ::Window crossing_window(void) { return ev.xcrossing.window; }
 
   };
 

@@ -73,12 +73,10 @@ void dobwm::Box::init(void) {
   for (const auto &W : x->query_tree()) {
     x->client(W, BDR_WIDTH, INACTBDR_COLOR);
     x->map_window(W);
-    M.back().T.back().C.emplace_back(dobwm::Client { W });
+    M.back().T.back().C.emplace_back(Client { W });
+    focus(M.back().T.back().C.back());
   }
   
-  if (M.back().T.back().C.size())
-    focus(M.back().T.back().C.back());
-
   x->grab_buttons();
   x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
   x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
@@ -101,9 +99,10 @@ void dobwm::Box::configure_request(void) {
 void dobwm::Box::map_request(void) {
   const auto W { x->Event::map_request() };
   x->map_window(W);
-  x->focus(W);
-  x->client(W, BDR_WIDTH, ACTBDR_COLOR);
+  //x->focus(W);
+  //x->client(W, BDR_WIDTH, ACTBDR_COLOR);
   M.back().T.back().C.emplace_back(dobwm::Client { W });
+  focus(M.back().T.back().C.back());
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -134,7 +133,7 @@ void dobwm::Box::focus(const Client &C) {
   const auto W { C.win };
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) mutable { 
+      std::ranges::for_each(T.C, [&](const Client &C) { 
         if (C.win == W) {
           x->focus(W);
           x->client(W, BDR_WIDTH, ACTBDR_COLOR);
@@ -162,15 +161,33 @@ void dobwm::Box::sw_focus(void) {
       }
 }
 
+std::optional<std::reference_wrapper<dobwm::Client>> dobwm::Box::client(const ::Window W) {
+  for (auto &M : this->M)
+    for (auto &T : M.T)
+      if (auto C { 
+          std::ranges::find_if(T.C, [&](const Client &C) -> bool {
+            return C.win == W; }) }; C < T.C.end())
+        return *C;
+ 
+  return std::nullopt;
+}
+
 void dobwm::Box::del_client(const ::Window W) {
   for (auto &M : this->M)
     for (auto &T : M.T)
       if (const auto C { 
         std::ranges::find_if(T.C, [&](const Client &C) -> bool {
-          return C.win == W; }) }; C < T.C.end()) {
+            return C.win == W; }) }; C < T.C.end()) {
           T.C.erase(C);
           return;
         }
+}
+
+void dobwm::Box::enter_notify(void) {
+  if (SLOPPY_FOCUS && 
+        curr.has_value() && 
+          x->crossing_window() != curr.value())
+    focus(client(x->crossing_window()).value());
 }
 
 int main(const int ARGC, const char *ARGV[]) {
@@ -190,16 +207,19 @@ __start__:
 
   box = std::make_unique<dobwm::Box>();
   box->init();
+  //std::println("...");
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");
   while (!quit && !restart && !x->next_event()) {
+    /*
     if (x->event() == dobwm::XEvent::Create)
       x->create_notify();
     else if (x->event() == dobwm::XEvent::Destroy)
       x->destroy_notify();
     else if (x->event() == dobwm::XEvent::Reparent)
       x->reparent_notify();
-    else if (x->event() == dobwm::XEvent::Map)
+    */
+    if (x->event() == dobwm::XEvent::Map)
       x->map_notify();
     else if (x->event() == dobwm::XEvent::Unmap)
       box->unmap_request();
@@ -217,6 +237,8 @@ __start__:
       x->button();
     else if (x->event() == dobwm::XEvent::Key)
       box->key();
+    else if (x->event() == dobwm::XEvent::Enter)
+      box->enter_notify();
   }
 
   if (restart) {

@@ -13,6 +13,7 @@ namespace dobwm {
   static constexpr auto INACTBDR_COLOR    { Palette::Cyan };
   static constexpr auto SELBDR_COLOR      { Palette::Yellow };
   static constexpr auto WINDOW_GAP        { 0 };
+  static constexpr auto SLOPPY_FOCUS      { true };
   // Key Bindings
   static constexpr Kb QUIT                { MOD14, Key::Q };
   static constexpr Kb RESTART             { MOD14, Key::R };
@@ -22,6 +23,14 @@ namespace dobwm {
   static constexpr Kb SWCLIFOCUS          { MOD14, Key::Tab };
   static constexpr Kb SELTOGGLE           { MOD14, Key::Space };
   static constexpr Kb SELCLEAR            { MOD14, Key::C };
+  static constexpr Kb MOVEUP              { MODS4, Key::Up };
+  static constexpr Kb MOVEDOWN            { MODS4, Key::Down };
+  static constexpr Kb MOVELEFT            { MODS4, Key::Left };
+  static constexpr Kb MOVERIGHT           { MODS4, Key::Right };
+  static constexpr Kb RESIZEUP            { MODC4, Key::Up };
+  static constexpr Kb RESIZEDOWN          { MODC4, Key::Down };
+  static constexpr Kb RESIZELEFT          { MODC4, Key::Left };
+  static constexpr Kb RESIZERIGHT         { MODC4, Key::Right };
   // Mouse Bindings
   // Cmd Bindings
   static const Cmds CMDS                  {

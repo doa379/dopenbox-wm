@@ -69,6 +69,10 @@ enum class Key {
   Comma     = XK_comma,
   Period    = XK_period,
   Space     = XK_space,
+  Left      = XK_Left,
+  Up        = XK_Up,
+  Down      = XK_Down,
+  Right     = XK_Right,
   Return    = XK_Return,
   Sleep     = XF86XK_Sleep,
 };

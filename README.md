@@ -15,9 +15,9 @@ Target(s): BSD, Linux
 TODO
 
 Lifecycle of the window mgmt process
-|- Focus
-|- Handle Window deletion
+|- Xinerama
 |- Refactor X
+|- Import GL
 
 Preliminary Xinerama
 
