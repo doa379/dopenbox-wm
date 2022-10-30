@@ -7,13 +7,14 @@
 #include <xkb.h>
 
 namespace dobwm {
-  static constexpr auto MOD01             { MOD1_KEY };
-  static constexpr auto MOD04             { MOD4_KEY };
-  static constexpr auto MOD14             { MOD1_KEY | MOD4_KEY };
-  static constexpr auto MODS4             { SHIFT_KEY | MOD4_KEY };
-  static constexpr auto MODC4             { CTRL_KEY | MOD4_KEY };
-  static constexpr auto MODSC4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
+  static constexpr auto M1              { MOD1_KEY };
+  static constexpr auto M4              { MOD4_KEY };
+  static constexpr auto M14             { MOD1_KEY | MOD4_KEY };
+  static constexpr auto SM4             { SHIFT_KEY | MOD4_KEY };
+  static constexpr auto CM4             { CTRL_KEY | MOD4_KEY };
+  static constexpr auto SCM4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
   using Kb = std::pair<int, Key>;
+  using Btn = std::pair<int, Button>;
   using Cmd = std::tuple<int, Key, std::string_view>;
   using Cmds = std::vector<Cmd>;
 }

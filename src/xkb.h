@@ -8,7 +8,7 @@ static constexpr auto MOD4_KEY { Mod4Mask };
 static constexpr auto CTRL_KEY { ControlMask };
 static constexpr auto SHIFT_KEY { ShiftMask };
 
-enum class Key {
+enum class Key : int {
   Esc       = XK_Escape,
   F1        = XK_F1,
   F2        = XK_F2,
@@ -75,4 +75,12 @@ enum class Key {
   Right     = XK_Right,
   Return    = XK_Return,
   Sleep     = XF86XK_Sleep,
+};
+
+enum class Button : int {
+  Left      = Button1,
+  Middle    = Button2,
+  Right     = Button3,
+  Up        = Button4,
+  Down      = Button5,
 };

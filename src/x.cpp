@@ -2,6 +2,7 @@
 #include <xkb.h>
 #include <X11/Xproto.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/Xinerama.h>
 #include <stdexcept>
 
 bool dobwm::X::error { };
@@ -20,6 +21,7 @@ dobwm::X::X(void) {
   }
 
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
+  //::XUngrabButton(dpy, AnyButton, AnyModifier, root);
   // Modifier Mask
   ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
   int numlockmask { };
@@ -118,7 +120,7 @@ std::vector<::Window> dobwm::X::query_tree(void) {
       ::XWindowAttributes wa { };
       if (::XGetWindowAttributes(dpy, W[i], &wa) &&
           !wa.override_redirect && 
-            /*!XGetTransientForHint(dpy, W[i], &root) &&*/
+            /*!::XGetTransientForHint(dpy, W[i], &root) &&*/
               wa.map_state == IsViewable)
         C.emplace_back(W[i]);
     }
@@ -130,21 +132,21 @@ std::vector<::Window> dobwm::X::query_tree(void) {
   return C;
 }
 
-void dobwm::X::grab_button(const ::Window W, const int MOD, const int B) {
-  ::XGrabButton(dpy, B, MOD & modmask, W, false, 
-      BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
-  //::XGrabButton(dpy, B, MOD | modmask, w, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
-}
-
-void dobwm::X::grab_buttons(void) {
-
-}
-
 void dobwm::X::grab_key(const int MOD, const int K) const {
   const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
-  ::XGrabKey(dpy, KC, MOD & modmask, root, True,
-      GrabModeAsync, GrabModeAsync);
-  //::XGrabKey(dpy, KC, MOD | modmask, root, True, GrabModeAsync, GrabModeAsync);
+  ::XGrabKey(dpy, KC, MOD & modmask, root, true, GrabModeAsync, GrabModeAsync);
+}
+
+void dobwm::X::grab_button(const int MOD, const int B) {
+  ::XGrabButton(dpy, B, MOD & modmask, root, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+}
+
+void dobwm::X::grab_button(const ::Window W, const int MOD, const int B) {
+  ::XGrabButton(dpy, B, MOD & modmask, W, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
+}
+
+void dobwm::X::ungrab_button(const ::Window W, const int MOD, const int B) {
+  ::XUngrabButton(dpy, B, MOD & modmask, W);
 }
 
 ::KeySym dobwm::X::key_press(const ::KeyCode KC) {

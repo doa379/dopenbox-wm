@@ -49,6 +49,7 @@ namespace dobwm {
     std::optional<std::reference_wrapper<Client>> client(const ::Window);
     void del_client(const ::Window);
     void enter_notify(void);
+    void button(void);
   };
 
   enum class XEvent {
@@ -62,8 +63,8 @@ namespace dobwm {
     MapReq = MapRequest,
     ConfigReq = ConfigureRequest,
     Motion = MotionNotify,
-    Button = ButtonPress,
     Key = KeyPress,
+    Button = ButtonPress,
     Enter = EnterNotify
   };
   
@@ -84,14 +85,14 @@ namespace dobwm {
       return ev.xconfigurerequest; }
     void motion_notify(void) const { 
       const ::XMotionEvent &ev { this->ev.xmotion }; };
-    void button(void) const {
-      const ::XButtonEvent &ev { this->ev.xbutton };}
     int key_state(void) const { return ev.xkey.state; }
     ::KeyCode key_code(void) const { return ev.xkey.keycode; }
     //::Window client(void) const { return ev.xclient.window; }
     //::Atom msg_type(void) const { return ev.xclient.message_type; }
-    ::Window crossing_window(void) { return ev.xcrossing.window; }
-
+    int button(void) const { return ev.xbutton.button; }
+    int button_state(void) const { return ev.xbutton.state; }
+    ::Window button_window(void) const { return ev.xbutton.window; }
+    ::Window crossing_window(void) const { return ev.xcrossing.window; }
   };
 
   enum class Wm : int { PROTO, DELWIN, CNT };
@@ -123,9 +124,10 @@ namespace dobwm {
     void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);
-    void grab_button(const ::Window, const int, const int);
-    void grab_buttons(void);
     void grab_key(const int, const int) const;
+    void grab_button(const int, const int);
+    void grab_button(const ::Window, const int, const int);
+    void ungrab_button(const ::Window, const int, const int);
     ::KeySym key_press(::KeyCode);
     void kill_msg(const ::Window) const;
     void kill_msg(void) const;

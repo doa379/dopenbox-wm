@@ -1,5 +1,6 @@
 #include <memory>
 #include <iostream>
+//#include <print>
 #include <algorithm>
 #include <cstdlib>
 #include <dobwm.h>
@@ -31,15 +32,15 @@ void dobwm::Box::key(void) {
   const auto KC { x->key_code() };
   if (x->key_state() == QUIT.first && 
     x->key_press(KC) == static_cast<int>(QUIT.second)) {
-      DBGMSG("Quit WM");
+      ::DBGMSG("Quit WM");
       quit = true;
   } else if (x->key_state() == RESTART.first &&
     x->key_press(KC) == static_cast<int>(RESTART.second)) {
-      DBGMSG("Restart WM");
+      ::DBGMSG("Restart WM");
       restart = true;
   } else if (x->key_state() == KILLCLI.first &&
     x->key_press(KC) == static_cast<int>(KILLCLI.second)) {
-      DBGMSG("Kill Curr");
+      ::DBGMSG("Kill Curr");
       if (curr.has_value()) {
         const auto W { curr.value() };
         sw_focus();
@@ -48,11 +49,11 @@ void dobwm::Box::key(void) {
       }
   } else if (x->key_state() == UNMAPALL.first &&
     x->key_press(KC) == static_cast<int>(UNMAPALL.second)) {
-      DBGMSG("Unmap all");
+      ::DBGMSG("Unmap all");
       unmap_all();
   } else if (x->key_state() == REMAPALL.first &&
     x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
-      DBGMSG("Remap all");
+      ::DBGMSG("Remap all");
       map_all();
   } else if (x->key_state() == SWCLIFOCUS.first &&
     x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
@@ -69,7 +70,7 @@ void dobwm::Box::key(void) {
 }
 
 void dobwm::Box::init(void) {
-  DBGMSG(std::to_string(x->query_tree().size()).c_str());
+  ::DBGMSG(std::to_string(x->query_tree().size()).c_str());
   for (const auto &W : x->query_tree()) {
     x->client(W, BDR_WIDTH, INACTBDR_COLOR);
     x->map_window(W);
@@ -77,7 +78,6 @@ void dobwm::Box::init(void) {
     focus(M.back().T.back().C.back());
   }
   
-  x->grab_buttons();
   x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
   x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
   x->grab_key(UNMAPALL.first, static_cast<int>(UNMAPALL.second));
@@ -88,10 +88,13 @@ void dobwm::Box::init(void) {
   x->grab_key(SELCLEAR.first, static_cast<int>(SELCLEAR.second));
   for (const auto &CMD : CMDS)
     x->grab_key(std::get<0>(CMD), static_cast<int>(std::get<1>(CMD)));
+  
+  //x->grab_button(SELECT.first, static_cast<int>(SELECT.second));
+  //x->grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
 }
 
 void dobwm::Box::configure_request(void) {
-  DBGMSG("Config Req Event");
+  ::DBGMSG("Config Req Event");
   auto &ev { x->configure_request() };
   x->configure_window(ev);
 }
@@ -99,8 +102,8 @@ void dobwm::Box::configure_request(void) {
 void dobwm::Box::map_request(void) {
   const auto W { x->Event::map_request() };
   x->map_window(W);
-  //x->focus(W);
-  //x->client(W, BDR_WIDTH, ACTBDR_COLOR);
+  //x->grab_button(W, SELECT.first, static_cast<int>(SELECT.second));
+  //x->ungrab_button(W, SELECT.first, static_cast<int>(SELECT.second));
   M.back().T.back().C.emplace_back(dobwm::Client { W });
   focus(M.back().T.back().C.back());
 }
@@ -125,7 +128,7 @@ void dobwm::Box::unmap_all(void) const {
 }
 
 void dobwm::Box::cli_msg(void) const {
-  DBGMSG("Client Msg Event");
+  ::DBGMSG("Client Msg Event");
   //x->kill_msg();
 }
 
@@ -190,12 +193,30 @@ void dobwm::Box::enter_notify(void) {
     focus(client(x->crossing_window()).value());
 }
 
+void dobwm::Box::button(void) {
+  const auto C { client(x->button_window()) };
+  ::DBGMSG(std::to_string(x->button_window()).c_str());
+  if (x->button_state() == SELECT.first && 
+    x->button() == static_cast<int>(SELECT.second)) {
+      ::DBGMSG("Button");
+      ::DBGMSG(std::to_string(x->button_window()).c_str());
+      if (curr.has_value() && C.has_value() && 
+          x->button_window() == curr.value())
+        //focus(C.value());
+        ::DBGMSG("On window");
+  } else if (x->button_state() == RESIZE.first && 
+      x->button() == static_cast<int>(RESIZE.second)) {
+    ::DBGMSG("Resize button");
+  }
+}
+
 int main(const int ARGC, const char *ARGV[]) {
 __start__:
   try {
     x = std::make_unique<dobwm::X>();
   } catch (const std::exception &E) {
     std::cerr << "EX: " + std::string(E.what()) << "\n";
+    //std::println("EX: { }", E.what());
     return -1;
   }
   
@@ -203,6 +224,7 @@ __start__:
     msg = std::make_unique<dobwm::Msg>();
   } catch (const std::exception &E) {
     std::cerr << "EX: " + std::string(E.what()) << "\n";
+    //std::println("EX: { }", E.what());
   }
 
   box = std::make_unique<dobwm::Box>();
@@ -233,10 +255,10 @@ __start__:
       box->configure_request();
     else if (x->event() == dobwm::XEvent::Motion)
       x->motion_notify();
-    else if (x->event() == dobwm::XEvent::Button)
-      x->button();
     else if (x->event() == dobwm::XEvent::Key)
       box->key();
+    else if (x->event() == dobwm::XEvent::Button)
+      box->button();
     else if (x->event() == dobwm::XEvent::Enter)
       box->enter_notify();
   }
