@@ -55,10 +55,24 @@ void dobwm::Box::key(void) {
     x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
       ::DBGMSG("Remap all");
       map_all();
-  } else if (x->key_state() == SWCLIFOCUS.first &&
-    x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second)) {
-      if (curr.has_value())
-        sw_focus();
+  }
+
+  if (curr.has_value()) {
+    if (x->key_state() == SWCLIFOCUS.first &&
+      x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second))
+          sw_focus();
+    else if (x->key_state() == MOVEUP.first &&
+      x->key_press(KC) == static_cast<int>(MOVEUP.second))
+      x->move(curr.value(), 0, MOVESTEP_PX);
+    else if (x->key_state() == MOVEDOWN.first &&
+      x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
+      x->move(curr.value(), 0, -MOVESTEP_PX);
+    else if (x->key_state() == MOVELEFT.first &&
+      x->key_press(KC) == static_cast<int>(MOVELEFT.second))
+      x->move(curr.value(), -MOVESTEP_PX, 0);
+    else if (x->key_state() == MOVERIGHT.first &&
+      x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
+      x->move(curr.value(), MOVESTEP_PX, 0);
   }
 
   for (const auto &CMD : CMDS)
@@ -86,6 +100,10 @@ void dobwm::Box::init(void) {
   x->grab_key(SWCLIFOCUS.first, static_cast<int>(SWCLIFOCUS.second));
   x->grab_key(SELTOGGLE.first, static_cast<int>(SELTOGGLE.second));
   x->grab_key(SELCLEAR.first, static_cast<int>(SELCLEAR.second));
+  x->grab_key(MOVEUP.first, static_cast<int>(MOVEUP.second));
+  x->grab_key(MOVEDOWN.first, static_cast<int>(MOVEDOWN.second));
+  x->grab_key(MOVELEFT.first, static_cast<int>(MOVELEFT.second));
+  x->grab_key(MOVERIGHT.first, static_cast<int>(MOVERIGHT.second));
   for (const auto &CMD : CMDS)
     x->grab_key(std::get<0>(CMD), static_cast<int>(std::get<1>(CMD)));
   
@@ -102,8 +120,6 @@ void dobwm::Box::configure_request(void) {
 void dobwm::Box::map_request(void) {
   const auto W { x->Event::map_request() };
   x->map_window(W);
-  //x->grab_button(W, SELECT.first, static_cast<int>(SELECT.second));
-  //x->ungrab_button(W, SELECT.first, static_cast<int>(SELECT.second));
   M.back().T.back().C.emplace_back(dobwm::Client { W });
   focus(M.back().T.back().C.back());
 }
@@ -194,20 +210,29 @@ void dobwm::Box::enter_notify(void) {
 }
 
 void dobwm::Box::button(void) {
-  const auto C { client(x->button_window()) };
-  ::DBGMSG(std::to_string(x->button_window()).c_str());
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      std::ranges::for_each(T.C, [&](const Client &C) { 
+        x->grab_button(C.win, SELECT.first, static_cast<int>(SELECT.second));
+      });
+
   if (x->button_state() == SELECT.first && 
     x->button() == static_cast<int>(SELECT.second)) {
-      ::DBGMSG("Button");
-      ::DBGMSG(std::to_string(x->button_window()).c_str());
-      if (curr.has_value() && C.has_value() && 
-          x->button_window() == curr.value())
-        //focus(C.value());
-        ::DBGMSG("On window");
+    const auto C { client(x->button_window()) };
+    if (C.has_value() && C.value().get().win != curr.value())
+      focus(C.value());
   } else if (x->button_state() == RESIZE.first && 
       x->button() == static_cast<int>(RESIZE.second)) {
     ::DBGMSG("Resize button");
   }
+  
+  /*
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      std::ranges::for_each(T.C, [&](const Client &C) { 
+        x->ungrab_button(C.win, SELECT.first, static_cast<int>(SELECT.second));
+      });
+  */
 }
 
 int main(const int ARGC, const char *ARGV[]) {

@@ -51,6 +51,6 @@ $(EXEC): $(OBJ)
 	@echo $(EXEC).bin
 
 .SUFFIXES: .cpp .o
-.cpp.o: config.h
+.cpp.o: config.h src/dobwm.h
 	@echo CPPC $< "-->" $@
 	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o $@

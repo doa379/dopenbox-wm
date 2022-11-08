@@ -21,7 +21,7 @@ dobwm::X::X(void) {
   }
 
   ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
-  //::XUngrabButton(dpy, AnyButton, AnyModifier, root);
+  ::XUngrabButton(dpy, AnyButton, AnyModifier, root);
   // Modifier Mask
   ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
   int numlockmask { };
@@ -75,6 +75,7 @@ void dobwm::X::focus(::Window w) const {
   ::XSelectInput(dpy, w, PropertyChangeMask | FocusChangeMask | EnterWindowMask);
   ::XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
   ::XRaiseWindow(dpy, w);
+  ::XSync(dpy, false);
 }
 
 bool dobwm::X::isactive(const ::Window w) const {
@@ -172,4 +173,8 @@ void dobwm::X::kill_msg(void) const {
 
 void dobwm::X::kill_client(const ::Window W) const {
   ::XKillClient(dpy, W);
+}
+
+void dobwm::X::move(const ::Window W, const int X, const int Y) const {
+  ::XMoveWindow(dpy, W, X, Y);
 }

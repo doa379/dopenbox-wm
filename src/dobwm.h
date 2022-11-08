@@ -132,5 +132,6 @@ namespace dobwm {
     void kill_msg(const ::Window) const;
     void kill_msg(void) const;
     void kill_client(const ::Window) const;
+    void move(const ::Window, const int, const int) const;
   };
 }

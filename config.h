@@ -14,6 +14,7 @@ namespace dobwm {
   static constexpr auto SELBDR_COLOR      { Palette::Yellow };
   static constexpr auto WINDOW_GAP        { 0 };
   static constexpr auto SLOPPY_FOCUS      { false };
+  static constexpr auto MOVESTEP_PX       { 5 };
   static constexpr auto MODKEY            { M14 };
   // Key Bindings
   static constexpr Kb QUIT                { MODKEY, Key::Q };
