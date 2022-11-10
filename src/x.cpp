@@ -171,10 +171,10 @@ void dobwm::X::kill_msg(void) const {
       kill_client(ev.xclient.window);
 }
 
-void dobwm::X::kill_client(const ::Window W) const {
-  ::XKillClient(dpy, W);
+bool dobwm::X::kill_client(const ::Window W) const {
+  return ::XKillClient(dpy, W) != BadValue;
 }
 
-void dobwm::X::move(const ::Window W, const int X, const int Y) const {
-  ::XMoveWindow(dpy, W, X, Y);
+bool dobwm::X::move(const ::Window W, const int X, const int Y) const {
+  return ::XMoveWindow(dpy, W, X, Y) != (BadMatch | BadValue);
 }

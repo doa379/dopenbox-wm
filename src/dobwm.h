@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <functional>
 #include <optional>
 #include <utility>
 #include <X11/Xutil.h>
@@ -19,6 +20,8 @@ namespace dobwm {
     int x { }, y { }, w { }, h { };
     Mode mode { };
     bool sel { };
+    bool operator ==(const Client &C) const { return C.win == win; }
+    bool operator !=(const Client &C) const { return !(C == *this); }
   };
 
   struct Tag {
@@ -31,8 +34,9 @@ namespace dobwm {
   };
 
   class Box {
+    using HndRef = std::optional<std::reference_wrapper<Client>>;
     std::vector<Mon> M;
-    std::optional<::Window> curr { std::nullopt };
+    HndRef curr;
   public:
     Box(void);
     ~Box(void);
@@ -44,10 +48,10 @@ namespace dobwm {
     void map_all(void) const;
     void unmap_all(void) const;
     void cli_msg(void) const;
-    void focus(const Client &);
+    void focus(Client &);
     void sw_focus(void);
-    std::optional<std::reference_wrapper<Client>> client(const ::Window);
-    void del_client(const ::Window);
+    decltype(curr) client(const ::Window);
+    void del_client(const Client &);
     void enter_notify(void);
     void button(void);
   };
@@ -131,7 +135,7 @@ namespace dobwm {
     ::KeySym key_press(::KeyCode);
     void kill_msg(const ::Window) const;
     void kill_msg(void) const;
-    void kill_client(const ::Window) const;
-    void move(const ::Window, const int, const int) const;
+    bool kill_client(const ::Window) const;
+    bool move(const ::Window, const int, const int) const;
   };
 }

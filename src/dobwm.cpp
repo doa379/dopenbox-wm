@@ -42,10 +42,10 @@ void dobwm::Box::key(void) {
     x->key_press(KC) == static_cast<int>(KILLCLI.second)) {
       ::DBGMSG("Kill Curr");
       if (curr.has_value()) {
-        const auto W { curr.value() };
+        const auto W { curr->get().win };
         sw_focus();
-        x->kill_client(W);
-        del_client(W);
+        if (x->kill_client(W))
+          del_client(*curr);
       }
   } else if (x->key_state() == UNMAPALL.first &&
     x->key_press(KC) == static_cast<int>(UNMAPALL.second)) {
@@ -60,19 +60,19 @@ void dobwm::Box::key(void) {
   if (curr.has_value()) {
     if (x->key_state() == SWCLIFOCUS.first &&
       x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second))
-          sw_focus();
+        sw_focus();
     else if (x->key_state() == MOVEUP.first &&
       x->key_press(KC) == static_cast<int>(MOVEUP.second))
-      x->move(curr.value(), 0, MOVESTEP_PX);
+        x->move(curr->get().win, 0, MOVESTEP_PX);
     else if (x->key_state() == MOVEDOWN.first &&
       x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
-      x->move(curr.value(), 0, -MOVESTEP_PX);
+        x->move(curr->get().win, 0, -MOVESTEP_PX);
     else if (x->key_state() == MOVELEFT.first &&
       x->key_press(KC) == static_cast<int>(MOVELEFT.second))
-      x->move(curr.value(), -MOVESTEP_PX, 0);
+        x->move(curr->get().win, -MOVESTEP_PX, 0);
     else if (x->key_state() == MOVERIGHT.first &&
       x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
-      x->move(curr.value(), MOVESTEP_PX, 0);
+        x->move(curr->get().win, MOVESTEP_PX, 0);
   }
 
   for (const auto &CMD : CMDS)
@@ -148,65 +148,60 @@ void dobwm::Box::cli_msg(void) const {
   //x->kill_msg();
 }
 
-void dobwm::Box::focus(const Client &C) {
-  const auto W { C.win };
+void dobwm::Box::focus(Client &C) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) { 
-        if (C.win == W) {
-          x->focus(W);
-          x->client(W, BDR_WIDTH, ACTBDR_COLOR);
-          curr = W;
-        } else
-          x->client(C.win, BDR_WIDTH, INACTBDR_COLOR);
-      });
+      std::ranges::for_each(T.C, [&](const Client &C) {
+          x->client(C.win, BDR_WIDTH, INACTBDR_COLOR); });
+          
+  x->focus(C.win);
+  x->client(C.win, BDR_WIDTH, ACTBDR_COLOR);
+  curr = HndRef { std::ref(C) };
 }
 
 void dobwm::Box::sw_focus(void) {
-  for (const auto &M : this->M)
-    for (const auto &T : M.T)
+  for (auto &M : this->M)
+    for (auto &T : M.T)
       for (auto c { T.C.begin() }; c < T.C.end(); c++) {
-        if (c->win != curr.value())
-          continue;
-        else if (c < T.C.end() - 1) {
-          focus(*(c + 1));
-          curr = (c + 1)->win;
-          return;
-        } else if (T.C.size() > 1 && c == T.C.end() - 1) {
-          focus(*(c - 1));
-          curr = (c - 1)->win;
-          return;
+        if (*c == curr->get()) {
+          if (c < T.C.end() - 1) {
+            focus(*(c + 1));
+            curr = HndRef { std::ref(*(c + 1)) };
+            return;
+          } else if (T.C.size() > 1 && c == T.C.end() - 1) {
+            focus(*(c - 1));
+            curr = HndRef { std::ref(*(c - 1)) };
+            return;
+          }
         }
       }
 }
 
-std::optional<std::reference_wrapper<dobwm::Client>> dobwm::Box::client(const ::Window W) {
-  for (auto &M : this->M)
-    for (auto &T : M.T)
-      if (auto C { 
-          std::ranges::find_if(T.C, [&](const Client &C) -> bool {
-            return C.win == W; }) }; C < T.C.end())
-        return *C;
+decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
+  for (auto &m : this->M)
+    for (auto &t : m.T)
+      if (auto c { 
+          std::ranges::find_if(t.C, [&](const Client &C) -> bool {
+            return C.win == W; }) }; c < t.C.end())
+        return *c;
  
   return std::nullopt;
 }
 
-void dobwm::Box::del_client(const ::Window W) {
+void dobwm::Box::del_client(const Client &C) {
   for (auto &M : this->M)
     for (auto &T : M.T)
-      if (const auto C { 
-        std::ranges::find_if(T.C, [&](const Client &C) -> bool {
-            return C.win == W; }) }; C < T.C.end()) {
-          T.C.erase(C);
+      if (const auto C_ { std::ranges::find(T.C, C) }; C_ < T.C.end()) {
+          T.C.erase(C_);
           return;
-        }
+      }
 }
 
 void dobwm::Box::enter_notify(void) {
   if (SLOPPY_FOCUS && 
         curr.has_value() && 
-          x->crossing_window() != curr.value())
-    focus(client(x->crossing_window()).value());
+          x->crossing_window() != curr->get().win)
+    focus(*client(x->crossing_window()));
 }
 
 void dobwm::Box::button(void) {
@@ -219,20 +214,18 @@ void dobwm::Box::button(void) {
   if (x->button_state() == SELECT.first && 
     x->button() == static_cast<int>(SELECT.second)) {
     const auto C { client(x->button_window()) };
-    if (C.has_value() && C.value().get().win != curr.value())
-      focus(C.value());
+    if (C.has_value() && C->get() != *curr)
+      focus(C->get());
   } else if (x->button_state() == RESIZE.first && 
       x->button() == static_cast<int>(RESIZE.second)) {
     ::DBGMSG("Resize button");
   }
   
-  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.C, [&](const Client &C) { 
         x->ungrab_button(C.win, SELECT.first, static_cast<int>(SELECT.second));
       });
-  */
 }
 
 int main(const int ARGC, const char *ARGV[]) {
