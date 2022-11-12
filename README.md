@@ -14,10 +14,11 @@ Target(s): BSD, Linux
 
 TODO
 
-Lifecycle of the window mgmt process
+|- -Lifecycle of the window mgmt process-
 |- Xinerama
 |- Refactor X
 |- Import GL
+|- Impl arrangements
 
 Preliminary Xinerama
 

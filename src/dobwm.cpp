@@ -18,7 +18,7 @@ void DBGMSG(const char MSG[]) {
 
 dobwm::Box::Box(void) {
   for (auto i { 0U }; i < Nm; i++) {
-    std::vector<Tag> T(Nt);
+    std::vector<Tag> T { Nt };
     Mon m { T };
     M.emplace_back(std::move(m));
   }
@@ -120,7 +120,7 @@ void dobwm::Box::configure_request(void) {
 void dobwm::Box::map_request(void) {
   const auto W { x->Event::map_request() };
   x->map_window(W);
-  M.back().T.back().C.emplace_back(dobwm::Client { W });
+  M.back().T.back().C.emplace_back(Client { W });
   focus(M.back().T.back().C.back());
 }
 
@@ -178,7 +178,7 @@ void dobwm::Box::sw_focus(void) {
 }
 
 decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
-  for (auto &m : this->M)
+  for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { 
           std::ranges::find_if(t.C, [&](const Client &C) -> bool {
@@ -189,10 +189,10 @@ decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
 }
 
 void dobwm::Box::del_client(const Client &C) {
-  for (auto &M : this->M)
-    for (auto &T : M.T)
-      if (const auto C_ { std::ranges::find(T.C, C) }; C_ < T.C.end()) {
-          T.C.erase(C_);
+  for (auto &m : M)
+    for (auto &t : m.T)
+      if (const auto C_ { std::ranges::find(t.C, C) }; C_ < t.C.end()) {
+          t.C.erase(C_);
           return;
       }
 }

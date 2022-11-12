@@ -14,26 +14,43 @@ namespace dobwm {
   static constexpr std::string_view VER { "-0.0" };
   enum class Mode { DEF, TRA, MON };
 
-  struct Client {
-    ::Window win;
+  struct Wattr {
     std::string name;
     int x { }, y { }, w { }, h { };
     Mode mode { };
-    bool sel { };
-    bool operator ==(const Client &C) const { return C.win == win; }
-    bool operator !=(const Client &C) const { return !(C == *this); }
-  };
-
-  struct Tag {
-    std::vector<Client> C;
-  };
-
-  struct Mon {
-    std::vector<Tag> T;
-    int w { }, h { };
   };
 
   class Box {
+    struct Client {
+      ::Window win;
+      Wattr wa;
+      //// Wattr
+      std::string name;
+      int x { }, y { }, w { }, h { };
+      Mode mode { };
+      ////
+      bool sel { };
+      bool operator ==(const Client &C) const { return C.win == win; }
+      bool operator !=(const Client &C) const { return !(C == *this); }
+    };
+
+    struct Tag {
+      std::vector<Client> C;
+    };
+
+    struct Mon {
+      std::vector<Tag> T;
+      int w { }, h { };
+    };
+    
+    class Input {
+
+    };
+
+    class Arrange {
+
+    };
+
     using HndRef = std::optional<std::reference_wrapper<Client>>;
     std::vector<Mon> M;
     HndRef curr;
@@ -128,6 +145,7 @@ namespace dobwm {
     void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);
+    Wattr client_attr(const ::Window);
     void grab_key(const int, const int) const;
     void grab_button(const int, const int);
     void grab_button(const ::Window, const int, const int);
