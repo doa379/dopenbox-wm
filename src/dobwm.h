@@ -15,20 +15,16 @@ namespace dobwm {
   enum class Mode { DEF, TRA, MON };
 
   struct Wattr {
-    std::string name;
     int x { }, y { }, w { }, h { };
     Mode mode { };
+    ::Window tra;
   };
 
   class Box {
     struct Client {
       ::Window win;
       Wattr wa;
-      //// Wattr
       std::string name;
-      int x { }, y { }, w { }, h { };
-      Mode mode { };
-      ////
       bool sel { };
       bool operator ==(const Client &C) const { return C.win == win; }
       bool operator !=(const Client &C) const { return !(C == *this); }
@@ -60,7 +56,7 @@ namespace dobwm {
     void key(void);
     void init(void);
     void configure_request(void);
-    void map_request(void);
+    void map_request(const ::Window);
     void unmap_request(void);
     void map_all(void) const;
     void unmap_all(void) const;
@@ -145,7 +141,7 @@ namespace dobwm {
     void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);
-    Wattr client_attr(const ::Window);
+    std::optional<Wattr> client_attr(const ::Window);
     void grab_key(const int, const int) const;
     void grab_button(const int, const int);
     void grab_button(const ::Window, const int, const int);

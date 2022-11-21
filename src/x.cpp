@@ -54,6 +54,7 @@ dobwm::X::X(void) {
 }
 
 dobwm::X::~X(void) {
+  //::XUngrabKey(dpy, AnyKey, AnyModifier, root);
   ::XCloseDisplay(dpy);
 }
 
@@ -134,14 +135,16 @@ std::vector<::Window> dobwm::X::query_tree(void) {
 }
 */
 std::vector<::Window> dobwm::X::query_tree(void) {
-  ::Window root { }, parent { };
-  ::Window *W { };  // Children
-  unsigned NW { };
   std::vector<::Window> C;
   ::XGrabServer(dpy);
-  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
-    C = std::vector<::Window> { W, W + NW };
-
+  {
+    ::Window root { }, parent { };
+    ::Window *W { };  // Children
+    unsigned NW { };
+    if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
+      C = std::vector<::Window> { W, W + NW };
+    if (W)
+      ::XFree(W);
   /*
   for (auto i { 0U }; i < NW; i++) {
       ::XWindowAttributes wa { };
@@ -152,17 +155,24 @@ std::vector<::Window> dobwm::X::query_tree(void) {
         C.emplace_back(W[i]);
     }
   */
+  }
 
   ::XUngrabServer(dpy);
-  if (W)
-    ::XFree(W);
-  
   return C;
 }
 
-dobwm::Wattr dobwm::X::client_attr(const ::Window W) {
-  Wattr wa { };
-  return wa;
+std::optional<dobwm::Wattr> dobwm::X::client_attr(const ::Window W) {
+  ::XWindowAttributes wa { };
+  if (::XGetWindowAttributes(dpy, W, &wa) && 
+      wa.override_redirect == 0 &&
+        wa.map_state == IsViewable) {
+    Wattr wattr { wa.x, wa.y, wa.width, wa.height, Mode::DEF };
+    if (::XGetTransientForHint(dpy, W, &wattr.tra) == 0)
+      wattr.mode = Mode::TRA;
+    return wattr;
+  }
+
+  return std::nullopt;
 }
 
 void dobwm::X::grab_key(const int MOD, const int K) const {

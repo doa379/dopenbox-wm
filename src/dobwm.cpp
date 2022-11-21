@@ -63,16 +63,16 @@ void dobwm::Box::key(void) {
         sw_focus();
     else if (x->key_state() == MOVEUP.first &&
       x->key_press(KC) == static_cast<int>(MOVEUP.second))
-        x->move(curr->get().win, 0, MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().wa.x, curr->get().wa.y -= MOVESTEP_PX);
     else if (x->key_state() == MOVEDOWN.first &&
       x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
-        x->move(curr->get().win, 0, -MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().wa.x, curr->get().wa.y += MOVESTEP_PX);
     else if (x->key_state() == MOVELEFT.first &&
       x->key_press(KC) == static_cast<int>(MOVELEFT.second))
-        x->move(curr->get().win, -MOVESTEP_PX, 0);
+        x->move(curr->get().win, curr->get().wa.x -= MOVESTEP_PX, curr->get().wa.y);
     else if (x->key_state() == MOVERIGHT.first &&
       x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
-        x->move(curr->get().win, MOVESTEP_PX, 0);
+        x->move(curr->get().win, curr->get().wa.x += MOVESTEP_PX, curr->get().wa.y);
   }
 
   for (const auto &CMD : CMDS)
@@ -85,12 +85,8 @@ void dobwm::Box::key(void) {
 
 void dobwm::Box::init(void) {
   ::DBGMSG(std::to_string(x->query_tree().size()).c_str());
-  for (const auto &W : x->query_tree()) {
-    x->client(W, BDR_WIDTH, INACTBDR_COLOR);
-    x->map_window(W);
-    M.back().T.back().C.emplace_back(Client { W });
-    focus(M.back().T.back().C.back());
-  }
+  for (const auto &W : x->query_tree())
+    map_request(W);
   
   x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
   x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
@@ -117,11 +113,13 @@ void dobwm::Box::configure_request(void) {
   x->configure_window(ev);
 }
 
-void dobwm::Box::map_request(void) {
-  const auto W { x->Event::map_request() };
-  x->map_window(W);
-  M.back().T.back().C.emplace_back(Client { W });
-  focus(M.back().T.back().C.back());
+void dobwm::Box::map_request(const ::Window W) {
+  const auto WA { x->client_attr(W) };
+  if (WA.has_value()) {
+      x->map_window(W);
+      M.back().T.back().C.emplace_back(Client { W, WA.value() });
+      focus(M.back().T.back().C.back());
+  }
 }
 
 void dobwm::Box::unmap_request(void) {
@@ -153,28 +151,27 @@ void dobwm::Box::focus(Client &C) {
     for (const auto &T : M.T)
       std::ranges::for_each(T.C, [&](const Client &C) {
           x->client(C.win, BDR_WIDTH, INACTBDR_COLOR); });
-          
+
   x->focus(C.win);
   x->client(C.win, BDR_WIDTH, ACTBDR_COLOR);
   curr = HndRef { std::ref(C) };
 }
 
 void dobwm::Box::sw_focus(void) {
-  for (auto &M : this->M)
-    for (auto &T : M.T)
-      for (auto c { T.C.begin() }; c < T.C.end(); c++) {
+  for (auto &m : M)
+    for (auto &t : m.T)
+      for (auto c { t.C.begin() }; c < t.C.end(); c++)
         if (*c == curr->get()) {
-          if (c < T.C.end() - 1) {
+          if (c < t.C.end() - 1) {
             focus(*(c + 1));
             curr = HndRef { std::ref(*(c + 1)) };
             return;
-          } else if (T.C.size() > 1 && c == T.C.end() - 1) {
+          } else if (t.C.size() > 1 && c == t.C.end() - 1) {
             focus(*(c - 1));
             curr = HndRef { std::ref(*(c - 1)) };
             return;
           }
         }
-      }
 }
 
 decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
@@ -198,9 +195,8 @@ void dobwm::Box::del_client(const Client &C) {
 }
 
 void dobwm::Box::enter_notify(void) {
-  if (SLOPPY_FOCUS && 
-        curr.has_value() && 
-          x->crossing_window() != curr->get().win)
+  if (SLOPPY_FOCUS && curr.has_value() && 
+      x->crossing_window() != curr->get().win)
     focus(*client(x->crossing_window()));
 }
 
@@ -229,7 +225,7 @@ void dobwm::Box::button(void) {
 }
 
 int main(const int ARGC, const char *ARGV[]) {
-__start__:
+__START__:
   try {
     x = std::make_unique<dobwm::X>();
   } catch (const std::exception &E) {
@@ -267,9 +263,10 @@ __start__:
       box->cli_msg();
     else if (x->event() == dobwm::XEvent::Config)
       x->configure_notify();
-    else if (x->event() == dobwm::XEvent::MapReq)
-      box->map_request();
-    else if (x->event() == dobwm::XEvent::ConfigReq)
+    else if (x->event() == dobwm::XEvent::MapReq) {
+      const auto W { x->Event::map_request() };
+      box->map_request(W);
+    } else if (x->event() == dobwm::XEvent::ConfigReq)
       box->configure_request();
     else if (x->event() == dobwm::XEvent::Motion)
       x->motion_notify();
@@ -286,7 +283,7 @@ __start__:
     msg.reset();
     box.reset();
     restart = false;
-    goto __start__;
+    goto __START__;
   }
 
   return 0;
