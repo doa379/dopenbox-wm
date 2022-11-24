@@ -16,11 +16,11 @@ void DBGMSG(const char MSG[]) {
   msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
 }
 
-dobwm::Box::Box(void) {
-  for (auto i { 0U }; i < Nm; i++) {
+dobwm::Box::Box(const std::vector<Dim> &M) {
+  for (const auto &D : M) {
     std::vector<Tag> T { Nt };
-    Mon m { T };
-    M.emplace_back(std::move(m));
+    Mon m { T, D };
+    this->M.emplace_back(std::move(m));
   }
 }
 
@@ -63,16 +63,16 @@ void dobwm::Box::key(void) {
         sw_focus();
     else if (x->key_state() == MOVEUP.first &&
       x->key_press(KC) == static_cast<int>(MOVEUP.second))
-        x->move(curr->get().win, curr->get().wa.x, curr->get().wa.y -= MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().wa.d.x, curr->get().wa.d.y -= MOVESTEP_PX);
     else if (x->key_state() == MOVEDOWN.first &&
       x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
-        x->move(curr->get().win, curr->get().wa.x, curr->get().wa.y += MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().wa.d.x, curr->get().wa.d.y += MOVESTEP_PX);
     else if (x->key_state() == MOVELEFT.first &&
       x->key_press(KC) == static_cast<int>(MOVELEFT.second))
-        x->move(curr->get().win, curr->get().wa.x -= MOVESTEP_PX, curr->get().wa.y);
+        x->move(curr->get().win, curr->get().wa.d.x -= MOVESTEP_PX, curr->get().wa.d.y);
     else if (x->key_state() == MOVERIGHT.first &&
       x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
-        x->move(curr->get().win, curr->get().wa.x += MOVESTEP_PX, curr->get().wa.y);
+        x->move(curr->get().win, curr->get().wa.d.x += MOVESTEP_PX, curr->get().wa.d.y);
   }
 
   for (const auto &CMD : CMDS)
@@ -241,8 +241,16 @@ __START__:
     //std::println("EX: { }", E.what());
   }
 
-  box = std::make_unique<dobwm::Box>();
-  box->init();
+  try {
+    const auto M { x->MONS() };
+    box = std::make_unique<dobwm::Box>(M);
+    // Address potential error states
+    box->init();
+  } catch (const std::exception &E) {
+    std::cerr << "EX: " + std::string(E.what()) << "\n";
+    //std::println("EX: { }", E.what());
+    return -1;
+  }
   //std::println("...");
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");

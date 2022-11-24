@@ -3,8 +3,6 @@
 #include <defns.h>
 
 namespace dobwm {
-  // Number of Monitors/Displays
-  static constexpr auto Nm                { 2 };
   // Number of Tags per Monitor
   static constexpr auto Nt                { 4 };
   static constexpr auto BAR_HEIGHT        { 8 };

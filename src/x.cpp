@@ -8,7 +8,7 @@
 bool dobwm::X::error { };
 
 dobwm::X::X(void) {
-  if (!dpy)
+  if (dpy == nullptr)
     throw std::runtime_error("Unable to open display");
 
   root = RootWindow(dpy, DefaultScreen(dpy));
@@ -58,9 +58,30 @@ dobwm::X::~X(void) {
   ::XCloseDisplay(dpy);
 }
 
+dobwm::X::Xinerama::Xinerama(::Display *dpy) {
+  int Nm { };
+  if (auto *INF { ::XineramaQueryScreens(dpy, &Nm) }; INF) {
+    for (auto i { 0 }; i < Nm; i++)
+      D.emplace_back(Dim {
+        INF[i].x_org, INF[i].y_org, INF[i].width, INF[i].height });
+
+    ::XFree(INF);
+  } else
+    throw std::runtime_error("Monitor initialization error");
+}
+
+dobwm::X::Xinerama::~Xinerama(void) {
+
+}
+
 int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
   error = ev->error_code == BadAccess;
   return 0;
+}
+
+std::vector<dobwm::Dim> dobwm::X::MONS(void) const {
+  Xinerama xinerama { dpy };
+  return xinerama.M();
 }
 
 void dobwm::X::client(::Window w, const int BW, const Palette BC) const {
@@ -110,30 +131,7 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
   if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
     ::XSync(dpy, false);
 }
-/*
-std::vector<::Window> dobwm::X::query_tree(void) {
-  ::Window root { }, parent { };
-  ::Window *W { };  // Children
-  unsigned NW { };
-  std::vector<::Window> C;
-  ::XGrabServer(dpy);
-  if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
-    for (auto i { 0U }; i < NW; i++) {
-      ::XWindowAttributes wa { };
-      if (::XGetWindowAttributes(dpy, W[i], &wa) &&
-          !wa.override_redirect && 
-            //!::XGetTransientForHint(dpy, W[i], &root) &&
-              wa.map_state == IsViewable)
-        C.emplace_back(W[i]);
-    }
 
-  ::XUngrabServer(dpy);
-  if (W)
-    ::XFree(W);
-  
-  return C;
-}
-*/
 std::vector<::Window> dobwm::X::query_tree(void) {
   std::vector<::Window> C;
   ::XGrabServer(dpy);
@@ -145,16 +143,6 @@ std::vector<::Window> dobwm::X::query_tree(void) {
       C = std::vector<::Window> { W, W + NW };
     if (W)
       ::XFree(W);
-  /*
-  for (auto i { 0U }; i < NW; i++) {
-      ::XWindowAttributes wa { };
-      if (::XGetWindowAttributes(dpy, W[i], &wa) &&
-          !wa.override_redirect && 
-            //!::XGetTransientForHint(dpy, W[i], &root) &&
-              wa.map_state == IsViewable)
-        C.emplace_back(W[i]);
-    }
-  */
   }
 
   ::XUngrabServer(dpy);
@@ -164,9 +152,9 @@ std::vector<::Window> dobwm::X::query_tree(void) {
 std::optional<dobwm::Wattr> dobwm::X::client_attr(const ::Window W) {
   ::XWindowAttributes wa { };
   if (::XGetWindowAttributes(dpy, W, &wa) && 
-      wa.override_redirect == 0 &&
-        wa.map_state == IsViewable) {
-    Wattr wattr { wa.x, wa.y, wa.width, wa.height, Mode::DEF };
+      wa.override_redirect == 0 /*&&
+        wa.map_state == IsViewable*/) {
+    Wattr wattr { { wa.x, wa.y, wa.width, wa.height }, Mode::DEF };
     if (::XGetTransientForHint(dpy, W, &wattr.tra) == 0)
       wattr.mode = Mode::TRA;
     return wattr;

@@ -14,8 +14,12 @@ namespace dobwm {
   static constexpr std::string_view VER { "-0.0" };
   enum class Mode { DEF, TRA, MON };
 
-  struct Wattr {
+  struct Dim {
     int x { }, y { }, w { }, h { };
+  };
+
+  struct Wattr {
+    Dim d;
     Mode mode { };
     ::Window tra;
   };
@@ -36,22 +40,22 @@ namespace dobwm {
 
     struct Mon {
       std::vector<Tag> T;
-      int w { }, h { };
+      Dim d;
     };
     
     class Input {
-
+    public:
     };
 
     class Arrange {
-
+    public:
     };
 
     using HndRef = std::optional<std::reference_wrapper<Client>>;
     std::vector<Mon> M;
     HndRef curr;
   public:
-    Box(void);
+    Box(const std::vector<Dim> &);
     ~Box(void);
     void key(void);
     void init(void);
@@ -116,6 +120,15 @@ namespace dobwm {
   enum class Net : int { SUPP, STATE, ACT, FSCRN, CNT };
 
   class X : public Event {
+    class Xinerama {
+      std::vector<Dim> D;
+    public:
+      Xinerama(::Display *);
+      ~Xinerama(void);
+      //std::size_t Nm(void) { return D.size(); }
+      std::vector<Dim> M(void) const { return D; }
+    };
+
     static constexpr auto ROOTMASK {
       SubstructureRedirectMask | SubstructureNotifyMask };
     static constexpr auto BUTTONMASK {
@@ -133,6 +146,7 @@ namespace dobwm {
     X(void);
     ~X(void);
     static int XError(::Display *, ::XErrorEvent *);
+    std::vector<Dim> MONS(void) const;
     int next_event(void) { return ::XNextEvent(dpy, &ev); }
     void client(::Window, const int, const Palette) const;
     void focus(::Window) const;
