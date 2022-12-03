@@ -63,16 +63,16 @@ void dobwm::Box::key(void) {
         sw_focus();
     else if (x->key_state() == MOVEUP.first &&
       x->key_press(KC) == static_cast<int>(MOVEUP.second))
-        x->move(curr->get().win, curr->get().wa.d.x, curr->get().wa.d.y -= MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().d.x, curr->get().d.y -= MOVESTEP_PX);
     else if (x->key_state() == MOVEDOWN.first &&
       x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
-        x->move(curr->get().win, curr->get().wa.d.x, curr->get().wa.d.y += MOVESTEP_PX);
+        x->move(curr->get().win, curr->get().d.x, curr->get().d.y += MOVESTEP_PX);
     else if (x->key_state() == MOVELEFT.first &&
       x->key_press(KC) == static_cast<int>(MOVELEFT.second))
-        x->move(curr->get().win, curr->get().wa.d.x -= MOVESTEP_PX, curr->get().wa.d.y);
+        x->move(curr->get().win, curr->get().d.x -= MOVESTEP_PX, curr->get().d.y);
     else if (x->key_state() == MOVERIGHT.first &&
       x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
-        x->move(curr->get().win, curr->get().wa.d.x += MOVESTEP_PX, curr->get().wa.d.y);
+        x->move(curr->get().win, curr->get().d.x += MOVESTEP_PX, curr->get().d.y);
   }
 
   for (const auto &CMD : CMDS)
@@ -114,11 +114,14 @@ void dobwm::Box::configure_request(void) {
 }
 
 void dobwm::Box::map_request(const ::Window W) {
-  const auto WA { x->client_attr(W) };
-  if (WA.has_value()) {
-      x->map_window(W);
-      M.back().T.back().C.emplace_back(Client { W, WA.value() });
-      focus(M.back().T.back().C.back());
+  x->map_window(W);
+  if (const auto D { x->client_attr(W) }; D.has_value()) {
+    //const Wattr WA { D, Mode::DEF };
+    if (x->client_trans(W))
+      return;
+
+    M.back().T.back().C.emplace_back(Client { W, D.value() });
+    focus(M.back().T.back().C.back());
   }
 }
 
@@ -158,6 +161,7 @@ void dobwm::Box::focus(Client &C) {
 }
 
 void dobwm::Box::sw_focus(void) {
+  //char o { 1 }; do orientation
   for (auto &m : M)
     for (auto &t : m.T)
       for (auto c { t.C.begin() }; c < t.C.end(); c++)
@@ -228,20 +232,7 @@ int main(const int ARGC, const char *ARGV[]) {
 __START__:
   try {
     x = std::make_unique<dobwm::X>();
-  } catch (const std::exception &E) {
-    std::cerr << "EX: " + std::string(E.what()) << "\n";
-    //std::println("EX: { }", E.what());
-    return -1;
-  }
-  
-  try {
     msg = std::make_unique<dobwm::Msg>();
-  } catch (const std::exception &E) {
-    std::cerr << "EX: " + std::string(E.what()) << "\n";
-    //std::println("EX: { }", E.what());
-  }
-
-  try {
     const auto M { x->MONS() };
     box = std::make_unique<dobwm::Box>(M);
     // Address potential error states
@@ -251,6 +242,7 @@ __START__:
     //std::println("EX: { }", E.what());
     return -1;
   }
+  
   //std::println("...");
   std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
   ::DBGMSG("WM init.");

@@ -49,7 +49,7 @@ dobwm::X::X(void) {
   ::XChangeProperty(dpy, root, NET[static_cast<int>(Net::SUPP)],
     XA_ATOM, 32, PropModeReplace,
       reinterpret_cast<unsigned char *>(NET.data()),
-        static_cast<int>(dobwm::Net::CNT));
+        static_cast<int>(Net::CNT));
   ::XSync(dpy, false);
 }
 
@@ -148,19 +148,33 @@ std::vector<::Window> dobwm::X::query_tree(void) {
   ::XUngrabServer(dpy);
   return C;
 }
-
+/*
 std::optional<dobwm::Wattr> dobwm::X::client_attr(const ::Window W) {
   ::XWindowAttributes wa { };
   if (::XGetWindowAttributes(dpy, W, &wa) && 
-      wa.override_redirect == 0 /*&&
-        wa.map_state == IsViewable*/) {
-    Wattr wattr { { wa.x, wa.y, wa.width, wa.height }, Mode::DEF };
+      wa.override_redirect == 0 &&
+        wa.map_state == IsViewable) {
+    Wattr wattr { Dim { wa.x, wa.y, wa.width, wa.height }, Mode::DEF };
     if (::XGetTransientForHint(dpy, W, &wattr.tra) == 0)
       wattr.mode = Mode::TRA;
     return wattr;
   }
 
   return std::nullopt;
+}
+*/
+std::optional<dobwm::Dim> dobwm::X::client_attr(const ::Window W) {
+  ::XWindowAttributes wa { };
+  return ::XGetWindowAttributes(dpy, W, &wa) && 
+    wa.override_redirect == 0 &&
+      wa.map_state == IsViewable ? 
+       std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) : 
+        std::nullopt;
+}
+
+bool dobwm::X::client_trans(const ::Window W) {
+  ::Window tra;
+  return ::XGetTransientForHint(dpy, W, &tra) == 0;
 }
 
 void dobwm::X::grab_key(const int MOD, const int K) const {

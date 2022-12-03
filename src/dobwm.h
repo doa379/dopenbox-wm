@@ -12,22 +12,26 @@
 
 namespace dobwm {
   static constexpr std::string_view VER { "-0.0" };
-  enum class Mode { DEF, TRA, MON };
+  //enum class Mode { DEF, TRA, MON };
 
   struct Dim {
     int x { }, y { }, w { }, h { };
   };
 
+  /*
   struct Wattr {
     Dim d;
     Mode mode { };
+    //  
     ::Window tra;
   };
+  */
 
   class Box {
     struct Client {
       ::Window win;
-      Wattr wa;
+      //Wattr wa;
+      Dim d;
       std::string name;
       bool sel { };
       bool operator ==(const Client &C) const { return C.win == win; }
@@ -116,19 +120,22 @@ namespace dobwm {
     ::Window crossing_window(void) const { return ev.xcrossing.window; }
   };
 
-  enum class Wm : int { PROTO, DELWIN, CNT };
-  enum class Net : int { SUPP, STATE, ACT, FSCRN, CNT };
-
   class X : public Event {
     class Xinerama {
       std::vector<Dim> D;
     public:
       Xinerama(::Display *);
       ~Xinerama(void);
-      //std::size_t Nm(void) { return D.size(); }
       std::vector<Dim> M(void) const { return D; }
     };
 
+    class Bar {
+    public:
+      Bar(void) { }
+    };
+
+    enum class Wm : int { PROTO, DELWIN, CNT };
+    enum class Net : int { SUPP, STATE, ACT, FSCRN, CNT };
     static constexpr auto ROOTMASK {
       SubstructureRedirectMask | SubstructureNotifyMask };
     static constexpr auto BUTTONMASK {
@@ -155,7 +162,8 @@ namespace dobwm {
     void unmap_window(const ::Window) const;
     void configure_window(::XConfigureRequestEvent &) const;
     std::vector<::Window> query_tree(void);
-    std::optional<Wattr> client_attr(const ::Window);
+    std::optional<Dim> client_attr(const ::Window);
+    bool client_trans(const ::Window);
     void grab_key(const int, const int) const;
     void grab_button(const int, const int);
     void grab_button(const ::Window, const int, const int);
