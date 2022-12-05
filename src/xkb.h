@@ -1,6 +1,5 @@
 #pragma once
 
-#include <X11/XKBlib.h>
 #include <X11/XF86keysym.h>
 
 static constexpr auto MOD1_KEY { Mod1Mask };
@@ -8,7 +7,7 @@ static constexpr auto MOD4_KEY { Mod4Mask };
 static constexpr auto CTRL_KEY { ControlMask };
 static constexpr auto SHIFT_KEY { ShiftMask };
 
-enum class Key : int {
+enum class Key : ::KeySym {
   Esc       = XK_Escape,
   F1        = XK_F1,
   F2        = XK_F2,
@@ -22,7 +21,6 @@ enum class Key : int {
   F10       = XK_F10,
   F11       = XK_F11,
   F12       = XK_F12,
-  Numlock   = XK_Num_Lock, 
   Gr        = XK_grave,
   N1        = XK_1,
   N2        = XK_2,
@@ -77,7 +75,7 @@ enum class Key : int {
   Sleep     = XF86XK_Sleep,
 };
 
-enum class Button : int {
+enum class Button : unsigned {
   Left      = Button1,
   Middle    = Button2,
   Right     = Button3,

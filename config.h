@@ -33,10 +33,10 @@ namespace dobwm {
   static constexpr Kb RESIZERIGHT         { CM4, Key::Right };
   // Cmd Bindings
   static const Cmds CMDS                  {
-      Cmd { MODKEY, Key::Esc,   "dmenu_run" },
-      Cmd { MODKEY, Key::L,     "slock" },
-      Cmd { MODKEY, Key::Sleep, "slock & yyy M" },
-      Cmd { { }, Key::N, "notify-send \"No Modkey\"" }
+      Cmd { { MODKEY, Key::Esc },   "dmenu_run" },
+      Cmd { { MODKEY, Key::L },     "slock" },
+      Cmd { { MODKEY, Key::Sleep }, "slock & yyy M" },
+      Cmd { { { }, Key::N }, "notify-send \"No Modkey\"" }
   };
   // Mouse Bindings
   static constexpr Btn SELECT             { { }, Button::Left };

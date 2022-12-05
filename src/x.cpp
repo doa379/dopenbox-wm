@@ -1,7 +1,7 @@
 #include <dobwm.h>
-#include <xkb.h>
 #include <X11/Xproto.h>
 #include <X11/Xatom.h>
+#include <X11/XKBlib.h>
 #include <X11/extensions/Xinerama.h>
 #include <stdexcept>
 
@@ -24,11 +24,11 @@ dobwm::X::X(void) {
   ::XUngrabButton(dpy, AnyButton, AnyModifier, root);
   // Modifier Mask
   ::XModifierKeymap *modmap { ::XGetModifierMapping(dpy) };
-  int numlockmask { };
+  unsigned numlockmask { };
   for (int k { }; k < 8; k++)
     for (int j { }; j < modmap->max_keypermod; j++)
       if (modmap->modifiermap[modmap->max_keypermod * k + j] ==
-          ::XKeysymToKeycode(dpy, static_cast<int>(Key::Numlock)))
+          ::XKeysymToKeycode(dpy, XK_Num_Lock))
         numlockmask = (1 << k);
   
   ::XFreeModifiermap(modmap);
@@ -74,22 +74,22 @@ dobwm::X::Xinerama::~Xinerama(void) {
 
 }
 
-int dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) {
+auto dobwm::X::XError(::Display *dpy, ::XErrorEvent *ev) -> int {
   error = ev->error_code == BadAccess;
   return 0;
 }
 
-std::vector<dobwm::Dim> dobwm::X::MONS(void) const {
+auto dobwm::X::MONS(void) const -> std::vector<Dim> {
   Xinerama xinerama { dpy };
   return xinerama.M();
 }
 
-void dobwm::X::client(::Window w, const int BW, const Palette BC) const {
-  ::XSetWindowBorder(dpy, w, static_cast<unsigned long>(BC));
-  ::XSetWindowBorderWidth(dpy, w, BW);
+auto dobwm::X::client(const ::Window W, const unsigned BW, const unsigned long BC) const -> void {
+  ::XSetWindowBorder(dpy, W, BC);
+  ::XSetWindowBorderWidth(dpy, W, BW);
 }
 
-void dobwm::X::focus(::Window w) const {
+auto dobwm::X::focus(::Window w) const -> void {
 	//::XDeleteProperty(dpy, root, NET[static_cast<int>(Net::ACT)]);
   ::XChangeProperty(dpy, root,
     NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
@@ -100,24 +100,24 @@ void dobwm::X::focus(::Window w) const {
   ::XSync(dpy, false);
 }
 
-bool dobwm::X::isactive(const ::Window w) const {
+auto dobwm::X::isactive(const ::Window W) const -> bool {
 // Maybe use post refactoring Xinerama
   return false;
 }
 
-void dobwm::X::map_window(const ::Window W) const {
+auto dobwm::X::map_window(const ::Window W) const -> void {
   ::XMapWindow(dpy, W);
   ::XSync(dpy, false);
 }
 
-void dobwm::X::unmap_window(const ::Window W) const {
+auto dobwm::X::unmap_window(const ::Window W) const -> void {
   ::XUnmapWindow(dpy, W);
   //::XReparentWindow(dpy, W, root, 0, 0);
   //::XDestroyWindow(dpy, W);
   ::XSync(dpy, false);
 }
 
-void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
+auto dobwm::X::configure_window(::XConfigureRequestEvent &ev) const -> void {
   ::XWindowChanges wc {
     ev.x,
     ev.y,
@@ -132,7 +132,7 @@ void dobwm::X::configure_window(::XConfigureRequestEvent &ev) const {
     ::XSync(dpy, false);
 }
 
-std::vector<::Window> dobwm::X::query_tree(void) {
+auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   std::vector<::Window> C;
   ::XGrabServer(dpy);
   {
@@ -148,22 +148,8 @@ std::vector<::Window> dobwm::X::query_tree(void) {
   ::XUngrabServer(dpy);
   return C;
 }
-/*
-std::optional<dobwm::Wattr> dobwm::X::client_attr(const ::Window W) {
-  ::XWindowAttributes wa { };
-  if (::XGetWindowAttributes(dpy, W, &wa) && 
-      wa.override_redirect == 0 &&
-        wa.map_state == IsViewable) {
-    Wattr wattr { Dim { wa.x, wa.y, wa.width, wa.height }, Mode::DEF };
-    if (::XGetTransientForHint(dpy, W, &wattr.tra) == 0)
-      wattr.mode = Mode::TRA;
-    return wattr;
-  }
 
-  return std::nullopt;
-}
-*/
-std::optional<dobwm::Dim> dobwm::X::client_attr(const ::Window W) {
+auto dobwm::X::client_attr(const ::Window W) -> std::optional<Dim> {
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && 
     wa.override_redirect == 0 &&
@@ -172,33 +158,37 @@ std::optional<dobwm::Dim> dobwm::X::client_attr(const ::Window W) {
         std::nullopt;
 }
 
-bool dobwm::X::client_trans(const ::Window W) {
+auto dobwm::X::client_trans(const ::Window W) -> bool {
   ::Window tra;
-  return ::XGetTransientForHint(dpy, W, &tra) == 0;
+  return ::XGetTransientForHint(dpy, W, &tra);
 }
 
-void dobwm::X::grab_key(const int MOD, const int K) const {
+auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::string> {
+  return std::nullopt;
+}
+
+auto dobwm::X::grab_key(const unsigned MOD, const ::KeySym K) const -> void {
   const ::KeyCode KC { ::XKeysymToKeycode(dpy, K) };
   ::XGrabKey(dpy, KC, MOD & modmask, root, true, GrabModeAsync, GrabModeAsync);
 }
 
-void dobwm::X::grab_button(const int MOD, const int B) {
+auto dobwm::X::grab_button(const unsigned MOD, const unsigned B) -> void {
   ::XGrabButton(dpy, B, MOD & modmask, root, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
-void dobwm::X::grab_button(const ::Window W, const int MOD, const int B) {
+auto dobwm::X::grab_button(const ::Window W, const unsigned MOD, const unsigned B) -> void {
   ::XGrabButton(dpy, B, MOD & modmask, W, false, BUTTONMASK, GrabModeAsync, GrabModeAsync, None, None);
 }
 
-void dobwm::X::ungrab_button(const ::Window W, const int MOD, const int B) {
+auto dobwm::X::ungrab_button(const ::Window W, const unsigned MOD, const unsigned B) -> void {
   ::XUngrabButton(dpy, B, MOD & modmask, W);
 }
 
-::KeySym dobwm::X::key_press(const ::KeyCode KC) {
+auto dobwm::X::key_press(const ::KeyCode KC) -> ::KeySym {
   return ::XkbKeycodeToKeysym(dpy, KC, 0, 0);
 }
 
-void dobwm::X::kill_msg(const ::Window W) const {
+auto dobwm::X::kill_msg(const ::Window W) const {
   ::XEvent ev { };
   ev.type = static_cast<int>(XEvent::CliMsg);
   ev.xclient.window = W;
@@ -209,16 +199,16 @@ void dobwm::X::kill_msg(const ::Window W) const {
   ::XSendEvent(dpy, W, false, NoEventMask, &ev);
 }
 
-void dobwm::X::kill_msg(void) const {
+auto dobwm::X::kill_msg(void) const {
   if (ev.xclient.message_type == WM[static_cast<int>(Wm::PROTO)] && 
     ev.xclient.data.l[0] == static_cast<long>(WM[static_cast<int>(Wm::DELWIN)]))
       kill_client(ev.xclient.window);
 }
 
-bool dobwm::X::kill_client(const ::Window W) const {
+auto dobwm::X::kill_client(const ::Window W) const -> bool {
   return ::XKillClient(dpy, W) != BadValue;
 }
 
-bool dobwm::X::move(const ::Window W, const int X, const int Y) const {
+auto dobwm::X::move(const ::Window W, const int X, const int Y) const -> bool {
   return ::XMoveWindow(dpy, W, X, Y) != (BadMatch | BadValue);
 }

@@ -9,11 +9,11 @@
 
 static bool quit { }, restart { };
 static std::unique_ptr<dobwm::X> x;
-static std::unique_ptr<dobwm::Msg> msg;
 static std::unique_ptr<dobwm::Box> box;
+static dobwm::Msg msg;
 
-void DBGMSG(const char MSG[]) {
-  msg->send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
+auto DBGMSG(const char MSG[]) {
+  msg.send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
 }
 
 dobwm::Box::Box(const std::vector<Dim> &M) {
@@ -28,140 +28,18 @@ dobwm::Box::~Box(void) {
 
 }
 
-void dobwm::Box::key(void) {
-  const auto KC { x->key_code() };
-  if (x->key_state() == QUIT.first && 
-    x->key_press(KC) == static_cast<int>(QUIT.second)) {
-      ::DBGMSG("Quit WM");
-      quit = true;
-  } else if (x->key_state() == RESTART.first &&
-    x->key_press(KC) == static_cast<int>(RESTART.second)) {
-      ::DBGMSG("Restart WM");
-      restart = true;
-  } else if (x->key_state() == KILLCLI.first &&
-    x->key_press(KC) == static_cast<int>(KILLCLI.second)) {
-      ::DBGMSG("Kill Curr");
-      if (curr.has_value()) {
-        const auto W { curr->get().win };
-        sw_focus();
-        if (x->kill_client(W))
-          del_client(*curr);
-      }
-  } else if (x->key_state() == UNMAPALL.first &&
-    x->key_press(KC) == static_cast<int>(UNMAPALL.second)) {
-      ::DBGMSG("Unmap all");
-      unmap_all();
-  } else if (x->key_state() == REMAPALL.first &&
-    x->key_press(KC) == static_cast<int>(REMAPALL.second)) {
-      ::DBGMSG("Remap all");
-      map_all();
-  }
-
-  if (curr.has_value()) {
-    if (x->key_state() == SWCLIFOCUS.first &&
-      x->key_press(KC) == static_cast<int>(SWCLIFOCUS.second))
-        sw_focus();
-    else if (x->key_state() == MOVEUP.first &&
-      x->key_press(KC) == static_cast<int>(MOVEUP.second))
-        x->move(curr->get().win, curr->get().d.x, curr->get().d.y -= MOVESTEP_PX);
-    else if (x->key_state() == MOVEDOWN.first &&
-      x->key_press(KC) == static_cast<int>(MOVEDOWN.second))
-        x->move(curr->get().win, curr->get().d.x, curr->get().d.y += MOVESTEP_PX);
-    else if (x->key_state() == MOVELEFT.first &&
-      x->key_press(KC) == static_cast<int>(MOVELEFT.second))
-        x->move(curr->get().win, curr->get().d.x -= MOVESTEP_PX, curr->get().d.y);
-    else if (x->key_state() == MOVERIGHT.first &&
-      x->key_press(KC) == static_cast<int>(MOVERIGHT.second))
-        x->move(curr->get().win, curr->get().d.x += MOVESTEP_PX, curr->get().d.y);
-  }
-
-  for (const auto &CMD : CMDS)
-    if (x->key_state() == std::get<0>(CMD) &&
-        x->key_press(KC) == static_cast<unsigned long>(std::get<1>(CMD))) {
-      ::system(std::string(std::get<2>(CMD)).c_str());
-      break;
-    }
-}
-
-void dobwm::Box::init(void) {
-  ::DBGMSG(std::to_string(x->query_tree().size()).c_str());
-  for (const auto &W : x->query_tree())
-    map_request(W);
-  
-  x->grab_key(QUIT.first, static_cast<int>(QUIT.second));
-  x->grab_key(RESTART.first, static_cast<int>(RESTART.second));
-  x->grab_key(UNMAPALL.first, static_cast<int>(UNMAPALL.second));
-  x->grab_key(REMAPALL.first, static_cast<int>(REMAPALL.second));
-  x->grab_key(KILLCLI.first, static_cast<int>(KILLCLI.second));
-  x->grab_key(SWCLIFOCUS.first, static_cast<int>(SWCLIFOCUS.second));
-  x->grab_key(SELTOGGLE.first, static_cast<int>(SELTOGGLE.second));
-  x->grab_key(SELCLEAR.first, static_cast<int>(SELCLEAR.second));
-  x->grab_key(MOVEUP.first, static_cast<int>(MOVEUP.second));
-  x->grab_key(MOVEDOWN.first, static_cast<int>(MOVEDOWN.second));
-  x->grab_key(MOVELEFT.first, static_cast<int>(MOVELEFT.second));
-  x->grab_key(MOVERIGHT.first, static_cast<int>(MOVERIGHT.second));
-  for (const auto &CMD : CMDS)
-    x->grab_key(std::get<0>(CMD), static_cast<int>(std::get<1>(CMD)));
-  
-  //x->grab_button(SELECT.first, static_cast<int>(SELECT.second));
-  //x->grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
-}
-
-void dobwm::Box::configure_request(void) {
-  ::DBGMSG("Config Req Event");
-  auto &ev { x->configure_request() };
-  x->configure_window(ev);
-}
-
-void dobwm::Box::map_request(const ::Window W) {
-  x->map_window(W);
-  if (const auto D { x->client_attr(W) }; D.has_value()) {
-    //const Wattr WA { D, Mode::DEF };
-    if (x->client_trans(W))
-      return;
-
-    M.back().T.back().C.emplace_back(Client { W, D.value() });
-    focus(M.back().T.back().C.back());
-  }
-}
-
-void dobwm::Box::unmap_request(void) {
-  const auto W { x->unmap_notify() };
-  x->unmap_window(W);
-}
-
-void dobwm::Box::map_all(void) const {
+auto dobwm::Box::focus(Client &C) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.C, [&](const Client &C) {
-        x->map_window(C.win); });
-}
-
-void dobwm::Box::unmap_all(void) const {
-  for (const auto &M : this->M)
-    for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) {
-        x->unmap_window(C.win); });
-}
-
-void dobwm::Box::cli_msg(void) const {
-  ::DBGMSG("Client Msg Event");
-  //x->kill_msg();
-}
-
-void dobwm::Box::focus(Client &C) {
-  for (const auto &M : this->M)
-    for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) {
-          x->client(C.win, BDR_WIDTH, INACTBDR_COLOR); });
+        x->client(C.win, BDR_WIDTH, static_cast<unsigned long>(INACTBDR_COLOR)); });
 
   x->focus(C.win);
-  x->client(C.win, BDR_WIDTH, ACTBDR_COLOR);
+  x->client(C.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR));
   curr = HndRef { std::ref(C) };
 }
 
-void dobwm::Box::sw_focus(void) {
-  //char o { 1 }; do orientation
+auto dobwm::Box::sw_focus(void) {
   for (auto &m : M)
     for (auto &t : m.T)
       for (auto c { t.C.begin() }; c < t.C.end(); c++)
@@ -170,15 +48,134 @@ void dobwm::Box::sw_focus(void) {
             focus(*(c + 1));
             curr = HndRef { std::ref(*(c + 1)) };
             return;
-          } else if (t.C.size() > 1 && c == t.C.end() - 1) {
-            focus(*(c - 1));
-            curr = HndRef { std::ref(*(c - 1)) };
+          } else if (c == t.C.end() - 1) {
+            focus(*t.C.begin());
+            curr = HndRef { std::ref(*t.C.begin()) };
             return;
           }
         }
 }
 
-decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
+auto dobwm::Box::map_request(const ::Window W) {
+  x->map_window(W);
+  if (const auto D { x->client_attr(W) }; D.has_value() &&
+      !x->client_trans(W)) {
+    M.back().T.back().C.emplace_back(Client { W, D.value() });
+    focus(M.back().T.back().C.back());
+  }
+}
+
+auto dobwm::Box::map_all(void) const {
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      std::ranges::for_each(T.C, [&](const Client &C) {
+        x->map_window(C.win); });
+}
+
+auto dobwm::Box::unmap_all(void) const {
+  for (const auto &M : this->M)
+    for (const auto &T : M.T)
+      std::ranges::for_each(T.C, [&](const Client &C) {
+        x->unmap_window(C.win); });
+}
+
+auto dobwm::Box::del_client(const Client &C) {
+  for (auto &m : M)
+    for (auto &t : m.T)
+      if (const auto C_ { std::ranges::find(t.C, C) }; C_ < t.C.end()) {
+          t.C.erase(C_);
+          return;
+      }
+}
+
+auto dobwm::Box::key(void) {
+  const Kb KB { 
+    x->key_state(), static_cast<Key>(x->key_press(x->key_code())) };
+  if (KB == QUIT) {
+      ::DBGMSG("Quit WM");
+      quit = true;
+  } else if (KB == RESTART) {
+      ::DBGMSG("Restart WM");
+      restart = true;
+  } else if (KB == KILLCLI) {
+      ::DBGMSG("Kill Curr");
+      if (curr.has_value()) {
+        const auto W { curr->get().win };
+        sw_focus();
+        if (x->kill_client(W))
+          del_client(*curr);
+      }
+  } else if (KB == UNMAPALL) {
+      ::DBGMSG("Unmap all");
+      unmap_all();
+  } else if (KB == REMAPALL) {
+      ::DBGMSG("Remap all");
+      map_all();
+  }
+
+  if (curr.has_value()) {
+    if (KB == SWCLIFOCUS)
+        sw_focus();
+    else if (KB == MOVEUP)
+        x->move(curr->get().win, curr->get().d.x, curr->get().d.y -= MOVESTEP_PX);
+    else if (KB == MOVEDOWN)
+        x->move(curr->get().win, curr->get().d.x, curr->get().d.y += MOVESTEP_PX);
+    else if (KB == MOVELEFT)
+        x->move(curr->get().win, curr->get().d.x -= MOVESTEP_PX, curr->get().d.y);
+    else if (KB == MOVERIGHT)
+        x->move(curr->get().win, curr->get().d.x += MOVESTEP_PX, curr->get().d.y);
+  }
+  
+  for (const auto &CMD : CMDS)
+    if (KB == std::get<0>(CMD)) {
+      ::system(std::string(std::get<1>(CMD)).c_str());
+      break;
+    }
+}
+
+auto dobwm::Box::init(void) {
+  ::DBGMSG(std::to_string(x->query_tree().size()).c_str());
+  for (const auto &W : x->query_tree())
+    map_request(W);
+  
+  x->grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
+  x->grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
+  x->grab_key(std::get<0>(UNMAPALL), static_cast<unsigned long>(std::get<1>(UNMAPALL)));
+  x->grab_key(std::get<0>(REMAPALL), static_cast<unsigned long>(std::get<1>(REMAPALL)));
+  x->grab_key(std::get<0>(KILLCLI), static_cast<unsigned long>(std::get<1>(KILLCLI)));
+  x->grab_key(std::get<0>(SWCLIFOCUS), static_cast<unsigned long>(std::get<1>(SWCLIFOCUS)));
+  x->grab_key(std::get<0>(SELTOGGLE), static_cast<unsigned long>(std::get<1>(SELTOGGLE)));
+  x->grab_key(std::get<0>(SELCLEAR), static_cast<unsigned long>(std::get<1>(SELCLEAR)));
+  x->grab_key(std::get<0>(MOVEUP), static_cast<unsigned long>(std::get<1>(MOVEUP)));
+  x->grab_key(std::get<0>(MOVEDOWN), static_cast<unsigned long>(std::get<1>(MOVEDOWN)));
+  x->grab_key(std::get<0>(MOVELEFT), static_cast<unsigned long>(std::get<1>(MOVELEFT)));
+  x->grab_key(std::get<0>(MOVERIGHT), static_cast<unsigned long>(std::get<1>(MOVERIGHT)));
+  for (const auto &CMD : CMDS) {
+    const Kb KB { std::get<0>(CMD) };
+    x->grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
+  }
+  
+  //x->grab_button(SELECT.first, static_cast<int>(SELECT.second));
+  //x->grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
+}
+
+auto dobwm::Box::configure_request(void) {
+  ::DBGMSG("Config Req Event");
+  auto &ev { x->configure_request() };
+  x->configure_window(ev);
+}
+
+auto dobwm::Box::unmap_request(void) {
+  const auto W { x->unmap_notify() };
+  x->unmap_window(W);
+}
+
+auto dobwm::Box::cli_msg(void) const {
+  ::DBGMSG("Client Msg Event");
+  //x->kill_msg();
+}
+
+auto dobwm::Box::client(const ::Window W) -> HndRef {
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto c { 
@@ -189,50 +186,40 @@ decltype(dobwm::Box::curr) dobwm::Box::client(const ::Window W) {
   return std::nullopt;
 }
 
-void dobwm::Box::del_client(const Client &C) {
-  for (auto &m : M)
-    for (auto &t : m.T)
-      if (const auto C_ { std::ranges::find(t.C, C) }; C_ < t.C.end()) {
-          t.C.erase(C_);
-          return;
-      }
-}
-
-void dobwm::Box::enter_notify(void) {
+auto dobwm::Box::enter_notify(void) {
   if (SLOPPY_FOCUS && curr.has_value() && 
       x->crossing_window() != curr->get().win)
     focus(*client(x->crossing_window()));
 }
 
-void dobwm::Box::button(void) {
+auto dobwm::Box::button(void) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.C, [&](const Client &C) { 
-        x->grab_button(C.win, SELECT.first, static_cast<int>(SELECT.second));
+        x->grab_button(C.win, SELECT.first, static_cast<unsigned>(SELECT.second));
       });
 
   if (x->button_state() == SELECT.first && 
-    x->button() == static_cast<int>(SELECT.second)) {
+    x->button() == static_cast<unsigned>(SELECT.second)) {
     const auto C { client(x->button_window()) };
     if (C.has_value() && C->get() != *curr)
       focus(C->get());
   } else if (x->button_state() == RESIZE.first && 
-      x->button() == static_cast<int>(RESIZE.second)) {
+      x->button() == static_cast<unsigned>(RESIZE.second)) {
     ::DBGMSG("Resize button");
   }
   
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.C, [&](const Client &C) { 
-        x->ungrab_button(C.win, SELECT.first, static_cast<int>(SELECT.second));
+        x->ungrab_button(C.win, SELECT.first, static_cast<unsigned>(SELECT.second));
       });
 }
 
-int main(const int ARGC, const char *ARGV[]) {
+auto main(const int ARGC, const char *ARGV[]) -> int {
 __START__:
   try {
     x = std::make_unique<dobwm::X>();
-    msg = std::make_unique<dobwm::Msg>();
     const auto M { x->MONS() };
     box = std::make_unique<dobwm::Box>(M);
     // Address potential error states
@@ -280,7 +267,6 @@ __START__:
 
   if (restart) {
     x.reset();
-    msg.reset();
     box.reset();
     restart = false;
     goto __START__;

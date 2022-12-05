@@ -34,7 +34,7 @@ EXEC = dobwm
   EXEC = dobwm~dbg
 .endif
 
-SRC = src/dobwm.cpp src/x.cpp src/msg.cpp
+SRC = src/x.cpp src/msg.cpp src/dobwm.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
