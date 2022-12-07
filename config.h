@@ -16,7 +16,6 @@ namespace dobwm {
   static constexpr auto MODKEY            { M14 };
   // Key Bindings
   static constexpr Kb QUIT                { MODKEY, Key::Q };
-  static constexpr Kb RESTART             { MODKEY, Key::R };
   static constexpr Kb UNMAPALL            { MODKEY, Key::U };
   static constexpr Kb REMAPALL            { MODKEY, Key::V };
   static constexpr Kb KILLCLI             { MODKEY, Key::K };

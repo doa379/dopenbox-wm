@@ -149,18 +149,18 @@ auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   return C;
 }
 
-auto dobwm::X::client_attr(const ::Window W) -> std::optional<Dim> {
+auto dobwm::X::client_trans(const ::Window W) -> bool {
+  ::Window tra;
+  return ::XGetTransientForHint(dpy, W, &tra);
+}
+
+auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && 
     wa.override_redirect == 0 &&
       wa.map_state == IsViewable ? 
-       std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) : 
-        std::nullopt;
-}
-
-auto dobwm::X::client_trans(const ::Window W) -> bool {
-  ::Window tra;
-  return ::XGetTransientForHint(dpy, W, &tra);
+        std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) : 
+          std::nullopt;
 }
 
 auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::string> {

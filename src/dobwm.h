@@ -36,7 +36,7 @@ namespace dobwm {
   protected:
     ::XEvent ev { };
   public:
-    auto event(void) const -> XEvent{
+    auto event(void) const -> XEvent {
       return static_cast<dobwm::XEvent>(ev.type); }
     //void create_notify(void) const { (void) ev.xcreatewindow; }
     //void destroy_notify(void) const { (void) ev.xdestroywindow; }
@@ -93,7 +93,7 @@ namespace dobwm {
     ~X(void);
     static auto XError(::Display *, ::XErrorEvent *) -> int;
     auto MONS(void) const -> std::vector<Dim>;
-    auto next_event(void) -> int { return ::XNextEvent(dpy, &ev); }
+    auto next_event(void) -> bool { return ::XNextEvent(dpy, &ev) == 0; }
     auto client(const ::Window, const unsigned, const unsigned long) const -> void;
     auto focus(::Window) const -> void;
     auto isactive(const ::Window) const -> bool;
@@ -101,8 +101,8 @@ namespace dobwm {
     auto unmap_window(const ::Window) const -> void;
     auto configure_window(::XConfigureRequestEvent &) const -> void;
     auto query_tree(void) -> std::vector<::Window>;
-    auto client_attr(const ::Window) -> std::optional<Dim>;
     auto client_trans(const ::Window) -> bool;
+    auto client_dim(const ::Window) -> std::optional<Dim>;
     auto client_hint(const ::Window) -> std::optional<std::string>;
     auto grab_key(const unsigned, const ::KeySym) const -> void;
     auto grab_button(const unsigned, const unsigned) -> void;
@@ -144,10 +144,11 @@ namespace dobwm {
     };
 
     using HndRef = std::optional<std::reference_wrapper<Client>>;
+    X x;
     std::vector<Mon> M;
     HndRef curr;
   public:
-    Box(const std::vector<Dim> &);
+    Box(void);
     ~Box(void);
     auto focus(Client &);
     auto sw_focus(void);
@@ -163,5 +164,6 @@ namespace dobwm {
     auto client(const ::Window) -> HndRef;
     auto enter_notify(void);
     auto button(void);
+    auto ev(void);
   };
 }
