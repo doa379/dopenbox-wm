@@ -15,7 +15,6 @@ namespace dobwm {
   static constexpr auto SCM4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
   using Kb = std::pair<unsigned, Key>;
   using Btn = std::pair<unsigned, Button>;
-  //using Cmd = std::tuple<int, Key, std::string_view>;
   using Cmd = std::pair<Kb, std::string_view>;
   using Cmds = std::vector<Cmd>;
 }

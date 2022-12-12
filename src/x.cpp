@@ -136,8 +136,7 @@ auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   std::vector<::Window> C;
   ::XGrabServer(dpy);
   {
-    ::Window root { }, parent { };
-    ::Window *W { };  // Children
+    ::Window root { }, parent { }, *W { };  // Children
     unsigned NW { };
     if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
       C = std::vector<::Window> { W, W + NW };
@@ -155,12 +154,21 @@ auto dobwm::X::client_trans(const ::Window W) -> bool {
 }
 
 auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
+  /*
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && 
     wa.override_redirect == 0 &&
       wa.map_state == IsViewable ? 
         std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) : 
           std::nullopt;
+  */
+  ::XWindowAttributes wa { };
+  if (::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0) {
+      map_window(W);
+      return std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height });
+  }
+  
+  return std::nullopt;
 }
 
 auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::string> {

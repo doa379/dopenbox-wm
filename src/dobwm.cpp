@@ -1,4 +1,3 @@
-#include <memory>
 #include <iostream>
 //#include <print>
 #include <algorithm>
@@ -26,62 +25,69 @@ dobwm::Box::~Box(void) {
 
 }
 
-auto dobwm::Box::focus(Client &C) {
+auto dobwm::Box::focus(Hnd &H) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) {
-        x.client(C.win, BDR_WIDTH, static_cast<unsigned long>(INACTBDR_COLOR)); });
+      std::ranges::for_each(T.H, [&](const Hnd &H) {
+        x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(INACTBDR_COLOR)); });
 
-  x.focus(C.win);
-  x.client(C.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR));
-  curr = HndRef { std::ref(C) };
+  x.focus(H.win);
+  x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR));
+  curr = HndRef { std::ref(H) };
 }
 
 auto dobwm::Box::sw_focus(void) {
   for (auto &m : M)
     for (auto &t : m.T)
-      for (auto c { t.C.begin() }; c < t.C.end(); c++)
-        if (*c == curr->get()) {
-          if (c < t.C.end() - 1) {
-            focus(*(c + 1));
-            curr = HndRef { std::ref(*(c + 1)) };
+      for (auto h { t.H.begin() }; h < t.H.end(); h++)
+        if (*h == curr->get()) {
+          if (h < t.H.end() - 1) {
+            focus(*(h + 1));
+            curr = HndRef { std::ref(*(h + 1)) };
             return;
-          } else if (c == t.C.end() - 1) {
-            focus(*t.C.begin());
-            curr = HndRef { std::ref(*t.C.begin()) };
+          } else if (h == t.H.end() - 1) {
+            focus(*t.H.begin());
+            curr = HndRef { std::ref(*t.H.begin()) };
             return;
           }
         }
 }
 
 auto dobwm::Box::map_request(const ::Window W) {
+  /*
   x.map_window(W);
   if (const auto D { x.client_dim(W) }; D.has_value() &&
       !x.client_trans(W)) {
-    M.back().T.back().C.emplace_back(Client { W, D.value() });
-    focus(M.back().T.back().C.back());
+    M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
+    focus(M.back().T.back().H.back());
+  }
+  */
+
+  if (const auto D { x.client_dim(W) }; D.has_value()) {
+    M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
+    focus(M.back().T.back().H.back());
   }
 }
 
 auto dobwm::Box::map_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) {
-        x.map_window(C.win); });
+      std::ranges::for_each(T.H, [&](const Hnd &H) {
+        x.map_window(H.win); });
 }
 
 auto dobwm::Box::unmap_all(void) const {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) {
-        x.unmap_window(C.win); });
+      std::ranges::for_each(T.H, [&](const Hnd &H) {
+        x.unmap_window(H.win); });
 }
 
-auto dobwm::Box::del_client(const Client &C) {
+auto dobwm::Box::del_hnd(const Hnd &H) {
   for (auto &m : M)
     for (auto &t : m.T)
-      if (const auto C_ { std::ranges::find(t.C, C) }; C_ < t.C.end()) {
-          t.C.erase(C_);
+      if (const auto H_ { std::ranges::find(t.H, H) }; H_ < t.H.end()) {
+          t.H.erase(H_);
           return;
       }
 }
@@ -98,7 +104,7 @@ auto dobwm::Box::key(void) {
         const auto W { curr->get().win };
         sw_focus();
         if (x.kill_client(W))
-          del_client(*curr);
+          del_hnd(*curr);
       }
   } else if (KB == UNMAPALL) {
       ::DBGMSG("Unmap all");
@@ -124,7 +130,13 @@ auto dobwm::Box::key(void) {
   for (const auto &CMD : CMDS)
     if (KB == std::get<0>(CMD)) {
       ::system(std::string(std::get<1>(CMD)).c_str());
-      break;
+      return;
+    }
+  
+  for (const auto &CMD : CMDS_ASYNC)
+    if (KB == std::get<0>(CMD)) {
+      // fork()
+      return;
     }
 }
 
@@ -145,10 +157,11 @@ auto dobwm::Box::init(void) {
   x.grab_key(std::get<0>(MOVEDOWN), static_cast<unsigned long>(std::get<1>(MOVEDOWN)));
   x.grab_key(std::get<0>(MOVELEFT), static_cast<unsigned long>(std::get<1>(MOVELEFT)));
   x.grab_key(std::get<0>(MOVERIGHT), static_cast<unsigned long>(std::get<1>(MOVERIGHT)));
-  for (const auto &CMD : CMDS) {
-    const Kb KB { std::get<0>(CMD) };
-    x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
-  }
+  for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
+    for (const auto &CMD : CMDS_) {
+      const Kb KB { std::get<0>(CMD) };
+      x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
+    }
   
   //x.grab_button(SELECT.first, static_cast<int>(SELECT.second));
   //x.grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
@@ -170,44 +183,45 @@ auto dobwm::Box::cli_msg(void) const {
   //x.kill_msg();
 }
 
-auto dobwm::Box::client(const ::Window W) -> HndRef {
+auto dobwm::Box::hnd(const ::Window W) -> HndRef {
   for (auto &m : M)
     for (auto &t : m.T)
-      if (auto c { 
-          std::ranges::find_if(t.C, [&](const Client &C) -> bool {
-            return C.win == W; }) }; c < t.C.end())
-        return *c;
+      if (auto h { 
+          std::ranges::find_if(t.H, [&](const Hnd &H) -> bool {
+            return H.win == W; }) }; h < t.H.end())
+        return *h;
  
   return std::nullopt;
 }
 
 auto dobwm::Box::enter_notify(void) {
-  if (SLOPPY_FOCUS && curr.has_value() && 
+  if (SLOPPY_FOCUS && curr.has_value() &&
       x.crossing_window() != curr->get().win)
-    focus(*client(x.crossing_window()));
+    focus(*hnd(x.crossing_window()));
 }
 
 auto dobwm::Box::button(void) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) { 
-        x.grab_button(C.win, SELECT.first, static_cast<unsigned>(SELECT.second));
+      std::ranges::for_each(T.H, [&](const Hnd &H) { 
+        x.grab_button(H.win, std::get<0>(SELECT), 
+          static_cast<unsigned>(std::get<1>(SELECT)));
       });
 
-  if (x.button_state() == SELECT.first && 
-    x.button() == static_cast<unsigned>(SELECT.second)) {
-    const auto C { client(x.button_window()) };
-    if (C.has_value() && C->get() != *curr)
-      focus(C->get());
-  } else if (x.button_state() == RESIZE.first && 
-      x.button() == static_cast<unsigned>(RESIZE.second)) {
+  const Btn B { x.button_state(), static_cast<Button>(x.button()) }; 
+  if (B == SELECT) {
+    const auto H { hnd(x.button_window()) };
+    if (H.has_value() && H->get() != *curr)
+      focus(H->get());
+  } else if (B == RESIZE) {
     ::DBGMSG("Resize button");
   }
   
   for (const auto &M : this->M)
     for (const auto &T : M.T)
-      std::ranges::for_each(T.C, [&](const Client &C) { 
-        x.ungrab_button(C.win, SELECT.first, static_cast<unsigned>(SELECT.second));
+      std::ranges::for_each(T.H, [&](const Hnd &H) { 
+        x.ungrab_button(H.win, std::get<0>(SELECT),
+          static_cast<unsigned>(std::get<1>(SELECT)));
       });
 }
 

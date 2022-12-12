@@ -11,7 +11,6 @@
 
 namespace dobwm {
   static constexpr std::string_view VER { "-0.0" };
-  //enum class Mode { DEF, TRA, MON };
   struct Dim {
     int x { }, y { }, w { }, h { };
   };
@@ -65,7 +64,7 @@ namespace dobwm {
     public:
       Xinerama(::Display *);
       ~Xinerama(void);
-      std::vector<Dim> M(void) const { return D; }
+      auto M(void) -> std::vector<Dim> & { return D; }
     };
 
     class Bar {
@@ -116,18 +115,17 @@ namespace dobwm {
   };
   
   class Box {
-    struct Client {
+    struct Hnd {
       ::Window win;
-      //Wattr wa;
       Dim d;
+      bool mut, sel { };
       std::string name;
-      bool sel { };
-      bool operator ==(const Client &C) const { return C.win == win; }
-      bool operator !=(const Client &C) const { return !(C == *this); }
+      auto operator ==(const Hnd &H) const -> bool { return H.win == win; }
+      auto operator !=(const Hnd &H) const -> bool { return !(H == *this); }
     };
 
     struct Tag {
-      std::vector<Client> C;
+      std::vector<Hnd> H;
     };
 
     struct Mon {
@@ -143,25 +141,25 @@ namespace dobwm {
     public:
     };
 
-    using HndRef = std::optional<std::reference_wrapper<Client>>;
+    using HndRef = std::optional<std::reference_wrapper<Hnd>>;
     X x;
     std::vector<Mon> M;
     HndRef curr;
   public:
     Box(void);
     ~Box(void);
-    auto focus(Client &);
+    auto focus(Hnd &);
     auto sw_focus(void);
     auto map_request(const ::Window);
     auto map_all(void) const;
     auto unmap_all(void) const;
-    auto del_client(const Client &);
+    auto del_hnd(const Hnd &);
     auto key(void);
     auto init(void);
     auto configure_request(void);
     auto unmap_request(void);
     auto cli_msg(void) const;
-    auto client(const ::Window) -> HndRef;
+    auto hnd(const ::Window) -> HndRef;
     auto enter_notify(void);
     auto button(void);
     auto ev(void);

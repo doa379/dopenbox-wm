@@ -37,6 +37,9 @@ namespace dobwm {
       Cmd { { MODKEY, Key::Sleep }, "slock & yyy M" },
       Cmd { { { }, Key::N }, "notify-send \"No Modkey\"" }
   };
+  static const Cmds CMDS_ASYNC            {
+      Cmd { { MODKEY, Key::Return }, "xterm" }
+  };
   // Mouse Bindings
   static constexpr Btn SELECT             { { }, Button::Left };
   static constexpr Btn RESIZE             { MODKEY, Button::Right };
