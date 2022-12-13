@@ -2,6 +2,7 @@
 //#include <print>
 #include <algorithm>
 #include <cstdlib>
+#include <sstream>
 #include <dobwm.h>
 #include <msg.h>
 #include <../config.h>
@@ -13,16 +14,95 @@ auto DBGMSG(const char MSG[]) {
   msg.send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
 }
 
+template<typename T>
+concept Stringular = requires(T &t) {
+  { t } -> std::convertible_to<std::basic_string<char>>;
+};
+
+template<typename T>
+concept Strangular = requires(T &t) {
+  { t } -> std::convertible_to<std::basic_string_view<char>>;
+};
+
+class Dbg {
+  struct Arg {
+    std::stringstream ss;
+    template<typename T>
+    auto operator <<(const T &t) -> Arg & {
+      ss << t;
+      ss.flush();
+      return *this;
+    }
+  };
+  
+  Arg arg;
+  public:
+  template<typename T, typename ...Args>
+  //requires (Stringular<T> || Strangular<T>)
+  auto msg(const T &t, const Args &...args) {
+    if constexpr (std::is_convertible_v<T, std::string> ||
+                    std::is_convertible_v<T, std::string_view>)
+      arg << t << " ";
+    else
+      arg << std::to_string(t) << " ";
+    msg(args...);
+  }
+  
+  auto msg(void) {
+    std::cout << arg.ss.str() << "\n";
+    arg.ss.clear();
+  }
+};
+
+template<typename ...Args>
+auto DBGMSG(const Args &...args) {
+  /*static*/ Dbg dbg;
+  dbg.msg(args...);
+}
+
 dobwm::Box::Box(void) {
   for (const auto &D : x.MONS()) {
     std::vector<Tag> T { Nt };
     Mon m { T, D };
     this->M.emplace_back(std::move(m));
   }
+  // Offset to Input
+  const auto WW { x.query_tree() };
+  ::DBGMSG("Init clients", WW.size());
+  for (const auto &W : WW)
+    map_request(W);
+  
+  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
+  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
+  x.grab_key(std::get<0>(UNMAPALL), static_cast<unsigned long>(std::get<1>(UNMAPALL)));
+  x.grab_key(std::get<0>(REMAPALL), static_cast<unsigned long>(std::get<1>(REMAPALL)));
+  x.grab_key(std::get<0>(KILLCLI), static_cast<unsigned long>(std::get<1>(KILLCLI)));
+  x.grab_key(std::get<0>(SWCLIFOCUS), static_cast<unsigned long>(std::get<1>(SWCLIFOCUS)));
+  x.grab_key(std::get<0>(SELTOGGLE), static_cast<unsigned long>(std::get<1>(SELTOGGLE)));
+  x.grab_key(std::get<0>(SELCLEAR), static_cast<unsigned long>(std::get<1>(SELCLEAR)));
+  x.grab_key(std::get<0>(MOVEUP), static_cast<unsigned long>(std::get<1>(MOVEUP)));
+  x.grab_key(std::get<0>(MOVEDOWN), static_cast<unsigned long>(std::get<1>(MOVEDOWN)));
+  x.grab_key(std::get<0>(MOVELEFT), static_cast<unsigned long>(std::get<1>(MOVELEFT)));
+  x.grab_key(std::get<0>(MOVERIGHT), static_cast<unsigned long>(std::get<1>(MOVERIGHT)));
+  for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
+    for (const auto &CMD : CMDS_) {
+      const Kb KB { std::get<0>(CMD) };
+      x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
+    }
+  
+  //x.grab_button(SELECT.first, static_cast<int>(SELECT.second));
+  //x.grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
 }
 
 dobwm::Box::~Box(void) {
 
+}
+
+auto dobwm::Box::print_hint(const ::Window W) {
+  const auto R { x.client_hint(W) };
+  if (R.has_value())
+    ::DBGMSG("Hint (class, res).", 
+        std::get<0>(R.value()), std::get<1>(R.value()));
 }
 
 auto dobwm::Box::focus(Hnd &H) {
@@ -34,6 +114,8 @@ auto dobwm::Box::focus(Hnd &H) {
   x.focus(H.win);
   x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR));
   curr = HndRef { std::ref(H) };
+  ::DBGMSG("Focus.", curr->get().win);
+  print_hint(curr->get().win);
 }
 
 auto dobwm::Box::sw_focus(void) {
@@ -53,7 +135,7 @@ auto dobwm::Box::sw_focus(void) {
         }
 }
 
-auto dobwm::Box::map_request(const ::Window W) {
+auto dobwm::Box::map_request(const ::Window W) -> void {
   /*
   x.map_window(W);
   if (const auto D { x.client_dim(W) }; D.has_value() &&
@@ -67,6 +149,9 @@ auto dobwm::Box::map_request(const ::Window W) {
     M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
     focus(M.back().T.back().H.back());
   }
+  
+  ::DBGMSG("Mapped.", W);
+  print_hint(W);
 }
 
 auto dobwm::Box::map_all(void) const {
@@ -96,10 +181,10 @@ auto dobwm::Box::key(void) {
   const Kb KB { 
     x.key_state(), static_cast<Key>(x.key_press(x.key_code())) };
   if (KB == QUIT) {
-      ::DBGMSG("Quit WM");
+      //::DBGMSG("Quit WM");
       quit = true;
   } else if (KB == KILLCLI) {
-      ::DBGMSG("Kill Curr");
+      //::DBGMSG("Kill Curr");
       if (curr.has_value()) {
         const auto W { curr->get().win };
         sw_focus();
@@ -107,10 +192,10 @@ auto dobwm::Box::key(void) {
           del_hnd(*curr);
       }
   } else if (KB == UNMAPALL) {
-      ::DBGMSG("Unmap all");
+      //::DBGMSG("Unmap all");
       unmap_all();
   } else if (KB == REMAPALL) {
-      ::DBGMSG("Remap all");
+      //::DBGMSG("Remap all");
       map_all();
   }
 
@@ -140,35 +225,8 @@ auto dobwm::Box::key(void) {
     }
 }
 
-auto dobwm::Box::init(void) {
-  ::DBGMSG(std::to_string(x.query_tree().size()).c_str());
-  for (const auto &W : x.query_tree())
-    map_request(W);
-  
-  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
-  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
-  x.grab_key(std::get<0>(UNMAPALL), static_cast<unsigned long>(std::get<1>(UNMAPALL)));
-  x.grab_key(std::get<0>(REMAPALL), static_cast<unsigned long>(std::get<1>(REMAPALL)));
-  x.grab_key(std::get<0>(KILLCLI), static_cast<unsigned long>(std::get<1>(KILLCLI)));
-  x.grab_key(std::get<0>(SWCLIFOCUS), static_cast<unsigned long>(std::get<1>(SWCLIFOCUS)));
-  x.grab_key(std::get<0>(SELTOGGLE), static_cast<unsigned long>(std::get<1>(SELTOGGLE)));
-  x.grab_key(std::get<0>(SELCLEAR), static_cast<unsigned long>(std::get<1>(SELCLEAR)));
-  x.grab_key(std::get<0>(MOVEUP), static_cast<unsigned long>(std::get<1>(MOVEUP)));
-  x.grab_key(std::get<0>(MOVEDOWN), static_cast<unsigned long>(std::get<1>(MOVEDOWN)));
-  x.grab_key(std::get<0>(MOVELEFT), static_cast<unsigned long>(std::get<1>(MOVELEFT)));
-  x.grab_key(std::get<0>(MOVERIGHT), static_cast<unsigned long>(std::get<1>(MOVERIGHT)));
-  for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
-    for (const auto &CMD : CMDS_) {
-      const Kb KB { std::get<0>(CMD) };
-      x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
-    }
-  
-  //x.grab_button(SELECT.first, static_cast<int>(SELECT.second));
-  //x.grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
-}
-
 auto dobwm::Box::configure_request(void) {
-  ::DBGMSG("Config Req Event");
+  ::DBGMSG("Ev.", "Config Req Event");
   auto &ev { x.configure_request() };
   x.configure_window(ev);
 }
@@ -179,7 +237,7 @@ auto dobwm::Box::unmap_request(void) {
 }
 
 auto dobwm::Box::cli_msg(void) const {
-  ::DBGMSG("Client Msg Event");
+  ::DBGMSG("Ev.", "Client Msg Event");
   //x.kill_msg();
 }
 
@@ -214,7 +272,7 @@ auto dobwm::Box::button(void) {
     if (H.has_value() && H->get() != *curr)
       focus(H->get());
   } else if (B == RESIZE) {
-    ::DBGMSG("Resize button");
+    ::DBGMSG("Ev.", "Resize button");
   }
   
   for (const auto &M : this->M)
@@ -253,15 +311,14 @@ auto dobwm::Box::ev(void) {
 
 auto main(const int ARGC, const char *ARGV[]) -> int {
   try {
-    dobwm::Box box;
-    box.init();
     //std::println("...");
-    std::cout << "Dopenbox Window Manager ver. " << dobwm::VER << "\n";
-    ::DBGMSG("WM init.");
+    ::DBGMSG("Dopenbox Window Manager ver.", dobwm::VER);
+    dobwm::Box box;
+    ::DBGMSG("WM", "init.");
     while (!quit)
       box.ev();
   } catch (const std::exception &E) {
-    std::cerr << "EX: " + std::string(E.what()) << "\n";
+    ::DBGMSG("Ex:", E.what());
     //std::println("EX: { }", E.what());
     return -1;
   }

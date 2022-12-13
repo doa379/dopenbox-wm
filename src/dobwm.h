@@ -10,7 +10,7 @@
 #include <X11/Xutil.h>
 
 namespace dobwm {
-  static constexpr std::string_view VER { "-0.0" };
+  static constexpr auto VER { -0.0 };
   struct Dim {
     int x { }, y { }, w { }, h { };
   };
@@ -102,7 +102,7 @@ namespace dobwm {
     auto query_tree(void) -> std::vector<::Window>;
     auto client_trans(const ::Window) -> bool;
     auto client_dim(const ::Window) -> std::optional<Dim>;
-    auto client_hint(const ::Window) -> std::optional<std::string>;
+    auto client_hint(const ::Window) -> std::optional<std::pair<std::string, std::string>>;
     auto grab_key(const unsigned, const ::KeySym) const -> void;
     auto grab_button(const unsigned, const unsigned) -> void;
     auto grab_button(const ::Window, const unsigned, const unsigned) -> void;
@@ -148,14 +148,14 @@ namespace dobwm {
   public:
     Box(void);
     ~Box(void);
+    auto print_hint(const ::Window);
     auto focus(Hnd &);
     auto sw_focus(void);
-    auto map_request(const ::Window);
+    auto map_request(const ::Window) -> void;
     auto map_all(void) const;
     auto unmap_all(void) const;
     auto del_hnd(const Hnd &);
     auto key(void);
-    auto init(void);
     auto configure_request(void);
     auto unmap_request(void);
     auto cli_msg(void) const;

@@ -171,7 +171,18 @@ auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
   return std::nullopt;
 }
 
-auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::string> {
+auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::pair<std::string, std::string>> {
+  ::XClassHint ch { };
+  if (::XGetClassHint(dpy, W, &ch)) {
+    const auto R { std::make_pair<std::string, std::string>(ch.res_class, ch.res_name) };
+    if (ch.res_class)
+      ::XFree(ch.res_class);
+    if (ch.res_name)
+      ::XFree(ch.res_name);
+
+    return R;
+  }
+
   return std::nullopt;
 }
 
