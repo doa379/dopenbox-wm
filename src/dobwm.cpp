@@ -4,15 +4,9 @@
 #include <cstdlib>
 #include <sstream>
 #include <dobwm.h>
-#include <msg.h>
 #include <../config.h>
 
 static bool quit { };
-static dobwm::Msg msg;
-
-auto DBGMSG(const char MSG[]) {
-  msg.send("Debug", MSG, dobwm::Urg::NORMAL, 1000);
-}
 
 template<typename T>
 concept Stringular = requires(T &t) {
@@ -72,18 +66,6 @@ dobwm::Box::Box(void) {
   for (const auto &W : WW)
     map_request(W);
   
-  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
-  x.grab_key(std::get<0>(QUIT), static_cast<unsigned long>(std::get<1>(QUIT)));
-  x.grab_key(std::get<0>(UNMAPALL), static_cast<unsigned long>(std::get<1>(UNMAPALL)));
-  x.grab_key(std::get<0>(REMAPALL), static_cast<unsigned long>(std::get<1>(REMAPALL)));
-  x.grab_key(std::get<0>(KILLCLI), static_cast<unsigned long>(std::get<1>(KILLCLI)));
-  x.grab_key(std::get<0>(SWCLIFOCUS), static_cast<unsigned long>(std::get<1>(SWCLIFOCUS)));
-  x.grab_key(std::get<0>(SELTOGGLE), static_cast<unsigned long>(std::get<1>(SELTOGGLE)));
-  x.grab_key(std::get<0>(SELCLEAR), static_cast<unsigned long>(std::get<1>(SELCLEAR)));
-  x.grab_key(std::get<0>(MOVEUP), static_cast<unsigned long>(std::get<1>(MOVEUP)));
-  x.grab_key(std::get<0>(MOVEDOWN), static_cast<unsigned long>(std::get<1>(MOVEDOWN)));
-  x.grab_key(std::get<0>(MOVELEFT), static_cast<unsigned long>(std::get<1>(MOVELEFT)));
-  x.grab_key(std::get<0>(MOVERIGHT), static_cast<unsigned long>(std::get<1>(MOVERIGHT)));
   for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
     for (const auto &CMD : CMDS_) {
       const Kb KB { std::get<0>(CMD) };
@@ -96,6 +78,10 @@ dobwm::Box::Box(void) {
 
 dobwm::Box::~Box(void) {
 
+}
+
+auto dobwm::Box::MSG(const std::string_view MSG, const Urg URG, const unsigned TO) {
+  msg.send("Dopenbox WM", MSG, URG, TO);
 }
 
 auto dobwm::Box::print_hint(const ::Window W) {
@@ -178,49 +164,43 @@ auto dobwm::Box::del_hnd(const Hnd &H) {
 }
 
 auto dobwm::Box::key(void) {
-  const Kb KB { 
-    x.key_state(), static_cast<Key>(x.key_press(x.key_code())) };
-  if (KB == QUIT) {
-      //::DBGMSG("Quit WM");
-      quit = true;
-  } else if (KB == KILLCLI) {
-      //::DBGMSG("Kill Curr");
-      if (curr.has_value()) {
-        const auto W { curr->get().win };
-        sw_focus();
-        if (x.kill_client(W))
-          del_hnd(*curr);
-      }
-  } else if (KB == UNMAPALL) {
-      //::DBGMSG("Unmap all");
-      unmap_all();
-  } else if (KB == REMAPALL) {
-      //::DBGMSG("Remap all");
-      map_all();
-  }
-
-  if (curr.has_value()) {
-    if (KB == SWCLIFOCUS)
-        sw_focus();
-    else if (KB == MOVEUP)
-        x.move(curr->get().win, curr->get().d.x, curr->get().d.y -= MOVESTEP_PX);
-    else if (KB == MOVEDOWN)
-        x.move(curr->get().win, curr->get().d.x, curr->get().d.y += MOVESTEP_PX);
-    else if (KB == MOVELEFT)
-        x.move(curr->get().win, curr->get().d.x -= MOVESTEP_PX, curr->get().d.y);
-    else if (KB == MOVERIGHT)
-        x.move(curr->get().win, curr->get().d.x += MOVESTEP_PX, curr->get().d.y);
-  }
-  
+  const Kb KB { x.key_state(), static_cast<Key>(x.key_press(x.key_code())) };
   for (const auto &CMD : CMDS)
     if (KB == std::get<0>(CMD)) {
-      ::system(std::string(std::get<1>(CMD)).c_str());
-      return;
+      if (std::get<1>(CMD) == "QUIT") {
+          ::DBGMSG("Quit WM");
+          quit = true;
+      } else if (std::get<1>(CMD) == "KILLCLI" && curr.has_value()) {
+          ::DBGMSG("Kill Curr");
+          const auto W { curr->get().win };
+          sw_focus();
+          if (x.kill_client(W))
+            del_hnd(*curr);
+      } else if (std::get<1>(CMD) == "UNMAPALL" && curr.has_value()) {
+          ::DBGMSG("Unmap all");
+          unmap_all();
+      } else if (std::get<1>(CMD) == "REMAPALL" && curr.has_value()) {
+          ::DBGMSG("Remap all");
+          map_all();
+      } else if (std::get<1>(CMD) == "SWFOCUS" && curr.has_value())
+          sw_focus();
+      else if (std::get<1>(CMD) == "MOVEUP" && curr.has_value())
+        x.move(curr->get().win, curr->get().d.x, curr->get().d.y -= MOVESTEP_PX);
+      else if (std::get<1>(CMD) == "MOVEDOWN" && curr.has_value())
+        x.move(curr->get().win, curr->get().d.x, curr->get().d.y += MOVESTEP_PX);
+      else if (std::get<1>(CMD) == "MOVELEFT" && curr.has_value())
+        x.move(curr->get().win, curr->get().d.x -= MOVESTEP_PX, curr->get().d.y);
+      else if (std::get<1>(CMD) == "MOVERIGHT" && curr.has_value())
+        x.move(curr->get().win, curr->get().d.x += MOVESTEP_PX, curr->get().d.y);
+      else {
+        ::system(std::string(std::get<1>(CMD)).c_str());
+        return;
+      }
     }
   
   for (const auto &CMD : CMDS_ASYNC)
     if (KB == std::get<0>(CMD)) {
-      // fork()
+      // fork() on std::get<1>(CMD)
       return;
     }
 }
@@ -315,11 +295,12 @@ auto main(const int ARGC, const char *ARGV[]) -> int {
     ::DBGMSG("Dopenbox Window Manager ver.", dobwm::VER);
     dobwm::Box box;
     ::DBGMSG("WM", "init.");
+    box.MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
     while (!quit)
       box.ev();
   } catch (const std::exception &E) {
-    ::DBGMSG("Ex:", E.what());
-    //std::println("EX: { }", E.what());
+    ::DBGMSG("Ex.", E.what());
+    //std::println("Ex. { }", E.what());
     return -1;
   }
   

@@ -14,33 +14,34 @@ namespace dobwm {
   static constexpr auto SLOPPY_FOCUS      { false };
   static constexpr auto MOVESTEP_PX       { 5 };
   static constexpr auto MODKEY            { M14 };
-  // Key Bindings
-  static constexpr Kb QUIT                { MODKEY, Key::Q };
-  static constexpr Kb UNMAPALL            { MODKEY, Key::U };
-  static constexpr Kb REMAPALL            { MODKEY, Key::V };
-  static constexpr Kb KILLCLI             { MODKEY, Key::K };
-  static constexpr Kb SWCLIFOCUS          { MODKEY, Key::Tab };
-  static constexpr Kb SELTOGGLE           { MODKEY, Key::Space };
-  static constexpr Kb SELCLEAR            { MODKEY, Key::C };
-  static constexpr Kb MOVEUP              { SM4, Key::Up };
-  static constexpr Kb MOVEDOWN            { SM4, Key::Down };
-  static constexpr Kb MOVELEFT            { SM4, Key::Left };
-  static constexpr Kb MOVERIGHT           { SM4, Key::Right };
-  static constexpr Kb RESIZEUP            { CM4, Key::Up };
-  static constexpr Kb RESIZEDOWN          { CM4, Key::Down };
-  static constexpr Kb RESIZELEFT          { CM4, Key::Left };
-  static constexpr Kb RESIZERIGHT         { CM4, Key::Right };
   // Cmd Bindings
-  static const Cmds CMDS                  {
+  static constexpr Cmds CMDS                  {
+      // Int Commands
+      Cmd { { MODKEY, Key::Q },     "QUIT" },
+      Cmd { { MODKEY, Key::U },     "UNMAPALL" },
+      Cmd { { MODKEY, Key::V },     "REMAPALL" },
+      Cmd { { MODKEY, Key::K },     "KILLCLI" },
+      Cmd { { MODKEY, Key::Tab },   "SWFOCUS" },
+      Cmd { { MODKEY, Key::Space }, "SELTOGGLE" },
+      Cmd { { MODKEY, Key::C },     "SELCLEAR" },
+      Cmd { { SM4, Key::Up },       "MOVEUP" },
+      Cmd { { SM4, Key::Down },     "MOVEDOWN" },
+      Cmd { { SM4, Key::Left },     "MOVELEFT" },
+      Cmd { { SM4, Key::Right },    "MOVERIGHT" },
+      Cmd { { CM4, Key::Up },       "RESIZEUP" },
+      Cmd { { CM4, Key::Down },     "RESIZEDOWN" },
+      Cmd { { CM4, Key::Left },     "RESIZELEFT" },
+      Cmd { { CM4, Key::Right },    "RESIZERIGHT" },
+      // Sys Commands
       Cmd { { MODKEY, Key::Esc },   "dmenu_run" },
       Cmd { { MODKEY, Key::L },     "slock" },
       Cmd { { MODKEY, Key::Sleep }, "slock & yyy M" },
-      Cmd { { { }, Key::N }, "notify-send \"No Modkey\"" }
+      Cmd { { { }, Key::N },        "notify-send \"No Modkey\"" }
   };
-  static const Cmds CMDS_ASYNC            {
+  static constexpr Cmds CMDS_ASYNC            {
       Cmd { { MODKEY, Key::Return }, "xterm" }
   };
   // Mouse Bindings
-  static constexpr Btn SELECT             { { }, Button::Left };
-  static constexpr Btn RESIZE             { MODKEY, Button::Right };
+  static constexpr Btn SELECT       { { }, Button::Left };
+  static constexpr Btn RESIZE       { MODKEY, Button::Right };
 }

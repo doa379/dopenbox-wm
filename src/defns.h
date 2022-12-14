@@ -2,7 +2,7 @@
 
 #include <utility>
 #include <string_view>
-#include <vector>
+#include <array>
 #include <palette.h>
 #include <xkb.h>
 
@@ -13,8 +13,10 @@ namespace dobwm {
   static constexpr auto SM4             { SHIFT_KEY | MOD4_KEY };
   static constexpr auto CM4             { CTRL_KEY | MOD4_KEY };
   static constexpr auto SCM4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
+  // Number of Commands
+  static constexpr auto MAX_NCMD        { 128 };
   using Kb = std::pair<unsigned, Key>;
   using Btn = std::pair<unsigned, Button>;
   using Cmd = std::pair<Kb, std::string_view>;
-  using Cmds = std::vector<Cmd>;
+  using Cmds = std::array<Cmd, MAX_NCMD>;
 }

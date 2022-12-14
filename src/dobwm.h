@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 #include <X11/Xutil.h>
+#include <msg.h>
 
 namespace dobwm {
   static constexpr auto VER { -0.0 };
@@ -119,7 +120,7 @@ namespace dobwm {
       ::Window win;
       Dim d;
       bool mut, sel { };
-      std::string name;
+      std::string res;
       auto operator ==(const Hnd &H) const -> bool { return H.win == win; }
       auto operator !=(const Hnd &H) const -> bool { return !(H == *this); }
     };
@@ -143,11 +144,13 @@ namespace dobwm {
 
     using HndRef = std::optional<std::reference_wrapper<Hnd>>;
     X x;
+    Msg msg;
     std::vector<Mon> M;
     HndRef curr;
   public:
     Box(void);
     ~Box(void);
+    auto MSG(const std::string_view, const Urg, const unsigned);
     auto print_hint(const ::Window);
     auto focus(Hnd &);
     auto sw_focus(void);
