@@ -84,20 +84,18 @@ auto dobwm::X::MONS(void) const -> std::vector<Dim> {
   return xinerama.M();
 }
 
-auto dobwm::X::client(const ::Window W, const unsigned BW, const unsigned long BC) const -> void {
-  ::XSetWindowBorder(dpy, W, BC);
-  ::XSetWindowBorderWidth(dpy, W, BW);
+auto dobwm::X::client(const ::Window W, const unsigned BW, const unsigned long BC) const -> bool {
+  return ::XSetWindowBorder(dpy, W, BC) && ::XSetWindowBorderWidth(dpy, W, BW);
 }
 
-auto dobwm::X::focus(::Window w) const -> void {
-	//::XDeleteProperty(dpy, root, NET[static_cast<int>(Net::ACT)]);
-  ::XChangeProperty(dpy, root,
+auto dobwm::X::focus(::Window w) const -> bool {
+  return ::XChangeProperty(dpy, root,
     NET[static_cast<int>(Net::ACT)], XA_WINDOW, 32,
-      PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-  ::XSelectInput(dpy, w, PropertyChangeMask | FocusChangeMask | EnterWindowMask);
-  ::XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime);
-  ::XRaiseWindow(dpy, w);
-  ::XSync(dpy, false);
+      PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1) &&
+    ::XSelectInput(dpy, w, PropertyChangeMask | FocusChangeMask | EnterWindowMask) &&
+    ::XSetInputFocus(dpy, w, RevertToPointerRoot, CurrentTime) &&
+    ::XRaiseWindow(dpy, w) &&
+    ::XSync(dpy, false);
 }
 
 auto dobwm::X::isactive(const ::Window W) const -> bool {
@@ -105,19 +103,15 @@ auto dobwm::X::isactive(const ::Window W) const -> bool {
   return false;
 }
 
-auto dobwm::X::map_window(const ::Window W) const -> void {
-  ::XMapWindow(dpy, W);
-  ::XSync(dpy, false);
+auto dobwm::X::map_window(const ::Window W) const -> bool {
+  return ::XMapWindow(dpy, W) && ::XSync(dpy, false);
 }
 
-auto dobwm::X::unmap_window(const ::Window W) const -> void {
-  ::XUnmapWindow(dpy, W);
-  //::XReparentWindow(dpy, W, root, 0, 0);
-  //::XDestroyWindow(dpy, W);
-  ::XSync(dpy, false);
+auto dobwm::X::unmap_window(const ::Window W) const -> bool {
+  return ::XUnmapWindow(dpy, W) && ::XSync(dpy, false);
 }
 
-auto dobwm::X::configure_window(::XConfigureRequestEvent &ev) const -> void {
+auto dobwm::X::configure_window(::XConfigureRequestEvent &ev) const -> bool {
   ::XWindowChanges wc {
     ev.x,
     ev.y,
@@ -128,7 +122,7 @@ auto dobwm::X::configure_window(::XConfigureRequestEvent &ev) const -> void {
     ev.detail
   };
 
-  if (::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc))
+  return ::XConfigureWindow(dpy, ev.window, ev.value_mask, &wc) &&
     ::XSync(dpy, false);
 }
 
@@ -136,10 +130,11 @@ auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   std::vector<::Window> C;
   ::XGrabServer(dpy);
   {
-    ::Window root { }, parent { }, *W { };  // Children
-    unsigned NW { };
-    if (::XQueryTree(dpy, this->root, &root, &parent, &W, &NW))
-      C = std::vector<::Window> { W, W + NW };
+    ::Window root { }, parent { }, *W { }; // Children
+    unsigned nw { };
+    if (::XQueryTree(dpy, this->root, &root, &parent, &W, &nw))
+      C = std::vector<::Window> { W, W + nw };
+
     if (W)
       ::XFree(W);
   }
@@ -148,12 +143,11 @@ auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   return C;
 }
 
-auto dobwm::X::client_trans(const ::Window W) -> bool {
-  ::Window tra;
+auto dobwm::X::client_trans(const ::Window W, ::Window &tra) -> bool {
   return ::XGetTransientForHint(dpy, W, &tra);
 }
 
-auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
+auto dobwm::X::client_dim(const ::Window W, bool ovrd) -> std::optional<Dim> {
   /*
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && 
@@ -163,12 +157,14 @@ auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
           std::nullopt;
   */
   ::XWindowAttributes wa { };
-  if (::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0) {
-      map_window(W);
-      return std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height });
-  }
-  
-  return std::nullopt;
+  if (!ovrd)
+    return ::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0 ?
+      std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) :
+      std::nullopt;
+    
+  return ::XGetWindowAttributes(dpy, W, &wa) ?
+    std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) :
+    std::nullopt;
 }
 
 auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::pair<std::string, std::string>> {

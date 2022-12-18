@@ -15,7 +15,7 @@ namespace dobwm {
   static constexpr auto MOVESTEP_PX       { 5 };
   static constexpr auto MODKEY            { M14 };
   // Cmd Bindings
-  static constexpr Cmds CMDS                  {
+  static constexpr Cmds CMDS {
       // Int Commands
       Cmd { { MODKEY, Key::Q },     "QUIT" },
       Cmd { { MODKEY, Key::U },     "UNMAPALL" },
@@ -38,10 +38,19 @@ namespace dobwm {
       Cmd { { MODKEY, Key::Sleep }, "slock & yyy M" },
       Cmd { { { }, Key::N },        "notify-send \"No Modkey\"" }
   };
-  static constexpr Cmds CMDS_ASYNC            {
+  static constexpr Cmds CMDS_ASYNC {
+      Cmd { { MODKEY, Key::D }, "xclock" },
       Cmd { { MODKEY, Key::Return }, "xterm" }
   };
   // Mouse Bindings
+  /*
   static constexpr Btn SELECT       { { }, Button::Left };
   static constexpr Btn RESIZE       { MODKEY, Button::Right };
+  */
+  /*
+  static constexpr Btns BTNS {
+      Btn { { { }, Button::Left },      "SELECT" },
+      Btn { { MODKEY, Button::Right },  "RESIZE" }
+  };
+  */
 }

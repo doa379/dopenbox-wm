@@ -58,37 +58,33 @@ dobwm::Box::Box(void) {
   for (const auto &D : x.MONS()) {
     std::vector<Tag> T { Nt };
     Mon m { T, D };
-    this->M.emplace_back(std::move(m));
+    M.emplace_back(std::move(m));
   }
-  // Offset to Input
+
   const auto WW { x.query_tree() };
   ::DBGMSG("Init clients", WW.size());
-  for (const auto &W : WW)
-    map_request(W);
+  for (const auto W : WW)
+  //for (auto w { WW.begin() }; w < WW.end(); w++)
+    //if (!x.client_trans(*w, WW.back()))
+      map_request(W);
   
   for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
     for (const auto &CMD : CMDS_) {
-      const Kb KB { std::get<0>(CMD) };
+      const Kb &KB { std::get<0>(CMD) };
       x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
     }
-  
-  //x.grab_button(SELECT.first, static_cast<int>(SELECT.second));
-  //x.grab_button(RESIZE.first, static_cast<int>(RESIZE.second));
 }
 
 dobwm::Box::~Box(void) {
 
 }
 
-auto dobwm::Box::MSG(const std::string_view MSG, const Urg URG, const unsigned TO) {
+auto dobwm::Box::MSG(std::string_view MSG, const Urg URG, const unsigned TO) {
   msg.send("Dopenbox WM", MSG, URG, TO);
 }
 
-auto dobwm::Box::print_hint(const ::Window W) {
-  const auto R { x.client_hint(W) };
-  if (R.has_value())
-    ::DBGMSG("Hint (class, res).", 
-        std::get<0>(R.value()), std::get<1>(R.value()));
+auto dobwm::Box::print_hint(const std::pair<std::string, std::string> R) const {
+  ::DBGMSG("Hint (class, res).", std::get<0>(R), std::get<1>(R));
 }
 
 auto dobwm::Box::focus(Hnd &H) {
@@ -97,11 +93,13 @@ auto dobwm::Box::focus(Hnd &H) {
       std::ranges::for_each(T.H, [&](const Hnd &H) {
         x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(INACTBDR_COLOR)); });
 
-  x.focus(H.win);
-  x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR));
-  curr = HndRef { std::ref(H) };
-  ::DBGMSG("Focus.", curr->get().win);
-  print_hint(curr->get().win);
+  if (x.focus(H.win) &&
+      x.client(H.win, BDR_WIDTH, static_cast<unsigned long>(ACTBDR_COLOR))) {
+    curr = HndRef { std::ref(H) };
+    ::DBGMSG("Focus.", curr->get().win);
+    if (curr->get().res.has_value())
+      print_hint(curr->get().res.value());
+  }
 }
 
 auto dobwm::Box::sw_focus(void) {
@@ -122,22 +120,22 @@ auto dobwm::Box::sw_focus(void) {
 }
 
 auto dobwm::Box::map_request(const ::Window W) -> void {
-  /*
-  x.map_window(W);
-  if (const auto D { x.client_dim(W) }; D.has_value() &&
-      !x.client_trans(W)) {
-    M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
+  ::Window tra { };
+  if (const auto D { x.client_dim(W, false) }; D.has_value() && x.map_window(W)) {
+    M.back().T.back().H.emplace_back(Hnd { 
+      W, D.value(), true, { }, x.client_hint(W) });
     focus(M.back().T.back().H.back());
-  }
-  */
-
-  if (const auto D { x.client_dim(W) }; D.has_value()) {
+    ::DBGMSG("Mapped.", W);
+    if (M.back().T.back().H.back().res.has_value())
+      print_hint(M.back().T.back().H.back().res.value());
+    /*
+  } else if (const auto D { x.client_dim(W, true) }; D.has_value() &&
+      x.client_trans(W, tra) && x.map_window(W) && x.map_window(tra)) {
     M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
+    M.back().T.back().H.emplace_back(Hnd { tra, D.value(), false });
     focus(M.back().T.back().H.back());
+    */
   }
-  
-  ::DBGMSG("Mapped.", W);
-  print_hint(W);
 }
 
 auto dobwm::Box::map_all(void) const {
@@ -173,6 +171,7 @@ auto dobwm::Box::key(void) {
       } else if (std::get<1>(CMD) == "KILLCLI" && curr.has_value()) {
           ::DBGMSG("Kill Curr");
           const auto W { curr->get().win };
+          // Take reverse focus instead
           sw_focus();
           if (x.kill_client(W))
             del_hnd(*curr);
@@ -239,6 +238,7 @@ auto dobwm::Box::enter_notify(void) {
 }
 
 auto dobwm::Box::button(void) {
+  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) { 
@@ -261,6 +261,7 @@ auto dobwm::Box::button(void) {
         x.ungrab_button(H.win, std::get<0>(SELECT),
           static_cast<unsigned>(std::get<1>(SELECT)));
       });
+  */
 }
 
 auto dobwm::Box::ev(void) {
@@ -294,7 +295,7 @@ auto main(const int ARGC, const char *ARGV[]) -> int {
     //std::println("...");
     ::DBGMSG("Dopenbox Window Manager ver.", dobwm::VER);
     dobwm::Box box;
-    ::DBGMSG("WM", "init.");
+    ::DBGMSG("WM", "initialized");
     box.MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
     while (!quit)
       box.ev();

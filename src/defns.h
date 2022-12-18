@@ -14,9 +14,11 @@ namespace dobwm {
   static constexpr auto CM4             { CTRL_KEY | MOD4_KEY };
   static constexpr auto SCM4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
   // Number of Commands
-  static constexpr auto MAX_NCMD        { 128 };
+  //static constexpr auto MAX_NBTN        { 8 };
+  static constexpr auto MAX_NCMD        { 64 };
   using Kb = std::pair<unsigned, Key>;
   using Btn = std::pair<unsigned, Button>;
+  //using Btns = std::array<Btn, MAX_NBTN>;
   using Cmd = std::pair<Kb, std::string_view>;
   using Cmds = std::array<Cmd, MAX_NCMD>;
 }

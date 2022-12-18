@@ -94,15 +94,15 @@ namespace dobwm {
     static auto XError(::Display *, ::XErrorEvent *) -> int;
     auto MONS(void) const -> std::vector<Dim>;
     auto next_event(void) -> bool { return ::XNextEvent(dpy, &ev) == 0; }
-    auto client(const ::Window, const unsigned, const unsigned long) const -> void;
-    auto focus(::Window) const -> void;
+    auto client(const ::Window, const unsigned, const unsigned long) const -> bool;
+    auto focus(::Window) const -> bool;
     auto isactive(const ::Window) const -> bool;
-    auto map_window(const ::Window) const -> void;
-    auto unmap_window(const ::Window) const -> void;
-    auto configure_window(::XConfigureRequestEvent &) const -> void;
+    auto map_window(const ::Window) const -> bool;
+    auto unmap_window(const ::Window) const -> bool;
+    auto configure_window(::XConfigureRequestEvent &) const -> bool;
     auto query_tree(void) -> std::vector<::Window>;
-    auto client_trans(const ::Window) -> bool;
-    auto client_dim(const ::Window) -> std::optional<Dim>;
+    auto client_trans(const ::Window, ::Window &) -> bool;
+    auto client_dim(const ::Window, bool) -> std::optional<Dim>;
     auto client_hint(const ::Window) -> std::optional<std::pair<std::string, std::string>>;
     auto grab_key(const unsigned, const ::KeySym) const -> void;
     auto grab_button(const unsigned, const unsigned) -> void;
@@ -120,7 +120,7 @@ namespace dobwm {
       ::Window win;
       Dim d;
       bool mut, sel { };
-      std::string res;
+      std::optional<std::pair<std::string, std::string>> res;
       auto operator ==(const Hnd &H) const -> bool { return H.win == win; }
       auto operator !=(const Hnd &H) const -> bool { return !(H == *this); }
     };
@@ -133,7 +133,15 @@ namespace dobwm {
       std::vector<Tag> T;
       Dim d;
     };
-    
+
+    using HndRef = std::optional<std::reference_wrapper<Hnd>>;
+    /*
+    struct Curr {
+      std::reference_wrapper<Mon> m;
+      std::reference_wrapper<Tag> t;
+      Hndref hnd;
+    };
+    */
     class Input {
     public:
     };
@@ -142,16 +150,16 @@ namespace dobwm {
     public:
     };
 
-    using HndRef = std::optional<std::reference_wrapper<Hnd>>;
     X x;
     Msg msg;
     std::vector<Mon> M;
     HndRef curr;
+    //Curr curr;
   public:
     Box(void);
     ~Box(void);
-    auto MSG(const std::string_view, const Urg, const unsigned);
-    auto print_hint(const ::Window);
+    auto MSG(std::string_view, const Urg, const unsigned);
+    auto print_hint(const std::pair<std::string, std::string>) const;
     auto focus(Hnd &);
     auto sw_focus(void);
     auto map_request(const ::Window) -> void;
