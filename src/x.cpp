@@ -143,11 +143,13 @@ auto dobwm::X::query_tree(void) -> std::vector<::Window> {
   return C;
 }
 
-auto dobwm::X::client_trans(const ::Window W, ::Window &tra) -> bool {
-  return ::XGetTransientForHint(dpy, W, &tra);
+auto dobwm::X::client_trans(const ::Window W) -> std::optional<::Window> {
+  ::Window tra;
+  return ::XGetTransientForHint(dpy, W, &tra) ?
+    std::make_optional<::Window>(tra) : std::nullopt;
 }
 
-auto dobwm::X::client_dim(const ::Window W, bool ovrd) -> std::optional<Dim> {
+auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
   /*
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && 
@@ -157,13 +159,17 @@ auto dobwm::X::client_dim(const ::Window W, bool ovrd) -> std::optional<Dim> {
           std::nullopt;
   */
   ::XWindowAttributes wa { };
-  if (!ovrd)
-    return ::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0 ?
-      std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) :
-      std::nullopt;
-    
-  return ::XGetWindowAttributes(dpy, W, &wa) ?
-    std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) :
+  return ::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0 ?
+    std::make_optional<Dim>(Dim {
+      WA.value().x, WA.value().y, WA.value().width, WA.value().height }) :
+    std::nullopt;
+}
+
+auto dobwm::X::trans_dim(const ::Window W) -> std::optional<Dim> {
+  const auto WA { client_attrib(W) };
+  return WA.has_value() ?
+    std::make_optional<Dim>(Dim {
+      WA.value().x, WA.value().y, WA.value()(.width, WA.value().height }) :
     std::nullopt;
 }
 

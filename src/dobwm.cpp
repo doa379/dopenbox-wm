@@ -60,13 +60,11 @@ dobwm::Box::Box(void) {
     Mon m { T, D };
     M.emplace_back(std::move(m));
   }
-
-  const auto WW { x.query_tree() };
-  ::DBGMSG("Init clients", WW.size());
-  for (const auto W : WW)
-  //for (auto w { WW.begin() }; w < WW.end(); w++)
-    //if (!x.client_trans(*w, WW.back()))
-      map_request(W);
+  
+  for (const auto W : x.query_tree()) {
+    map_request(W);
+    ::DBGMSG("Init w/ client", W);
+  }
   
   for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
     for (const auto &CMD : CMDS_) {
@@ -118,23 +116,51 @@ auto dobwm::Box::sw_focus(void) {
           }
         }
 }
-
+/*
+	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
+		for (i = 0; i < num; i++) {
+			if (!XGetWindowAttributes(dpy, wins[i], &wa)
+			|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))
+				continue;
+			if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+				manage(wins[i], &wa);
+		}
+		for (i = 0; i < num; i++) { // now the transients
+			if (!XGetWindowAttributes(dpy, wins[i], &wa))
+				continue;
+			if (XGetTransientForHint(dpy, wins[i], &d1)
+			&& (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+				manage(wins[i], &wa);
+		}
+		if (wins)
+			XFree(wins);
+	}
+*/
+/*
+	if (!XGetWindowAttributes(dpy, ev->window, &wa))
+		return;
+	if (wa.override_redirect)
+		return;
+	if (!wintoclient(ev->window))
+		manage(ev->window, &wa);
+*/
 auto dobwm::Box::map_request(const ::Window W) -> void {
   ::Window tra { };
-  if (const auto D { x.client_dim(W, false) }; D.has_value() && x.map_window(W)) {
+  if (const auto D { x.client_dim(W) }; D.has_value() && x.map_window(W)) {
     M.back().T.back().H.emplace_back(Hnd { 
       W, D.value(), true, { }, x.client_hint(W) });
     focus(M.back().T.back().H.back());
+    ////
     ::DBGMSG("Mapped.", W);
     if (M.back().T.back().H.back().res.has_value())
       print_hint(M.back().T.back().H.back().res.value());
-    /*
-  } else if (const auto D { x.client_dim(W, true) }; D.has_value() &&
+
+
+  } else if (const auto D { x.trans_dim(W) }; D.has_value() &&
       x.client_trans(W, tra) && x.map_window(W) && x.map_window(tra)) {
     M.back().T.back().H.emplace_back(Hnd { W, D.value(), true });
     M.back().T.back().H.emplace_back(Hnd { tra, D.value(), false });
     focus(M.back().T.back().H.back());
-    */
   }
 }
 
@@ -166,7 +192,7 @@ auto dobwm::Box::key(void) {
   for (const auto &CMD : CMDS)
     if (KB == std::get<0>(CMD)) {
       if (std::get<1>(CMD) == "QUIT") {
-          ::DBGMSG("Quit WM");
+          ::DBGMSG("WM exit");
           quit = true;
       } else if (std::get<1>(CMD) == "KILLCLI" && curr.has_value()) {
           ::DBGMSG("Kill Curr");

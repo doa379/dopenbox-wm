@@ -16,6 +16,12 @@ namespace dobwm {
     int x { }, y { }, w { }, h { };
   };
 
+  /*
+  struct Attrib {
+
+  };
+  */
+
   enum class XEvent {
     //Create = CreateNotify,
     //Destroy = DestroyNotify,
@@ -101,8 +107,10 @@ namespace dobwm {
     auto unmap_window(const ::Window) const -> bool;
     auto configure_window(::XConfigureRequestEvent &) const -> bool;
     auto query_tree(void) -> std::vector<::Window>;
-    auto client_trans(const ::Window, ::Window &) -> bool;
-    auto client_dim(const ::Window, bool) -> std::optional<Dim>;
+    auto client_trans(const ::Window) -> std::optional<::Window>;
+    auto client_attrib(const ::Window) -> std::optional<::XWindowAttributes>;
+    auto client_dim(const ::Window) -> std::optional<Dim>;
+    auto trans_dim(const ::Window) -> std::optional<Dim>;
     auto client_hint(const ::Window) -> std::optional<std::pair<std::string, std::string>>;
     auto grab_key(const unsigned, const ::KeySym) const -> void;
     auto grab_button(const unsigned, const unsigned) -> void;
