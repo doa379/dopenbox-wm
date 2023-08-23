@@ -158,22 +158,27 @@ auto dobwm::X::client_dim(const ::Window W) -> std::optional<Dim> {
         std::make_optional<Dim>(Dim { wa.x, wa.y, wa.width, wa.height }) : 
           std::nullopt;
   */
+  /*
   ::XWindowAttributes wa { };
   return ::XGetWindowAttributes(dpy, W, &wa) && wa.override_redirect == 0 ?
     std::make_optional<Dim>(Dim {
       WA.value().x, WA.value().y, WA.value().width, WA.value().height }) :
     std::nullopt;
+  */
 }
 
 auto dobwm::X::trans_dim(const ::Window W) -> std::optional<Dim> {
+  /*
   const auto WA { client_attrib(W) };
   return WA.has_value() ?
     std::make_optional<Dim>(Dim {
       WA.value().x, WA.value().y, WA.value()(.width, WA.value().height }) :
     std::nullopt;
+  */
 }
 
 auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::pair<std::string, std::string>> {
+  /*
   ::XClassHint ch { };
   if (::XGetClassHint(dpy, W, &ch)) {
     const auto R { std::make_pair<std::string, std::string>(ch.res_class, ch.res_name) };
@@ -184,7 +189,7 @@ auto dobwm::X::client_hint(const ::Window W) -> std::optional<std::pair<std::str
 
     return R;
   }
-
+  */
   return std::nullopt;
 }
 

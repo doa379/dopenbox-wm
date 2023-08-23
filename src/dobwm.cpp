@@ -6,8 +6,6 @@
 #include <dobwm.h>
 #include <../config.h>
 
-static bool quit { };
-
 template<typename T>
 concept Stringular = requires(T &t) {
   { t } -> std::convertible_to<std::basic_string<char>>;
@@ -48,12 +46,19 @@ class Dbg {
   }
 };
 
+static dobwm::Msg msg;
+
 template<typename ...Args>
 auto DBGMSG(const Args &...args) {
-  /*static*/ Dbg dbg;
+  Dbg dbg;
   dbg.msg(args...);
 }
+  
+auto MSG(std::string_view MSG, const dobwm::Urg URG, const unsigned TO) {
+  msg.send("Dopenbox WM", MSG, URG, TO);
+}
 
+/*
 dobwm::Box::Box(void) {
   for (const auto &D : x.MONS()) {
     std::vector<Tag> T { Nt };
@@ -84,8 +89,10 @@ auto dobwm::Box::MSG(std::string_view MSG, const Urg URG, const unsigned TO) {
 auto dobwm::Box::print_hint(const std::pair<std::string, std::string> R) const {
   ::DBGMSG("Hint (class, res).", std::get<0>(R), std::get<1>(R));
 }
+*/
 
 auto dobwm::Box::focus(Hnd &H) {
+  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
@@ -98,9 +105,11 @@ auto dobwm::Box::focus(Hnd &H) {
     if (curr->get().res.has_value())
       print_hint(curr->get().res.value());
   }
+  */
 }
 
 auto dobwm::Box::sw_focus(void) {
+  /*
   for (auto &m : M)
     for (auto &t : m.T)
       for (auto h { t.H.begin() }; h < t.H.end(); h++)
@@ -115,6 +124,7 @@ auto dobwm::Box::sw_focus(void) {
             return;
           }
         }
+  */
 }
 /*
 	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
@@ -145,6 +155,7 @@ auto dobwm::Box::sw_focus(void) {
 		manage(ev->window, &wa);
 */
 auto dobwm::Box::map_request(const ::Window W) -> void {
+  /*
   ::Window tra { };
   if (const auto D { x.client_dim(W) }; D.has_value() && x.map_window(W)) {
     M.back().T.back().H.emplace_back(Hnd { 
@@ -162,32 +173,40 @@ auto dobwm::Box::map_request(const ::Window W) -> void {
     M.back().T.back().H.emplace_back(Hnd { tra, D.value(), false });
     focus(M.back().T.back().H.back());
   }
+  */
 }
 
 auto dobwm::Box::map_all(void) const {
+  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
         x.map_window(H.win); });
+  */
 }
 
 auto dobwm::Box::unmap_all(void) const {
+  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
         x.unmap_window(H.win); });
+  */
 }
 
 auto dobwm::Box::del_hnd(const Hnd &H) {
+  /*
   for (auto &m : M)
     for (auto &t : m.T)
       if (const auto H_ { std::ranges::find(t.H, H) }; H_ < t.H.end()) {
           t.H.erase(H_);
           return;
       }
+  */
 }
 
 auto dobwm::Box::key(void) {
+  /*
   const Kb KB { x.key_state(), static_cast<Key>(x.key_press(x.key_code())) };
   for (const auto &CMD : CMDS)
     if (KB == std::get<0>(CMD)) {
@@ -228,17 +247,20 @@ auto dobwm::Box::key(void) {
       // fork() on std::get<1>(CMD)
       return;
     }
+  */
 }
 
 auto dobwm::Box::configure_request(void) {
   ::DBGMSG("Ev.", "Config Req Event");
-  auto &ev { x.configure_request() };
-  x.configure_window(ev);
+  //auto &ev { x.configure_request() };
+  //x.configure_window(ev);
 }
 
 auto dobwm::Box::unmap_request(void) {
+  /*
   const auto W { x.unmap_notify() };
   x.unmap_window(W);
+  */
 }
 
 auto dobwm::Box::cli_msg(void) const {
@@ -247,20 +269,23 @@ auto dobwm::Box::cli_msg(void) const {
 }
 
 auto dobwm::Box::hnd(const ::Window W) -> HndRef {
+  /*
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto h { 
           std::ranges::find_if(t.H, [&](const Hnd &H) -> bool {
             return H.win == W; }) }; h < t.H.end())
         return *h;
- 
+ */
   return std::nullopt;
 }
 
 auto dobwm::Box::enter_notify(void) {
+  /*
   if (SLOPPY_FOCUS && curr.has_value() &&
       x.crossing_window() != curr->get().win)
     focus(*hnd(x.crossing_window()));
+  */
 }
 
 auto dobwm::Box::button(void) {
@@ -289,7 +314,7 @@ auto dobwm::Box::button(void) {
       });
   */
 }
-
+/*
 auto dobwm::Box::ev(void) {
   if (x.next_event()) {
     if (x.event() == dobwm::XEvent::Map)
@@ -315,19 +340,130 @@ auto dobwm::Box::ev(void) {
       enter_notify();
   }
 }
+*/
+struct X {
+  static constexpr auto ROOTMASK {
+    SubstructureRedirectMask | SubstructureNotifyMask };
+  static constexpr auto BUTTONMASK {
+    ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
+  static constexpr auto NOTIFMASK { PropertyChangeMask };
+  inline static bool error;
+  int modmask { };
+  ::Display *dpy { ::XOpenDisplay(nullptr) };
+  ::Window root { };
+  //std::array<::Atom, static_cast<int>(Wm::CNT)> WM;
+  //std::array<::Atom, std::to_underlying(Wm::CNT)> WM;
+  //std::array<::Atom, static_cast<int>(Net::CNT)> NET;
+  //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+  ::XEvent ev;
+};
 
-auto main(const int ARGC, const char *ARGV[]) -> int {
+static X x;
+
+auto XError(::Display *dpy, ::XErrorEvent *ev) {
+  x.error = ev->error_code == BadAccess;
+  return 0;
+}
+
+int main(const int ARGC, const char *ARGV[]) {
   try {
     //std::println("...");
     ::DBGMSG("Dopenbox Window Manager ver.", dobwm::VER);
-    dobwm::Box box;
+    if (!x.dpy)
+      throw std::runtime_error("Unable to open display");
+
+    x.root = RootWindow(x.dpy, DefaultScreen(x.dpy));
+    ::XSetErrorHandler(XError);
+    ::XSelectInput(x.dpy, x.root, x.ROOTMASK | x.BUTTONMASK | x.NOTIFMASK);
+    ::XSync(x.dpy, false);
+    if (x.error) {
+      ::XCloseDisplay(x.dpy);
+      throw std::runtime_error("Initialization error (another wm running?)");
+    }
+
+    ::XUngrabKey(x.dpy, AnyKey, AnyModifier, x.root);
+    ::XUngrabButton(x.dpy, AnyButton, AnyModifier, x.root);
+    // Modifier Mask
+    ::XModifierKeymap *modmap { ::XGetModifierMapping(x.dpy) };
+    unsigned numlockmask { };
+    for (int k { }; k < 8; k++)
+      for (int j { }; j < modmap->max_keypermod; j++)
+        if (modmap->modifiermap[modmap->max_keypermod * k + j] ==
+            ::XKeysymToKeycode(x.dpy, XK_Num_Lock))
+          numlockmask = (1 << k);
+    
+    ::XFreeModifiermap(modmap);
+    x.modmask = ~(numlockmask | LockMask);
+    /*
+    // Atoms
+    WM[static_cast<int>(Wm::PROTO)] =
+      ::XInternAtom(dpy, "WM_PROTOCOLS", false);
+    WM[static_cast<int>(Wm::DELWIN)] =
+      ::XInternAtom(dpy, "WM_DELETE_WINDOW", false);
+    NET[static_cast<int>(Net::SUPP)] =
+      ::XInternAtom(dpy, "_NET_SUPPORTED", false);
+    NET[static_cast<int>(Net::STATE)] =
+      ::XInternAtom(dpy, "_NET_WM_STATE", false);
+    NET[static_cast<int>(Net::ACT)] =
+      ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
+    NET[static_cast<int>(Net::FSCRN)] =
+      ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
+    ::XChangeProperty(dpy, root, NET[static_cast<int>(Net::SUPP)],
+      XA_ATOM, 32, PropModeReplace,
+        reinterpret_cast<unsigned char *>(NET.data()),
+          static_cast<int>(Net::CNT));
+    */
+    ::XSync(x.dpy, false);
+    //dobwm::Box box;
+    /*
+    for (const auto &D : x.MONS()) {
+      std::vector<Tag> T { Nt };
+      Mon m { T, D };
+      M.emplace_back(std::move(m));
+    }
+    
+    for (const auto W : x.query_tree()) {
+      map_request(W);
+      ::DBGMSG("Init w/ client", W);
+    }
+    
+    for (const auto &CMDS_ : { CMDS, CMDS_ASYNC })
+      for (const auto &CMD : CMDS_) {
+        const Kb &KB { std::get<0>(CMD) };
+        x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
+      }
+    */
     ::DBGMSG("WM", "initialized");
-    box.MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
-    while (!quit)
-      box.ev();
+    MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
+    while (true)
+      if (::XNextEvent(x.dpy, &x.ev) == 0)
+        switch (x.ev.type) {
+          case MapNotify:
+            ;
+          case UnmapNotify:
+            ;
+          case ClientMessage:
+            ;
+          case ConfigureNotify:
+            ;
+          case MapRequest:
+            ;
+          case ConfigureRequest:
+            ;
+          case MotionNotify:
+            ;
+          case KeyPress:
+            ;
+          case ButtonPress:
+            ;
+          case EnterNotify:
+            ;
+        }
+  
+    ::XCloseDisplay(x.dpy);
   } catch (const std::exception &E) {
-    ::DBGMSG("Ex.", E.what());
-    //std::println("Ex. { }", E.what());
+      ::DBGMSG("Ex.", E.what());
+      //std::println("Ex. { }", E.what());
     return -1;
   }
   

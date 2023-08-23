@@ -16,12 +16,6 @@ namespace dobwm {
     int x { }, y { }, w { }, h { };
   };
 
-  /*
-  struct Attrib {
-
-  };
-  */
-
   enum class XEvent {
     //Create = CreateNotify,
     //Destroy = DestroyNotify,
@@ -150,13 +144,6 @@ namespace dobwm {
       Hndref hnd;
     };
     */
-    class Input {
-    public:
-    };
-
-    class Arrange {
-    public:
-    };
 
     X x;
     Msg msg;
@@ -164,10 +151,10 @@ namespace dobwm {
     HndRef curr;
     //Curr curr;
   public:
-    Box(void);
-    ~Box(void);
-    auto MSG(std::string_view, const Urg, const unsigned);
-    auto print_hint(const std::pair<std::string, std::string>) const;
+    //Box(void);
+    //~Box(void);
+    //auto MSG(std::string_view, const Urg, const unsigned);
+    //auto print_hint(const std::pair<std::string, std::string>) const;
     auto focus(Hnd &);
     auto sw_focus(void);
     auto map_request(const ::Window) -> void;
@@ -181,6 +168,6 @@ namespace dobwm {
     auto hnd(const ::Window) -> HndRef;
     auto enter_notify(void);
     auto button(void);
-    auto ev(void);
+    //auto ev(void);
   };
 }

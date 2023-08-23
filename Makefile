@@ -16,7 +16,7 @@ LIBSPATH = -L $(LOCAL)/ -Wl,-R$(LOCAL)/ '-Wl,-R$$ORIGIN' \
 LIBS = -l X11 -l Xinerama -l dbus-1
 
 CPPC = clang++
-CPPC_FLAGS = -std=c++2b -Wall -fPIE -fPIC -pedantic -stdlib=libstdc++
+CPPC_FLAGS = -std=c++20 -Wall -fPIE -fPIC -pedantic -stdlib=libstdc++
 REL_CFLAGS = -O3
 REL_LDFLAGS = -s
 #DBG_CFLAGS = -O1 -g -fsanitize=address -fno-omit-frame-pointer
@@ -34,7 +34,7 @@ EXEC = dobwm
   EXEC = dobwm~dbg
 .endif
 
-SRC = src/x.cpp src/msg.cpp src/dobwm.cpp
+SRC = src/msg.cpp src/dobwm.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
