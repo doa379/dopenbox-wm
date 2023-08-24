@@ -3,8 +3,15 @@
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
-#include <dobwm.h>
+#include <vector>
+#include <string>
+//#include <dobwm.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
+#include <msg.h>
 #include <../config.h>
+
+static constexpr std::string_view VER { "-0.0" };
 
 template<typename T>
 concept Stringular = requires(T &t) {
@@ -89,10 +96,9 @@ auto dobwm::Box::MSG(std::string_view MSG, const Urg URG, const unsigned TO) {
 auto dobwm::Box::print_hint(const std::pair<std::string, std::string> R) const {
   ::DBGMSG("Hint (class, res).", std::get<0>(R), std::get<1>(R));
 }
-*/
+
 
 auto dobwm::Box::focus(Hnd &H) {
-  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
@@ -105,11 +111,9 @@ auto dobwm::Box::focus(Hnd &H) {
     if (curr->get().res.has_value())
       print_hint(curr->get().res.value());
   }
-  */
 }
 
 auto dobwm::Box::sw_focus(void) {
-  /*
   for (auto &m : M)
     for (auto &t : m.T)
       for (auto h { t.H.begin() }; h < t.H.end(); h++)
@@ -124,9 +128,8 @@ auto dobwm::Box::sw_focus(void) {
             return;
           }
         }
-  */
 }
-/*
+  
 	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
 		for (i = 0; i < num; i++) {
 			if (!XGetWindowAttributes(dpy, wins[i], &wa)
@@ -145,17 +148,15 @@ auto dobwm::Box::sw_focus(void) {
 		if (wins)
 			XFree(wins);
 	}
-*/
-/*
+
 	if (!XGetWindowAttributes(dpy, ev->window, &wa))
 		return;
 	if (wa.override_redirect)
 		return;
 	if (!wintoclient(ev->window))
 		manage(ev->window, &wa);
-*/
+
 auto dobwm::Box::map_request(const ::Window W) -> void {
-  /*
   ::Window tra { };
   if (const auto D { x.client_dim(W) }; D.has_value() && x.map_window(W)) {
     M.back().T.back().H.emplace_back(Hnd { 
@@ -173,40 +174,32 @@ auto dobwm::Box::map_request(const ::Window W) -> void {
     M.back().T.back().H.emplace_back(Hnd { tra, D.value(), false });
     focus(M.back().T.back().H.back());
   }
-  */
 }
 
 auto dobwm::Box::map_all(void) const {
-  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
         x.map_window(H.win); });
-  */
 }
 
 auto dobwm::Box::unmap_all(void) const {
-  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) {
         x.unmap_window(H.win); });
-  */
 }
 
 auto dobwm::Box::del_hnd(const Hnd &H) {
-  /*
   for (auto &m : M)
     for (auto &t : m.T)
       if (const auto H_ { std::ranges::find(t.H, H) }; H_ < t.H.end()) {
           t.H.erase(H_);
           return;
       }
-  */
 }
 
 auto dobwm::Box::key(void) {
-  /*
   const Kb KB { x.key_state(), static_cast<Key>(x.key_press(x.key_code())) };
   for (const auto &CMD : CMDS)
     if (KB == std::get<0>(CMD)) {
@@ -247,7 +240,6 @@ auto dobwm::Box::key(void) {
       // fork() on std::get<1>(CMD)
       return;
     }
-  */
 }
 
 auto dobwm::Box::configure_request(void) {
@@ -257,10 +249,8 @@ auto dobwm::Box::configure_request(void) {
 }
 
 auto dobwm::Box::unmap_request(void) {
-  /*
   const auto W { x.unmap_notify() };
   x.unmap_window(W);
-  */
 }
 
 auto dobwm::Box::cli_msg(void) const {
@@ -269,27 +259,23 @@ auto dobwm::Box::cli_msg(void) const {
 }
 
 auto dobwm::Box::hnd(const ::Window W) -> HndRef {
-  /*
   for (auto &m : M)
     for (auto &t : m.T)
       if (auto h { 
           std::ranges::find_if(t.H, [&](const Hnd &H) -> bool {
             return H.win == W; }) }; h < t.H.end())
         return *h;
- */
+
   return std::nullopt;
 }
 
 auto dobwm::Box::enter_notify(void) {
-  /*
   if (SLOPPY_FOCUS && curr.has_value() &&
       x.crossing_window() != curr->get().win)
     focus(*hnd(x.crossing_window()));
-  */
 }
 
 auto dobwm::Box::button(void) {
-  /*
   for (const auto &M : this->M)
     for (const auto &T : M.T)
       std::ranges::for_each(T.H, [&](const Hnd &H) { 
@@ -312,9 +298,8 @@ auto dobwm::Box::button(void) {
         x.ungrab_button(H.win, std::get<0>(SELECT),
           static_cast<unsigned>(std::get<1>(SELECT)));
       });
-  */
 }
-/*
+
 auto dobwm::Box::ev(void) {
   if (x.next_event()) {
     if (x.event() == dobwm::XEvent::Map)
@@ -347,18 +332,89 @@ struct X {
   static constexpr auto BUTTONMASK {
     ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
   static constexpr auto NOTIFMASK { PropertyChangeMask };
-  inline static bool error;
+  static inline bool error;
   int modmask { };
   ::Display *dpy { ::XOpenDisplay(nullptr) };
   ::Window root { };
-  //std::array<::Atom, static_cast<int>(Wm::CNT)> WM;
-  //std::array<::Atom, std::to_underlying(Wm::CNT)> WM;
-  //std::array<::Atom, static_cast<int>(Net::CNT)> NET;
-  //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+  struct Atom {
+    enum class Wm : std::size_t { PROTO, DELWIN, Z };
+    enum class Net : std::size_t { SUPP, STATE, ACT, FSCRN, Z };
+    std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
+    //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
+    std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
+    //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+  };
+
+  Atom atom;
   ::XEvent ev;
 };
 
+struct Client {
+  ::Window w { };
+  std::pair<unsigned, unsigned> size;
+  std::pair<int, int> pos;
+  bool mut { }, sel { };
+};
+
+class Ev {
+  std::reference_wrapper<::XEvent> ev;
+public:
+  Ev(void) = delete;
+  explicit Ev(::XEvent &ev) : ev { ev } { }
+  void mapnotify(void);
+  void unmapnotify(void);
+  void clientmessage(void);
+  void configurenotify(void);
+  void maprequest(void);
+  void configurerequest(void);
+  void motionnotify(void);
+  void keypress(void);
+  void buttonpress(void);
+  void enternotify(void);
+};
+
+void Ev::mapnotify(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::unmapnotify(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::clientmessage(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::configurenotify(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::maprequest(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::configurerequest(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::motionnotify(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::keypress(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::buttonpress(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
+void Ev::enternotify(void) {
+  std::cout << "Event " << ev.get().type << "\n";
+}
+
 static X x;
+static std::vector<Client> C;
 
 auto XError(::Display *dpy, ::XErrorEvent *ev) {
   x.error = ev->error_code == BadAccess;
@@ -368,7 +424,7 @@ auto XError(::Display *dpy, ::XErrorEvent *ev) {
 int main(const int ARGC, const char *ARGV[]) {
   try {
     //std::println("...");
-    ::DBGMSG("Dopenbox Window Manager ver.", dobwm::VER);
+    ::DBGMSG("Dopenbox Window Manager ver.", VER);
     if (!x.dpy)
       throw std::runtime_error("Unable to open display");
 
@@ -394,25 +450,24 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
-    /*
     // Atoms
-    WM[static_cast<int>(Wm::PROTO)] =
-      ::XInternAtom(dpy, "WM_PROTOCOLS", false);
-    WM[static_cast<int>(Wm::DELWIN)] =
-      ::XInternAtom(dpy, "WM_DELETE_WINDOW", false);
-    NET[static_cast<int>(Net::SUPP)] =
-      ::XInternAtom(dpy, "_NET_SUPPORTED", false);
-    NET[static_cast<int>(Net::STATE)] =
-      ::XInternAtom(dpy, "_NET_WM_STATE", false);
-    NET[static_cast<int>(Net::ACT)] =
-      ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
-    NET[static_cast<int>(Net::FSCRN)] =
-      ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
-    ::XChangeProperty(dpy, root, NET[static_cast<int>(Net::SUPP)],
+    x.atom.WM[static_cast<std::size_t>(X::Atom::Wm::PROTO)] =
+      ::XInternAtom(x.dpy, "WM_PROTOCOLS", false);
+    x.atom.WM[static_cast<std::size_t>(X::Atom::Wm::DELWIN)] =
+      ::XInternAtom(x.dpy, "WM_DELETE_WINDOW", false);
+    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::SUPP)] =
+      ::XInternAtom(x.dpy, "_NET_SUPPORTED", false);
+    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::STATE)] =
+      ::XInternAtom(x.dpy, "_NET_WM_STATE", false);
+    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::ACT)] =
+      ::XInternAtom(x.dpy, "_NET_ACTIVE_WINDOW", false);
+    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::FSCRN)] =
+      ::XInternAtom(x.dpy, "_NET_WM_STATE_FULLSCREEN", false);
+    ::XChangeProperty(x.dpy, x.root, 
+      x.atom.NET[static_cast<std::size_t>(X::Atom::Net::SUPP)],
       XA_ATOM, 32, PropModeReplace,
-        reinterpret_cast<unsigned char *>(NET.data()),
-          static_cast<int>(Net::CNT));
-    */
+        reinterpret_cast<unsigned char *>(x.atom.NET.data()),
+          static_cast<std::size_t>(X::Atom::Net::Z));
     ::XSync(x.dpy, false);
     //dobwm::Box box;
     /*
@@ -433,30 +488,33 @@ int main(const int ARGC, const char *ARGV[]) {
         x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
       }
     */
-    ::DBGMSG("WM", "initialized");
-    MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
+    ::DBGMSG("WM initialized");
+    ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
+    Ev ev { x.ev };
     while (true)
       if (::XNextEvent(x.dpy, &x.ev) == 0)
         switch (x.ev.type) {
           case MapNotify:
-            ;
+            ev.mapnotify();
           case UnmapNotify:
-            ;
+            ev.unmapnotify();
           case ClientMessage:
-            ;
+            ev.clientmessage();
           case ConfigureNotify:
-            ;
+            ev.configurenotify();
           case MapRequest:
-            ;
+            ev.maprequest();
           case ConfigureRequest:
-            ;
+            ev.configurerequest();
           case MotionNotify:
-            ;
+            ev.motionnotify();
           case KeyPress:
-            ;
+            ev.keypress();
           case ButtonPress:
-            ;
+            ev.buttonpress();
           case EnterNotify:
+            ev.enternotify();;
+          default:
             ;
         }
   
