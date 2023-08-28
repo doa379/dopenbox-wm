@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <functional>
 //#include <dobwm.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -358,9 +359,11 @@ struct Client {
 
 class Ev {
   std::reference_wrapper<::XEvent> ev;
+  static constexpr auto NE { 64 };
+  std::array<std::function<void(void)>, NE> F;
 public:
   Ev(void) = delete;
-  explicit Ev(::XEvent &ev) : ev { ev } { }
+  explicit Ev(::XEvent &);
   void mapnotify(void);
   void unmapnotify(void);
   void clientmessage(void);
@@ -371,50 +374,96 @@ public:
   void keypress(void);
   void buttonpress(void);
   void enternotify(void);
+  void call(void) { F[ev.get().type](); }
 };
-
-void Ev::mapnotify(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::unmapnotify(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::clientmessage(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::configurenotify(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::maprequest(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::configurerequest(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::motionnotify(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::keypress(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::buttonpress(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
-
-void Ev::enternotify(void) {
-  std::cout << "Event " << ev.get().type << "\n";
-}
 
 static X x;
 static std::vector<Client> C;
+static bool quit { };
+
+Ev::Ev(::XEvent &ev) : ev { ev } {
+  for (auto i { 0 }; i < NE; i++)
+    F[i] = [] { };
+
+  F[MapNotify] = [&] { mapnotify(); };
+  F[UnmapNotify] = [&] { unmapnotify(); };
+  F[ClientMessage] = [&] { clientmessage(); };
+  F[ConfigureNotify] = [&] { configurenotify(); };
+  F[MapRequest] = [&] { maprequest(); };
+  F[ConfigureRequest] = [&] { configurerequest(); };
+  F[MotionNotify] = [&] { motionnotify(); };
+  F[KeyPress] = [&] { keypress(); };
+  F[ButtonPress] = [&] { buttonpress(); };
+  F[EnterNotify] = [&] { enternotify(); };
+}
+
+void Ev::mapnotify(void) {
+  ::DBGMSG("Event MapNotify ", ev.get().type);
+}
+
+void Ev::unmapnotify(void) {
+  ::DBGMSG("Event UnmapNotify ", ev.get().type);
+}
+
+void Ev::clientmessage(void) {
+  ::DBGMSG("Event ClientMessage ", ev.get().type);
+  ::XClientMessageEvent &cmev { ev.get().xclient };
+  const auto C_ { std::ranges::find_if(C, 
+    [w = cmev.window](const auto &C) { return C.w == w; }) };
+  if (C_ == C.end()) return;
+  // Handle messages
+}
+
+void Ev::configurenotify(void) {
+  ::DBGMSG("Event ConfigureNotify ", ev.get().type);
+  ::XConfigureEvent &cev { ev.get().xconfigure };
+}
+
+void Ev::maprequest(void) {
+  ::DBGMSG("Event MapRequest ", ev.get().type);
+  static ::XWindowAttributes wa;
+  ::XMapRequestEvent &mrev { ev.get().xmaprequest };
+  if (!::XGetWindowAttributes(x.dpy, mrev.window, &wa) || wa.override_redirect)
+    return;
+  const auto C_ { std::ranges::find_if(C, 
+    [w = mrev.window](const auto &C) { return C.w == w; }) };
+  if (C_ == C.end()) {
+    // setup client window mrev.window using wa
+  }
+}
+
+void Ev::configurerequest(void) {
+  ::DBGMSG("Event ConfigureRequest ", ev.get().type);
+  ::XConfigureRequestEvent &crev { ev.get().xconfigurerequest };
+  ::XWindowChanges wc;
+}
+
+void Ev::motionnotify(void) {
+  ::DBGMSG("Event MotionNotify ", ev.get().type);
+  ::XMotionEvent &mev { ev.get().xmotion };
+  if (mev.window != x.root) return;
+}
+
+void Ev::keypress(void) {
+  ::DBGMSG("Event KeyPress ", ev.get().type);
+  ::XKeyEvent &kev { ev.get().xkey };
+  ::KeySym keysym { ::XKeycodeToKeysym(x.dpy, (KeyCode) kev.keycode, 0) };
+}
+
+void Ev::buttonpress(void) {
+  ::DBGMSG("Event ButtonPress ", ev.get().type);
+  ::XButtonPressedEvent &bpev { ev.get().xbutton };
+}
+
+void Ev::enternotify(void) {
+  ::DBGMSG("Event EnterNotify ", ev.get().type);
+  ::XCrossingEvent &cev { ev.get().xcrossing };
+  if ((cev.mode != NotifyNormal || cev.detail == NotifyInferior) && 
+      cev.window != x.root) return;
+  const auto C_ { std::ranges::find_if(C, 
+    [w = cev.window](const auto &C) { return C.w == w; }) };
+  // focus C_
+}
 
 auto XError(::Display *dpy, ::XErrorEvent *ev) {
   x.error = ev->error_code == BadAccess;
@@ -491,32 +540,9 @@ int main(const int ARGC, const char *ARGV[]) {
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
     Ev ev { x.ev };
-    while (true)
+    while (!quit)
       if (::XNextEvent(x.dpy, &x.ev) == 0)
-        switch (x.ev.type) {
-          case MapNotify:
-            ev.mapnotify();
-          case UnmapNotify:
-            ev.unmapnotify();
-          case ClientMessage:
-            ev.clientmessage();
-          case ConfigureNotify:
-            ev.configurenotify();
-          case MapRequest:
-            ev.maprequest();
-          case ConfigureRequest:
-            ev.configurerequest();
-          case MotionNotify:
-            ev.motionnotify();
-          case KeyPress:
-            ev.keypress();
-          case ButtonPress:
-            ev.buttonpress();
-          case EnterNotify:
-            ev.enternotify();;
-          default:
-            ;
-        }
+        ev.call();
   
     ::XCloseDisplay(x.dpy);
   } catch (const std::exception &E) {
