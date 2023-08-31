@@ -3,13 +3,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
-#include <vector>
-#include <string>
 #include <functional>
-//#include <dobwm.h>
 #include <X11/Xatom.h>
-#include <X11/Xutil.h>
+#include <dobwm.h>
 #include <msg.h>
+#include <panel.h>
 #include <../config.h>
 
 static constexpr std::string_view VER { "-0.0" };
@@ -327,61 +325,65 @@ auto dobwm::Box::ev(void) {
   }
 }
 */
-struct X {
-  static constexpr auto ROOTMASK {
-    SubstructureRedirectMask | SubstructureNotifyMask };
-  static constexpr auto BUTTONMASK {
-    ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
-  static constexpr auto NOTIFMASK { PropertyChangeMask };
-  static inline bool error;
-  int modmask { };
-  ::Display *dpy { ::XOpenDisplay(nullptr) };
-  ::Window root { };
-  struct Atom {
-    enum class Wm : std::size_t { PROTO, DELWIN, Z };
-    enum class Net : std::size_t { SUPP, STATE, ACT, FSCRN, Z };
-    std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
-    //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
-    std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
-    //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+namespace dobwm {
+  struct X {
+    static constexpr auto ROOTMASK {
+      SubstructureRedirectMask | SubstructureNotifyMask };
+    static constexpr auto BUTTONMASK {
+      ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
+    static constexpr auto NOTIFMASK { PropertyChangeMask };
+    static inline bool error;
+    int modmask { };
+    ::Display *dpy { ::XOpenDisplay(nullptr) };
+    ::Window root { };
+    struct Atom {
+      enum class Wm : std::size_t { PROTO, DELWIN, Z };
+      enum class Net : std::size_t { SUPP, STATE, ACT, FSCRN, Z };
+      std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
+      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
+      std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
+      //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+    };
+
+    Atom atom;
+    ::XEvent ev;
   };
 
-  Atom atom;
-  ::XEvent ev;
-};
+  struct Client {
+    ::Window w { };
+    std::pair<unsigned, unsigned> size;
+    std::pair<int, int> pos;
+    bool mut { }, sel { };
+  };
 
-struct Client {
-  ::Window w { };
-  std::pair<unsigned, unsigned> size;
-  std::pair<int, int> pos;
-  bool mut { }, sel { };
-};
+  class Ev {
+    std::reference_wrapper<::XEvent> ev;
+    static constexpr auto NE { 64 };
+    std::array<std::function<void(void)>, NE> F;
+  public:
+    Ev(void) = delete;
+    explicit Ev(::XEvent &);
+    void mapnotify(void);
+    void unmapnotify(void);
+    void clientmessage(void);
+    void configurenotify(void);
+    void maprequest(void);
+    void configurerequest(void);
+    void motionnotify(void);
+    void keypress(void);
+    void buttonpress(void);
+    void enternotify(void);
+    void call(void) { F[ev.get().type](); }
+  };
+}
 
-class Ev {
-  std::reference_wrapper<::XEvent> ev;
-  static constexpr auto NE { 64 };
-  std::array<std::function<void(void)>, NE> F;
-public:
-  Ev(void) = delete;
-  explicit Ev(::XEvent &);
-  void mapnotify(void);
-  void unmapnotify(void);
-  void clientmessage(void);
-  void configurenotify(void);
-  void maprequest(void);
-  void configurerequest(void);
-  void motionnotify(void);
-  void keypress(void);
-  void buttonpress(void);
-  void enternotify(void);
-  void call(void) { F[ev.get().type](); }
-};
-
-static X x;
-static std::vector<Client> C;
+static dobwm::X x;
+static dobwm::Panel p;
+//static std::vector<std::vector<Client>> T;
+static std::vector<dobwm::Client> C;
 static bool quit { };
 
-Ev::Ev(::XEvent &ev) : ev { ev } {
+dobwm::Ev::Ev(::XEvent &ev) : ev { ev } {
   for (auto i { 0 }; i < NE; i++)
     F[i] = [] { };
 
@@ -397,15 +399,16 @@ Ev::Ev(::XEvent &ev) : ev { ev } {
   F[EnterNotify] = [&] { enternotify(); };
 }
 
-void Ev::mapnotify(void) {
+void dobwm::Ev::mapnotify(void) {
   ::DBGMSG("Event MapNotify ", ev.get().type);
 }
 
-void Ev::unmapnotify(void) {
+void dobwm::Ev::unmapnotify(void) {
   ::DBGMSG("Event UnmapNotify ", ev.get().type);
+  ::XUnmapEvent &umev { ev.get().xunmap };
 }
 
-void Ev::clientmessage(void) {
+void dobwm::Ev::clientmessage(void) {
   ::DBGMSG("Event ClientMessage ", ev.get().type);
   ::XClientMessageEvent &cmev { ev.get().xclient };
   const auto C_ { std::ranges::find_if(C, 
@@ -414,12 +417,12 @@ void Ev::clientmessage(void) {
   // Handle messages
 }
 
-void Ev::configurenotify(void) {
+void dobwm::Ev::configurenotify(void) {
   ::DBGMSG("Event ConfigureNotify ", ev.get().type);
   ::XConfigureEvent &cev { ev.get().xconfigure };
 }
 
-void Ev::maprequest(void) {
+void dobwm::Ev::maprequest(void) {
   ::DBGMSG("Event MapRequest ", ev.get().type);
   static ::XWindowAttributes wa;
   ::XMapRequestEvent &mrev { ev.get().xmaprequest };
@@ -432,30 +435,30 @@ void Ev::maprequest(void) {
   }
 }
 
-void Ev::configurerequest(void) {
+void dobwm::Ev::configurerequest(void) {
   ::DBGMSG("Event ConfigureRequest ", ev.get().type);
   ::XConfigureRequestEvent &crev { ev.get().xconfigurerequest };
   ::XWindowChanges wc;
 }
 
-void Ev::motionnotify(void) {
+void dobwm::Ev::motionnotify(void) {
   ::DBGMSG("Event MotionNotify ", ev.get().type);
   ::XMotionEvent &mev { ev.get().xmotion };
   if (mev.window != x.root) return;
 }
 
-void Ev::keypress(void) {
+void dobwm::Ev::keypress(void) {
   ::DBGMSG("Event KeyPress ", ev.get().type);
   ::XKeyEvent &kev { ev.get().xkey };
   ::KeySym keysym { ::XKeycodeToKeysym(x.dpy, (KeyCode) kev.keycode, 0) };
 }
 
-void Ev::buttonpress(void) {
+void dobwm::Ev::buttonpress(void) {
   ::DBGMSG("Event ButtonPress ", ev.get().type);
   ::XButtonPressedEvent &bpev { ev.get().xbutton };
 }
 
-void Ev::enternotify(void) {
+void dobwm::Ev::enternotify(void) {
   ::DBGMSG("Event EnterNotify ", ev.get().type);
   ::XCrossingEvent &cev { ev.get().xcrossing };
   if ((cev.mode != NotifyNormal || cev.detail == NotifyInferior) && 
@@ -465,7 +468,7 @@ void Ev::enternotify(void) {
   // focus C_
 }
 
-auto XError(::Display *dpy, ::XErrorEvent *ev) {
+auto XError(::Display *, ::XErrorEvent *ev) {
   x.error = ev->error_code == BadAccess;
   return 0;
 }
@@ -477,7 +480,10 @@ int main(const int ARGC, const char *ARGV[]) {
     if (!x.dpy)
       throw std::runtime_error("Unable to open display");
 
-    x.root = RootWindow(x.dpy, DefaultScreen(x.dpy));
+    const auto SCR { DefaultScreen(x.dpy) };
+    x.root = RootWindow(x.dpy, SCR);
+    p.init(x.dpy, x.root, SCR);
+    p.draw("...");
     ::XSetErrorHandler(XError);
     ::XSelectInput(x.dpy, x.root, x.ROOTMASK | x.BUTTONMASK | x.NOTIFMASK);
     ::XSync(x.dpy, false);
@@ -500,25 +506,26 @@ int main(const int ARGC, const char *ARGV[]) {
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
     // Atoms
-    x.atom.WM[static_cast<std::size_t>(X::Atom::Wm::PROTO)] =
+    using Wm = dobwm::X::Atom::Wm;
+    x.atom.WM[static_cast<std::size_t>(Wm::PROTO)] =
       ::XInternAtom(x.dpy, "WM_PROTOCOLS", false);
-    x.atom.WM[static_cast<std::size_t>(X::Atom::Wm::DELWIN)] =
+    x.atom.WM[static_cast<std::size_t>(Wm::DELWIN)] =
       ::XInternAtom(x.dpy, "WM_DELETE_WINDOW", false);
-    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::SUPP)] =
+    using Net = dobwm::X::Atom::Net;
+    x.atom.NET[static_cast<std::size_t>(Net::SUPP)] =
       ::XInternAtom(x.dpy, "_NET_SUPPORTED", false);
-    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::STATE)] =
+    x.atom.NET[static_cast<std::size_t>(Net::STATE)] =
       ::XInternAtom(x.dpy, "_NET_WM_STATE", false);
-    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::ACT)] =
+    x.atom.NET[static_cast<std::size_t>(Net::ACT)] =
       ::XInternAtom(x.dpy, "_NET_ACTIVE_WINDOW", false);
-    x.atom.NET[static_cast<std::size_t>(X::Atom::Net::FSCRN)] =
+    x.atom.NET[static_cast<std::size_t>(Net::FSCRN)] =
       ::XInternAtom(x.dpy, "_NET_WM_STATE_FULLSCREEN", false);
     ::XChangeProperty(x.dpy, x.root, 
-      x.atom.NET[static_cast<std::size_t>(X::Atom::Net::SUPP)],
+      x.atom.NET[static_cast<std::size_t>(Net::SUPP)],
       XA_ATOM, 32, PropModeReplace,
         reinterpret_cast<unsigned char *>(x.atom.NET.data()),
-          static_cast<std::size_t>(X::Atom::Net::Z));
+          static_cast<std::size_t>(Net::Z));
     ::XSync(x.dpy, false);
-    //dobwm::Box box;
     /*
     for (const auto &D : x.MONS()) {
       std::vector<Tag> T { Nt };
@@ -539,7 +546,7 @@ int main(const int ARGC, const char *ARGV[]) {
     */
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
-    Ev ev { x.ev };
+    dobwm::Ev ev { x.ev };
     while (!quit)
       if (::XNextEvent(x.dpy, &x.ev) == 0)
         ev.call();
@@ -548,7 +555,7 @@ int main(const int ARGC, const char *ARGV[]) {
   } catch (const std::exception &E) {
       ::DBGMSG("Ex.", E.what());
       //std::println("Ex. { }", E.what());
-    return -1;
+      return -1;
   }
   
   return 0;
