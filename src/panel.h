@@ -15,9 +15,8 @@ namespace dobwm {
     ::GC gc;
     std::vector<std::string> S;
 public:
-    Panel(void);
+    Panel(::Display *, ::Window, const int);
     ~Panel(void);
-    void init(::Display *, ::Window, const int);
     void draw(std::string_view);
   };
 }

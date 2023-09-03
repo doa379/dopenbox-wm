@@ -1,23 +1,16 @@
 #include <panel.h>
 
-dobwm::Panel::Panel(void) {
-
-}
-
-dobwm::Panel::~Panel(void) { 
-  ::XFlush(dpy);
-  ::XFreeGC(dpy, gc);
-  ::XFreePixmap(dpy, drawable); 
-}
-
-void dobwm::Panel::init(::Display *dpy, ::Window w, const int SCR) {
-  this->dpy = dpy;
-  this->w = w;
-  scr = SCR;
+dobwm::Panel::Panel(::Display *dpy, ::Window w, const int SCR) :
+  dpy { dpy }, w { w }, scr { SCR } {
   size = { DisplayWidth(dpy, SCR), DisplayHeight(dpy, SCR) };
   drawable = ::XCreatePixmap(dpy, w, std::get<0>(size), std::get<1>(size), DefaultDepth(dpy, SCR));
   gc = ::XCreateGC(dpy, w, 0, nullptr);
   ::XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+}
+
+dobwm::Panel::~Panel(void) { 
+  ::XFreeGC(dpy, gc);
+  ::XFreePixmap(dpy, drawable); 
 }
 
 void dobwm::Panel::draw(std::string_view S) {

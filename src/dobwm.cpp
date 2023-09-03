@@ -2,6 +2,7 @@
 //#include <print>
 #include <algorithm>
 #include <cstdlib>
+#include <csignal>
 #include <sstream>
 #include <functional>
 #include <X11/Xatom.h>
@@ -332,7 +333,6 @@ namespace dobwm {
     static constexpr auto BUTTONMASK {
       ButtonPressMask | ButtonReleaseMask | ButtonMotionMask };
     static constexpr auto NOTIFMASK { PropertyChangeMask };
-    static inline bool error;
     int modmask { };
     ::Display *dpy { ::XOpenDisplay(nullptr) };
     ::Window root { };
@@ -357,12 +357,12 @@ namespace dobwm {
   };
 
   class Ev {
-    std::reference_wrapper<::XEvent> ev;
+    std::reference_wrapper<X> x;
     static constexpr auto NE { 64 };
     std::array<std::function<void(void)>, NE> F;
   public:
     Ev(void) = delete;
-    explicit Ev(::XEvent &);
+    explicit Ev(X &);
     void mapnotify(void);
     void unmapnotify(void);
     void clientmessage(void);
@@ -373,17 +373,14 @@ namespace dobwm {
     void keypress(void);
     void buttonpress(void);
     void enternotify(void);
-    void call(void) { F[ev.get().type](); }
+    void call(void) { F[x.get().ev.type](); }
   };
 }
 
-static dobwm::X x;
-static dobwm::Panel p;
-//static std::vector<std::vector<Client>> T;
+//static std::array<std::vector<Client>, NT> T;
 static std::vector<dobwm::Client> C;
-static bool quit { };
 
-dobwm::Ev::Ev(::XEvent &ev) : ev { ev } {
+dobwm::Ev::Ev(X &x) : x { x } {
   for (auto i { 0 }; i < NE; i++)
     F[i] = [] { };
 
@@ -400,17 +397,18 @@ dobwm::Ev::Ev(::XEvent &ev) : ev { ev } {
 }
 
 void dobwm::Ev::mapnotify(void) {
-  ::DBGMSG("Event MapNotify ", ev.get().type);
+  ::DBGMSG("Event MapNotify ", x.get().ev.type);
 }
 
 void dobwm::Ev::unmapnotify(void) {
-  ::DBGMSG("Event UnmapNotify ", ev.get().type);
-  ::XUnmapEvent &umev { ev.get().xunmap };
+  ::DBGMSG("Event UnmapNotify ", x.get().ev.type);
+  ::XUnmapEvent &umev { x.get().ev.xunmap };
+  //std::raise(SIGINT);
 }
 
 void dobwm::Ev::clientmessage(void) {
-  ::DBGMSG("Event ClientMessage ", ev.get().type);
-  ::XClientMessageEvent &cmev { ev.get().xclient };
+  ::DBGMSG("Event ClientMessage ", x.get().ev.type);
+  ::XClientMessageEvent &cmev { x.get().ev.xclient };
   const auto C_ { std::ranges::find_if(C, 
     [w = cmev.window](const auto &C) { return C.w == w; }) };
   if (C_ == C.end()) return;
@@ -418,15 +416,15 @@ void dobwm::Ev::clientmessage(void) {
 }
 
 void dobwm::Ev::configurenotify(void) {
-  ::DBGMSG("Event ConfigureNotify ", ev.get().type);
-  ::XConfigureEvent &cev { ev.get().xconfigure };
+  ::DBGMSG("Event ConfigureNotify ", x.get().ev.type);
+  ::XConfigureEvent &cev { x.get().ev.xconfigure };
 }
 
 void dobwm::Ev::maprequest(void) {
-  ::DBGMSG("Event MapRequest ", ev.get().type);
+  ::DBGMSG("Event MapRequest ", x.get().ev.type);
   static ::XWindowAttributes wa;
-  ::XMapRequestEvent &mrev { ev.get().xmaprequest };
-  if (!::XGetWindowAttributes(x.dpy, mrev.window, &wa) || wa.override_redirect)
+  ::XMapRequestEvent &mrev { x.get().ev.xmaprequest };
+  if (!::XGetWindowAttributes(x.get().dpy, mrev.window, &wa) || wa.override_redirect)
     return;
   const auto C_ { std::ranges::find_if(C, 
     [w = mrev.window](const auto &C) { return C.w == w; }) };
@@ -436,40 +434,50 @@ void dobwm::Ev::maprequest(void) {
 }
 
 void dobwm::Ev::configurerequest(void) {
-  ::DBGMSG("Event ConfigureRequest ", ev.get().type);
-  ::XConfigureRequestEvent &crev { ev.get().xconfigurerequest };
+  ::DBGMSG("Event ConfigureRequest ", x.get().ev.type);
+  ::XConfigureRequestEvent &crev { x.get().ev.xconfigurerequest };
   ::XWindowChanges wc;
 }
 
 void dobwm::Ev::motionnotify(void) {
-  ::DBGMSG("Event MotionNotify ", ev.get().type);
-  ::XMotionEvent &mev { ev.get().xmotion };
-  if (mev.window != x.root) return;
+  ::DBGMSG("Event MotionNotify ", x.get().ev.type);
+  ::XMotionEvent &mev { x.get().ev.xmotion };
+  if (mev.window != x.get().root) return;
 }
 
 void dobwm::Ev::keypress(void) {
-  ::DBGMSG("Event KeyPress ", ev.get().type);
-  ::XKeyEvent &kev { ev.get().xkey };
-  ::KeySym keysym { ::XKeycodeToKeysym(x.dpy, (KeyCode) kev.keycode, 0) };
+  ::DBGMSG("Event KeyPress ", x.get().ev.type);
+  ::XKeyEvent &kev { x.get().ev.xkey };
+  ::KeySym keysym { ::XKeycodeToKeysym(x.get().dpy, (KeyCode) kev.keycode, 0) };
 }
 
 void dobwm::Ev::buttonpress(void) {
-  ::DBGMSG("Event ButtonPress ", ev.get().type);
-  ::XButtonPressedEvent &bpev { ev.get().xbutton };
+  ::DBGMSG("Event ButtonPress ", x.get().ev.type);
+  ::XButtonPressedEvent &bpev { x.get().ev.xbutton };
 }
 
 void dobwm::Ev::enternotify(void) {
-  ::DBGMSG("Event EnterNotify ", ev.get().type);
-  ::XCrossingEvent &cev { ev.get().xcrossing };
+  ::DBGMSG("Event EnterNotify ", x.get().ev.type);
+  ::XCrossingEvent &cev { x.get().ev.xcrossing };
   if ((cev.mode != NotifyNormal || cev.detail == NotifyInferior) && 
-      cev.window != x.root) return;
+      cev.window != x.get().root) return;
   const auto C_ { std::ranges::find_if(C, 
     [w = cev.window](const auto &C) { return C.w == w; }) };
   // focus C_
 }
 
+volatile std::sig_atomic_t sig_status;
+
+auto sig_handler(int sig) {
+  sig_status = sig;
+  //::XEvent ev { 0 };
+  //::XSendEvent(x.dpy, x.root, 0, 0, &ev);
+}
+
+static bool error;
+
 auto XError(::Display *, ::XErrorEvent *ev) {
-  x.error = ev->error_code == BadAccess;
+  error = ev->error_code == BadAccess;
   return 0;
 }
 
@@ -477,17 +485,16 @@ int main(const int ARGC, const char *ARGV[]) {
   try {
     //std::println("...");
     ::DBGMSG("Dopenbox Window Manager ver.", VER);
+    dobwm::X x;
     if (!x.dpy)
       throw std::runtime_error("Unable to open display");
 
     const auto SCR { DefaultScreen(x.dpy) };
     x.root = RootWindow(x.dpy, SCR);
-    p.init(x.dpy, x.root, SCR);
-    p.draw("...");
     ::XSetErrorHandler(XError);
     ::XSelectInput(x.dpy, x.root, x.ROOTMASK | x.BUTTONMASK | x.NOTIFMASK);
     ::XSync(x.dpy, false);
-    if (x.error) {
+    if (error) {
       ::XCloseDisplay(x.dpy);
       throw std::runtime_error("Initialization error (another wm running?)");
     }
@@ -544,14 +551,18 @@ int main(const int ARGC, const char *ARGV[]) {
         x.grab_key(std::get<0>(KB), static_cast<unsigned long>(std::get<1>(KB)));
       }
     */
+    dobwm::Panel p { x.dpy, x.root, SCR };
+    p.draw("...");
+    std::signal(SIGINT, sig_handler);
+    dobwm::Ev ev { x };
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
-    dobwm::Ev ev { x.ev };
-    while (!quit)
+    while (!sig_status)
       if (::XNextEvent(x.dpy, &x.ev) == 0)
         ev.call();
   
     ::XCloseDisplay(x.dpy);
+    ::DBGMSG("WM exit");
   } catch (const std::exception &E) {
       ::DBGMSG("Ex.", E.what());
       //std::println("Ex. { }", E.what());
