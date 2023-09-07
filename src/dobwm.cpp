@@ -358,8 +358,7 @@ namespace dobwm {
 
   class Ev {
     std::reference_wrapper<X> x;
-    static constexpr auto NE { 64 };
-    std::array<std::function<void(void)>, NE> F;
+    std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
   public:
     Ev(void) = delete;
     explicit Ev(X &);
@@ -381,7 +380,7 @@ namespace dobwm {
 static std::vector<dobwm::Client> C;
 
 dobwm::Ev::Ev(X &x) : x { x } {
-  for (auto i { 0 }; i < NE; i++)
+  for (auto i { 0 }; i < LASTEvent; i++)
     F[i] = [] { };
 
   F[MapNotify] = [&] { mapnotify(); };
@@ -560,9 +559,9 @@ int main(const int ARGC, const char *ARGV[]) {
     while (!sig_status)
       if (::XNextEvent(x.dpy, &x.ev) == 0)
         ev.call();
-  
+    
     ::XCloseDisplay(x.dpy);
-    ::DBGMSG("WM exit");
+    ::DBGMSG("\nWM exit");
   } catch (const std::exception &E) {
       ::DBGMSG("Ex.", E.what());
       //std::println("Ex. { }", E.what());
