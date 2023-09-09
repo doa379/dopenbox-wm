@@ -2,6 +2,7 @@
 
 #include <X11/XF86keysym.h>
 #include <palette.h>
+#include <variant>
 
 /*
 Some ::KeySym {
@@ -96,14 +97,11 @@ namespace dobwm {
 */
   // Number of Commands
   //static constexpr auto MAX_NBTN        { 8 };
-  static constexpr auto NC        { 64 };
   //using Kb = std::pair<unsigned, ::KeySym>;
   //using Btn = std::pair<unsigned, Button>;
   //using Btns = std::array<Btn, MAX_NBTN>;
   //using Cmd = std::pair<Key, std::string_view>;
-  using Cmd = std::tuple<unsigned, unsigned, std::string_view>;
   //using Cmd = std::tuple<int, ::KeySym, std::string_view>;
-  using Cmds = std::array<Cmd, NC>;
   //using MCmd = std::tuple<int, int, std::string_view>;
 
 
@@ -118,36 +116,49 @@ namespace dobwm {
   static constexpr auto SLOPPY_FOCUS      { false };
   static constexpr auto MOVESTEP_PX       { 5 };
   //static constexpr auto MODKEY            { M };
+
+  enum class Calls : std::size_t {
+    QUIT, UNMAPALL, REMAPALL, KILL, SWFOCUS, SELTOGGLE,
+    SELCLEAR, MOVEUP, MOVEDOWN, MOVELEFT, MOVERIGHT,
+    RESIZEVINC, RESIZEVDEC, RESIZEHDEC, RESIZEHINC, SELECT, RESIZE, 
+    Z  // Terminator
+  };
+
+  // Internal Cmds
+  using Cmd = std::tuple<unsigned, unsigned, std::variant<Calls, std::string_view>>;
+  static constexpr auto NC { 24 };
+  using Cmds = std::array<Cmd, NC>;
   // Cmd Bindings
   static constexpr Cmds CMDS {
-      // KB Bindings
-      Cmd { Mod4Mask, XK_q,     "QUIT" },
-      Cmd { Mod4Mask, XK_u,     "UNMAPALL" },
-      Cmd { Mod4Mask, XK_v,     "REMAPALL" },
-      Cmd { Mod4Mask, XK_k,     "KILLCLI" },
-      Cmd { Mod4Mask, XK_Tab,   "SWFOCUS" },
-      Cmd { Mod4Mask, XK_space, "SELTOGGLE" },
-      Cmd { Mod4Mask, XK_c,     "SELCLEAR" },
-      Cmd { Mod4Mask | ShiftMask, XK_Up,       "MOVEUP" },
-      Cmd { Mod4Mask | ShiftMask, XK_Down,     "MOVEDOWN" },
-      Cmd { Mod4Mask | ShiftMask, XK_Left,     "MOVELEFT" },
-      Cmd { Mod4Mask | ShiftMask, XK_Right,    "MOVERIGHT" },
-      Cmd { Mod4Mask | ControlMask, XK_Up,       "RESIZEUP" },
-      Cmd { Mod4Mask | ControlMask, XK_Down,     "RESIZEDOWN" },
-      Cmd { Mod4Mask | ControlMask, XK_Left,     "RESIZELEFT" },
-      Cmd { Mod4Mask | ControlMask, XK_Right,    "RESIZERIGHT" },
-      // Mouse Bindings
-      Cmd { { }, Button1,      "SELECT" },
-      Cmd { Mod4Mask, Button3,  "RESIZE" },
-      // Sys Commands
-      Cmd { Mod4Mask, XK_Escape,   "dmenu_run" },
-      Cmd { Mod4Mask, XK_l,     "slock" },
-      Cmd { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
-      Cmd { { }, XK_n,        "notify-send \"No Modkey\"" }
+    // KB Bindings
+    Cmd { Mod4Mask, XK_q, Calls::QUIT },
+    Cmd { Mod4Mask, XK_u, Calls::UNMAPALL },
+    Cmd { Mod4Mask, XK_v, Calls::REMAPALL },
+    Cmd { Mod4Mask, XK_k, Calls::KILL },
+    Cmd { Mod4Mask, XK_Tab, Calls::SWFOCUS },
+    Cmd { Mod4Mask, XK_space, Calls::SELTOGGLE },
+    Cmd { Mod4Mask, XK_c, Calls::SELCLEAR },
+    Cmd { Mod4Mask | ShiftMask, XK_Up, Calls::MOVEUP },
+    Cmd { Mod4Mask | ShiftMask, XK_Down, Calls::MOVEDOWN },
+    Cmd { Mod4Mask | ShiftMask, XK_Left, Calls::MOVELEFT },
+    Cmd { Mod4Mask | ShiftMask, XK_Right, Calls::MOVERIGHT },
+    Cmd { Mod4Mask | ControlMask, XK_Up, Calls::RESIZEVINC },
+    Cmd { Mod4Mask | ControlMask, XK_Down, Calls::RESIZEVDEC },
+    Cmd { Mod4Mask | ControlMask, XK_Left, Calls::RESIZEHDEC },
+    Cmd { Mod4Mask | ControlMask, XK_Right, Calls::RESIZEHINC },
+    // Mouse Bindings
+    Cmd { { }, Button1, Calls::SELECT },
+    Cmd { Mod4Mask, Button3, Calls::RESIZE },
+  // User definable Cmds
   };
-  static constexpr Cmds CMDS_PROC {
-      Cmd { Mod4Mask, XK_d, "xclock" },
-      Cmd { Mod4Mask, XK_Return, "xterm" }
+
+  static constexpr Cmds USERCMDS {
+    Cmd { { }, XK_n, "notify-send \"No Modkey\"" },
+    Cmd { Mod4Mask, XK_Escape, "dmenu_run" },
+    Cmd { Mod4Mask, XK_l, "slock" },
+    Cmd { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
+    Cmd { Mod4Mask, XK_d, "xclock" },
+    Cmd { Mod4Mask, XK_Return, "xterm" }
   };
   // Mouse Bindings
   /*
