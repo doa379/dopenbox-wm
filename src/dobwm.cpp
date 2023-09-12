@@ -355,10 +355,20 @@ namespace dobwm {
     std::pair<int, int> pos;
     bool mut { }, sel { };
   };
+  
+  class Action {
+    std::reference_wrapper<X> x;
+    std::array<std::function<void(void)>, static_cast<std::size_t>(Calls::Z)> F;
+  public:
+    Action(X &);
+    void call(const Calls CALL) { F[static_cast<std::size_t>(CALL)]; }
+    void shcmd(std::string_view) { }
+  };
 
   class Ev {
     std::reference_wrapper<X> x;
     std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
+    Action a { x.get() };
   public:
     Ev(void) = delete;
     explicit Ev(X &);
@@ -378,6 +388,26 @@ namespace dobwm {
 
 //static std::array<std::vector<Client>, NT> T;
 static std::vector<dobwm::Client> C;
+
+dobwm::Action::Action(X &x) : x { x } {
+  F[static_cast<std::size_t>(Calls::QUIT)] = [] { };
+  F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { };
+  F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { };
+  F[static_cast<std::size_t>(Calls::KILL)] = [] { };
+  F[static_cast<std::size_t>(Calls::SWFOCUS)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELTOGGLE)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELCLEAR)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVEUP)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVEDOWN)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVELEFT)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVERIGHT)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEVINC)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEVDEC)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEHDEC)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELECT)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZE)] = [] { };
+}
 
 dobwm::Ev::Ev(X &x) : x { x } {
   for (auto i { 0 }; i < LASTEvent; i++)
@@ -511,6 +541,16 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
+    for (const auto &C : dobwm::CMDS) {
+      const auto KC { ::XKeysymToKeycode(x.dpy, std::get<1>(C)) };
+      ::XGrabKey(x.dpy, KC, std::get<0>(C) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
+    }
+
+    for (const auto &C : dobwm::USERCMDS) {
+      const auto KC { ::XKeysymToKeycode(x.dpy, std::get<1>(C)) };
+      ::XGrabKey(x.dpy, KC, std::get<0>(C) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
+    }
+
     // Atoms
     using Wm = dobwm::X::Atom::Wm;
     x.atom.WM[static_cast<std::size_t>(Wm::PROTO)] =
@@ -557,8 +597,10 @@ int main(const int ARGC, const char *ARGV[]) {
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
     while (!sig_status)
-      if (::XNextEvent(x.dpy, &x.ev) == 0)
+      if (::XNextEvent(x.dpy, &x.ev) == 0) {
         ev.call();
+        p.draw("...");
+      }
     
     ::XCloseDisplay(x.dpy);
     ::DBGMSG("\nWM exit");
