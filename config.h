@@ -2,7 +2,8 @@
 
 #include <X11/XF86keysym.h>
 #include <palette.h>
-#include <variant>
+//#include <variant>
+#include <map>
 
 /*
 Some ::KeySym {
@@ -115,16 +116,30 @@ namespace dobwm {
   static constexpr auto WINDOW_GAP        { 0 };
   static constexpr auto SLOPPY_FOCUS      { false };
   static constexpr auto MOVESTEP_PX       { 5 };
-  //static constexpr auto MODKEY            { M };
+  static constexpr auto MODKEY            { Mod4Mask };
 
   enum class Calls : std::size_t {
-    QUIT, UNMAPALL, REMAPALL, KILL, SWFOCUS, SELTOGGLE,
-    SELCLEAR, MOVEUP, MOVEDOWN, MOVELEFT, MOVERIGHT,
-    RESIZEVINC, RESIZEVDEC, RESIZEHDEC, RESIZEHINC, SELECT, RESIZE,
+    QUIT = MODKEY | XK_q,
+    UNMAPALL,
+    REMAPALL,
+    KILL,
+    SWFOCUS,
+    SELTOGGLE,
+    SELCLEAR,
+    MOVEUP = MODKEY | ShiftMask | XK_Up,
+    MOVEDOWN,
+    MOVELEFT,
+    MOVERIGHT,
+    RESIZEVINC = MODKEY | ControlMask | XK_Up,
+    RESIZEVDEC,
+    RESIZEHDEC,
+    RESIZEHINC,
+    SELECT = Button1,
+    RESIZE = MODKEY | Button3,
     SHCMD,
-    Z  // Terminator
+    Z = Mod4Mask // Terminator
   };
-
+  /*
   // Internal Cmds
   using Cmd = std::tuple<unsigned, unsigned, std::variant<Calls, std::string_view>>;
   static constexpr auto NC { 24 };
@@ -160,6 +175,15 @@ namespace dobwm {
     Cmd { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
     Cmd { Mod4Mask, XK_d, "xclock" },
     Cmd { Mod4Mask, XK_Return, "xterm" }
+  };
+  */
+  static const std::map<std::size_t, std::string_view> SHCMDS {
+    { MODKEY | XK_n, "notify-send \"Test Key\"" },
+    { MODKEY | XK_Escape, "dmenu_run" },
+    { MODKEY | XK_l, "slock" },
+    { MODKEY | XF86XK_Sleep, "slock & yyy M" },
+    { MODKEY | XK_d, "xclock" },
+    { MODKEY | XK_Return, "xterm" }
   };
   // Mouse Bindings
   /*

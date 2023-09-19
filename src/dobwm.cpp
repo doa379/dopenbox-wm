@@ -358,11 +358,12 @@ namespace dobwm {
   
   class Action {
     std::reference_wrapper<X> x;
-    std::array<std::function<void(void)>, static_cast<std::size_t>(Calls::Z)> F;
+    std::array<std::function<bool(void)>, 65536> F;
   public:
     Action(X &);
-    void call(const Calls CALL) { F[static_cast<std::size_t>(CALL)]; }
-    void shcmd(std::string_view) { }
+    //void call(const Calls CALL) { F[static_cast<std::size_t>(CALL)](); }
+    bool call(const std::size_t V) const { ::DBGMSG(V); return F[V](); }
+    void shcmd(std::string_view CMD) const { ::system(CMD.data()); }
   };
 
   class Ev {
@@ -379,7 +380,7 @@ namespace dobwm {
     void maprequest(void);
     void configurerequest(void);
     void motionnotify(void);
-    void keypress(void);
+    void keypress(void) const;
     void buttonpress(void);
     void enternotify(void);
     void call(void) { F[x.get().ev.type](); }
@@ -390,28 +391,34 @@ namespace dobwm {
 static std::vector<dobwm::Client> C;
 
 dobwm::Action::Action(X &x) : x { x } {
-  F[static_cast<std::size_t>(Calls::QUIT)] = [] { };
-  F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { };
-  F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { };
-  F[static_cast<std::size_t>(Calls::KILL)] = [] { };
-  F[static_cast<std::size_t>(Calls::SWFOCUS)] = [] { };
-  F[static_cast<std::size_t>(Calls::SELTOGGLE)] = [] { };
-  F[static_cast<std::size_t>(Calls::SELCLEAR)] = [] { };
-  F[static_cast<std::size_t>(Calls::MOVEUP)] = [] { };
-  F[static_cast<std::size_t>(Calls::MOVEDOWN)] = [] { };
-  F[static_cast<std::size_t>(Calls::MOVELEFT)] = [] { };
-  F[static_cast<std::size_t>(Calls::MOVERIGHT)] = [] { };
-  F[static_cast<std::size_t>(Calls::RESIZEVINC)] = [] { };
-  F[static_cast<std::size_t>(Calls::RESIZEVDEC)] = [] { };
-  F[static_cast<std::size_t>(Calls::RESIZEHDEC)] = [] { };
-  F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { };
-  F[static_cast<std::size_t>(Calls::SELECT)] = [] { };
-  F[static_cast<std::size_t>(Calls::RESIZE)] = [] { };
+  for (auto &f : F)
+    f = [] { return false; };
+
+  F[static_cast<std::size_t>(Calls::QUIT)] = [] { 
+    std::raise(SIGINT); return true; };
+  F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::KILL)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::SWFOCUS)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::SELTOGGLE)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::SELCLEAR)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::MOVEUP)] = [] { 
+    ::DBGMSG("Move Up"); return true; };
+  F[static_cast<std::size_t>(Calls::MOVEDOWN)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::MOVELEFT)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::MOVERIGHT)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::RESIZEVINC)] = [] {
+    ::DBGMSG("Resize V+"); return true; };
+  F[static_cast<std::size_t>(Calls::RESIZEVDEC)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::RESIZEHDEC)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::SELECT)] = [] { return true; };
+  F[static_cast<std::size_t>(Calls::RESIZE)] = [] { return true; };
 }
 
 dobwm::Ev::Ev(X &x) : x { x } {
-  for (auto i { 0 }; i < LASTEvent; i++)
-    F[i] = [] { };
+  for (auto &f : F)
+    f = [] { };
 
   F[MapNotify] = [&] { mapnotify(); };
   F[UnmapNotify] = [&] { unmapnotify(); };
@@ -432,7 +439,6 @@ void dobwm::Ev::mapnotify(void) {
 void dobwm::Ev::unmapnotify(void) {
   ::DBGMSG("Event UnmapNotify ", x.get().ev.type);
   ::XUnmapEvent &umev { x.get().ev.xunmap };
-  //std::raise(SIGINT);
 }
 
 void dobwm::Ev::clientmessage(void) {
@@ -474,10 +480,27 @@ void dobwm::Ev::motionnotify(void) {
   if (mev.window != x.get().root) return;
 }
 
-void dobwm::Ev::keypress(void) {
+void dobwm::Ev::keypress(void) const {
   ::DBGMSG("Event KeyPress ", x.get().ev.type);
   ::XKeyEvent &kev { x.get().ev.xkey };
-  ::KeySym keysym { ::XKeycodeToKeysym(x.get().dpy, (KeyCode) kev.keycode, 0) };
+  ::KeySym keysym { ::XKeycodeToKeysym(x.get().dpy, kev.keycode, 0) };
+ 
+ /*
+  for (const auto &C : CMDS)
+    if (std::get<0>(C) == kev.state && std::get<1>(C) == keysym) {
+      a.call(std::get<Calls>(std::get<2>(C)));
+      return;
+    }
+  
+  for (const auto &C : USERCMDS)
+    if (std::get<0>(C) == kev.state && std::get<1>(C) == keysym) {
+      a.shcmd(std::get<std::string_view>(std::get<2>(C)));
+      return;
+    }
+  */
+  const std::size_t KEY { kev.state | keysym };
+  if (!a.call(KEY))
+    a.shcmd(SHCMDS.at(KEY));
 }
 
 void dobwm::Ev::buttonpress(void) {
@@ -541,6 +564,7 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
+    /*
     for (const auto &C : dobwm::CMDS) {
       const auto KC { ::XKeysymToKeycode(x.dpy, std::get<1>(C)) };
       ::XGrabKey(x.dpy, KC, std::get<0>(C) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
@@ -550,6 +574,8 @@ int main(const int ARGC, const char *ARGV[]) {
       const auto KC { ::XKeysymToKeycode(x.dpy, std::get<1>(C)) };
       ::XGrabKey(x.dpy, KC, std::get<0>(C) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
     }
+    */
+    ::XGrabKey(x.dpy, AnyKey, dobwm::MODKEY & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
 
     // Atoms
     using Wm = dobwm::X::Atom::Wm;
