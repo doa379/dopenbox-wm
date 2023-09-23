@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <csignal>
+#include <unistd.h>
 #include <sstream>
 #include <functional>
 #include <X11/Xatom.h>
@@ -358,12 +359,14 @@ namespace dobwm {
   
   class Action {
     std::reference_wrapper<X> x;
-    std::array<std::function<bool(void)>, 65536> F;
+    std::array<std::function<void(void)>, static_cast<std::size_t>(Calls::Z)> F;
   public:
     Action(X &);
-    //void call(const Calls CALL) { F[static_cast<std::size_t>(CALL)](); }
-    bool call(const std::size_t V) const { ::DBGMSG(V); return F[V](); }
-    void shcmd(std::string_view CMD) const { ::system(CMD.data()); }
+    bool call(const Calls C) const { ::DBGMSG(static_cast<std::size_t>(C)); 
+      return F[static_cast<std::size_t>(C)](); }
+    void shcmd(std::string_view CMD) const { if (fork() == 0) {
+      ::close(ConnectionNumber(x.get().dpy));
+      ::system(CMD.data()); } }
   };
 
   class Ev {
@@ -392,28 +395,28 @@ static std::vector<dobwm::Client> C;
 
 dobwm::Action::Action(X &x) : x { x } {
   for (auto &f : F)
-    f = [] { return false; };
+    f = [] { };
 
   F[static_cast<std::size_t>(Calls::QUIT)] = [] { 
-    std::raise(SIGINT); return true; };
-  F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::KILL)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::SWFOCUS)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::SELTOGGLE)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::SELCLEAR)] = [] { return true; };
+    std::raise(SIGINT); };
+  F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { };
+  F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { };
+  F[static_cast<std::size_t>(Calls::KILL)] = [] { };
+  F[static_cast<std::size_t>(Calls::SWFOCUS)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELTOGGLE)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELCLEAR)] = [] { };
   F[static_cast<std::size_t>(Calls::MOVEUP)] = [] { 
-    ::DBGMSG("Move Up"); return true; };
-  F[static_cast<std::size_t>(Calls::MOVEDOWN)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::MOVELEFT)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::MOVERIGHT)] = [] { return true; };
+    ::DBGMSG("Move Up"); };
+  F[static_cast<std::size_t>(Calls::MOVEDOWN)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVELEFT)] = [] { };
+  F[static_cast<std::size_t>(Calls::MOVERIGHT)] = [] { };
   F[static_cast<std::size_t>(Calls::RESIZEVINC)] = [] {
-    ::DBGMSG("Resize V+"); return true; };
-  F[static_cast<std::size_t>(Calls::RESIZEVDEC)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::RESIZEHDEC)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::SELECT)] = [] { return true; };
-  F[static_cast<std::size_t>(Calls::RESIZE)] = [] { return true; };
+    ::DBGMSG("Resize V+"); };
+  F[static_cast<std::size_t>(Calls::RESIZEVDEC)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEHDEC)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { };
+  F[static_cast<std::size_t>(Calls::SELECT)] = [] { };
+  F[static_cast<std::size_t>(Calls::RESIZE)] = [] { };
 }
 
 dobwm::Ev::Ev(X &x) : x { x } {
@@ -484,7 +487,6 @@ void dobwm::Ev::keypress(void) const {
   ::DBGMSG("Event KeyPress ", x.get().ev.type);
   ::XKeyEvent &kev { x.get().ev.xkey };
   ::KeySym keysym { ::XKeycodeToKeysym(x.get().dpy, kev.keycode, 0) };
- 
  /*
   for (const auto &C : CMDS)
     if (std::get<0>(C) == kev.state && std::get<1>(C) == keysym) {
@@ -499,8 +501,17 @@ void dobwm::Ev::keypress(void) const {
     }
   */
   const std::size_t KEY { kev.state | keysym };
-  if (!a.call(KEY))
-    a.shcmd(SHCMDS.at(KEY));
+  try {
+    const auto V { CMDS.at(KEY) };
+    if (V.index() == 0) {
+      a.call(std::get<0>(V));
+      return;
+    }
+    
+    a.shcmd(std::get<1>(V));
+  } catch (...) { }
+  //if (!a.call(CMDS.at(KEY)))
+    //try { a.shcmd(SHCMDS.at(KEY)); } catch (...) { }
 }
 
 void dobwm::Ev::buttonpress(void) {

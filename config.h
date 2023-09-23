@@ -2,7 +2,7 @@
 
 #include <X11/XF86keysym.h>
 #include <palette.h>
-//#include <variant>
+#include <variant>
 #include <map>
 
 /*
@@ -119,25 +119,44 @@ namespace dobwm {
   static constexpr auto MODKEY            { Mod4Mask };
 
   enum class Calls : std::size_t {
-    QUIT = MODKEY | XK_q,
+    QUIT,
     UNMAPALL,
     REMAPALL,
     KILL,
     SWFOCUS,
     SELTOGGLE,
     SELCLEAR,
-    MOVEUP = MODKEY | ShiftMask | XK_Up,
+    MOVEUP,
     MOVEDOWN,
     MOVELEFT,
     MOVERIGHT,
-    RESIZEVINC = MODKEY | ControlMask | XK_Up,
+    RESIZEVINC,
     RESIZEVDEC,
     RESIZEHDEC,
     RESIZEHINC,
+    SELECT,
+    RESIZE,
+    Z // Terminator
+    /*
+    QUIT = MODKEY | XK_q,
+    UNMAPALL = MODKEY | XK_u,
+    REMAPALL = MODKEY | XK_v,
+    KILL = MODKEY | XK_k,
+    SWFOCUS = MODKEY | XK_Tab,
+    SELTOGGLE = MODKEY | XK_space,
+    SELCLEAR = MODKEY | XK_c,
+    MOVEUP = MODKEY | ShiftMask | XK_Up,
+    MOVEDOWN = MODKEY | ShiftMask | XK_Down,
+    MOVELEFT = MODKEY | ShiftMask | XK_Left,
+    MOVERIGHT = MODKEY | ShiftMask | XK_Right,
+    RESIZEVINC = MODKEY | ControlMask | XK_Up,
+    RESIZEVDEC = MODKEY | ControlMask | XK_Down,
+    RESIZEHDEC = MODKEY | ControlMask | XK_Left,
+    RESIZEHINC = MODKEY | ControlMask | XK_Right,
     SELECT = Button1,
     RESIZE = MODKEY | Button3,
-    SHCMD,
-    Z = Mod4Mask // Terminator
+    Z = XK_VoidSymbol // Terminator
+    */
   };
   /*
   // Internal Cmds
@@ -177,7 +196,26 @@ namespace dobwm {
     Cmd { Mod4Mask, XK_Return, "xterm" }
   };
   */
-  static const std::map<std::size_t, std::string_view> SHCMDS {
+  static const std::map<std::size_t, std::variant<Calls, std::string_view>> CMDS {
+    { MODKEY | XK_q, Calls::QUIT },
+    { MODKEY | XK_u, Calls::UNMAPALL },
+    { MODKEY | XK_v, Calls::REMAPALL },
+    { MODKEY | XK_k, Calls::KILL },
+    { MODKEY | XK_Tab, Calls::SWFOCUS },
+    { MODKEY | XK_space, Calls::SELTOGGLE },
+    { MODKEY | XK_c, Calls::SELCLEAR },
+    { MODKEY | ShiftMask | XK_Up, Calls::MOVEUP },
+    { MODKEY | ShiftMask | XK_Down, Calls::MOVEDOWN },
+    { MODKEY | ShiftMask | XK_Left, Calls::MOVELEFT },
+    { MODKEY | ShiftMask | XK_Right, Calls::MOVERIGHT },
+    { MODKEY | ControlMask | XK_Up, Calls::RESIZEVINC },
+    { MODKEY | ControlMask | XK_Down, Calls::RESIZEVDEC },
+    { MODKEY | ControlMask | XK_Left, Calls::RESIZEHDEC },
+    { MODKEY | ControlMask | XK_Right, Calls::RESIZEHINC },
+    // Mouse Bindings
+    { Button1, Calls::SELECT },
+    { MODKEY | Button3, Calls::RESIZE },
+    // Shell Bindings
     { MODKEY | XK_n, "notify-send \"Test Key\"" },
     { MODKEY | XK_Escape, "dmenu_run" },
     { MODKEY | XK_l, "slock" },
