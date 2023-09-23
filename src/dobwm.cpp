@@ -86,19 +86,6 @@ dobwm::Box::Box(void) {
     }
 }
 
-dobwm::Box::~Box(void) {
-
-}
-
-auto dobwm::Box::MSG(std::string_view MSG, const Urg URG, const unsigned TO) {
-  msg.send("Dopenbox WM", MSG, URG, TO);
-}
-
-auto dobwm::Box::print_hint(const std::pair<std::string, std::string> R) const {
-  ::DBGMSG("Hint (class, res).", std::get<0>(R), std::get<1>(R));
-}
-
-
 auto dobwm::Box::focus(Hnd &H) {
   for (const auto &M : this->M)
     for (const auto &T : M.T)
@@ -300,32 +287,6 @@ auto dobwm::Box::button(void) {
           static_cast<unsigned>(std::get<1>(SELECT)));
       });
 }
-
-auto dobwm::Box::ev(void) {
-  if (x.next_event()) {
-    if (x.event() == dobwm::XEvent::Map)
-      x.map_notify();
-    else if (x.event() == dobwm::XEvent::Unmap)
-      unmap_request();
-    else if (x.event() == dobwm::XEvent::CliMsg)
-      cli_msg();
-    else if (x.event() == dobwm::XEvent::Config)
-      x.configure_notify();
-    else if (x.event() == dobwm::XEvent::MapReq) {
-      const auto W { x.Event::map_request() };
-      map_request(W);
-    } else if (x.event() == dobwm::XEvent::ConfigReq)
-      configure_request();
-    else if (x.event() == dobwm::XEvent::Motion)
-      x.motion_notify();
-    else if (x.event() == dobwm::XEvent::Key)
-      key();
-    else if (x.event() == dobwm::XEvent::Button)
-      button();
-    else if (x.event() == dobwm::XEvent::Enter)
-      enter_notify();
-  }
-}
 */
 namespace dobwm {
   struct X {
@@ -337,16 +298,6 @@ namespace dobwm {
     int modmask { };
     ::Display *dpy { ::XOpenDisplay(nullptr) };
     ::Window root { };
-    struct Atom {
-      enum class Wm : std::size_t { PROTO, DELWIN, Z };
-      enum class Net : std::size_t { SUPP, STATE, ACT, FSCRN, Z };
-      std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
-      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
-      std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
-      //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
-    };
-
-    Atom atom;
     ::XEvent ev;
   };
 
@@ -358,21 +309,41 @@ namespace dobwm {
   };
   
   class Action {
-    std::reference_wrapper<X> x;
+    ::Display *dpy;
     std::array<std::function<void(void)>, static_cast<std::size_t>(Calls::Z)> F;
   public:
-    Action(X &);
-    bool call(const Calls C) const { ::DBGMSG(static_cast<std::size_t>(C)); 
-      return F[static_cast<std::size_t>(C)](); }
+    Action(const auto) noexcept;
+    void call(const Calls C) const { ::DBGMSG(static_cast<std::size_t>(C)); 
+      F[static_cast<std::size_t>(C)](); }
     void shcmd(std::string_view CMD) const { if (fork() == 0) {
-      ::close(ConnectionNumber(x.get().dpy));
+      ::close(ConnectionNumber(dpy));
       ::system(CMD.data()); } }
+  };
+
+  class Manage {
+    struct Atom_ {
+      enum class Wm : std::size_t { PROTO, DELWIN, Z };
+      enum class Net : std::size_t { SUPP, STATE, ACT, FSCRN, Z };
+      std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
+      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
+      std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
+      //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
+    };
+
+    ::Display *dpy;
+    Atom_ atom;
+  public:
+    Manage(const auto, const ::Window) noexcept;
+    void client(const ::Window, const auto &);
+    void configure(const Client &);
+    ::Atom atomprop(const ::Window, ::Atom);
   };
 
   class Ev {
     std::reference_wrapper<X> x;
     std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
-    Action a { x.get() };
+    Action a { x.get().dpy };
+    Manage m { x.get().dpy, x.get().root };
   public:
     Ev(void) = delete;
     explicit Ev(X &);
@@ -393,7 +364,8 @@ namespace dobwm {
 //static std::array<std::vector<Client>, NT> T;
 static std::vector<dobwm::Client> C;
 
-dobwm::Action::Action(X &x) : x { x } {
+//dobwm::Action::Action(X &x) : x { x } {
+dobwm::Action::Action(const auto DPY) noexcept : dpy { DPY } {
   for (auto &f : F)
     f = [] { };
 
@@ -417,6 +389,76 @@ dobwm::Action::Action(X &x) : x { x } {
   F[static_cast<std::size_t>(Calls::RESIZEHINC)] = [] { };
   F[static_cast<std::size_t>(Calls::SELECT)] = [] { };
   F[static_cast<std::size_t>(Calls::RESIZE)] = [] { };
+}
+
+dobwm::Manage::Manage(const auto DPY, const ::Window ROOT) noexcept : dpy { DPY } {
+  // Init. Atoms
+  using Wm = Atom_::Wm;
+  atom.WM[static_cast<std::size_t>(Wm::PROTO)] =
+    ::XInternAtom(dpy, "WM_PROTOCOLS", false);
+  atom.WM[static_cast<std::size_t>(Wm::DELWIN)] =
+    ::XInternAtom(dpy, "WM_DELETE_WINDOW", false);
+  using Net = Atom_::Net;
+  atom.NET[static_cast<std::size_t>(Net::SUPP)] =
+    ::XInternAtom(dpy, "_NET_SUPPORTED", false);
+  atom.NET[static_cast<std::size_t>(Net::STATE)] =
+    ::XInternAtom(dpy, "_NET_WM_STATE", false);
+  atom.NET[static_cast<std::size_t>(Net::ACT)] =
+    ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
+  atom.NET[static_cast<std::size_t>(Net::FSCRN)] =
+    ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
+  
+  ::XChangeProperty(dpy, ROOT, 
+    atom.NET[static_cast<std::size_t>(Net::SUPP)],
+      XA_ATOM, 32, PropModeReplace,
+        reinterpret_cast<unsigned char *>(atom.NET.data()),
+          static_cast<std::size_t>(Net::Z));
+}
+
+void dobwm::Manage::client(const ::Window W, const auto &WA) {
+  C.emplace_back(Client { W, { WA.width, WA.height }, { WA.x, WA.y } });
+  ::XWindowChanges wc;
+  wc.border_width = BDR_WIDTH;
+  ::XConfigureWindow(dpy, W, CWBorderWidth, &wc);
+  ::XSetWindowBorder(dpy, W, static_cast<std::size_t>(INACTBDR_COLOR));
+  configure(C.back());
+
+  ::Atom state { atomprop(W, atom.NET[static_cast<std::size_t>(Atom_::Net::STATE)]) };
+  if (state == atom.NET[static_cast<std::size_t>(Atom_::Net::FSCRN)])
+    ;// set FS
+
+  ::XMapWindow(dpy, W);
+}
+
+void dobwm::Manage::configure(const Client &C) {
+  ::XConfigureEvent ce;
+  ce.type = ConfigureNotify;
+  ce.display = dpy;
+  ce.event = C.w;
+  ce.window = C.w;
+  ce.x = std::get<0>(C.pos);
+  ce.y = std::get<1>(C.pos);
+  ce.width = std::get<0>(C.size);
+  ce.height = std::get<1>(C.size);
+  ce.border_width = BDR_WIDTH;
+  ce.above = None;
+  ce.override_redirect = False;
+  ::XSendEvent(dpy, C.w, False, StructureNotifyMask, reinterpret_cast<::XEvent *>(&ce));
+}
+
+::Atom dobwm::Manage::atomprop(const ::Window W, ::Atom prop) {
+  int di;
+  unsigned long dl;
+  unsigned char *p { };
+  ::Atom da, atom { None };
+
+  if (::XGetWindowProperty(dpy, W, prop, 0L, sizeof atom, False, XA_ATOM,
+      &da, &di, &dl, &dl, &p) == Success && p) {
+    atom = *(::Atom *) p;
+    ::XFree(p);
+  }
+
+  return atom;
 }
 
 dobwm::Ev::Ev(X &x) : x { x } {
@@ -462,13 +504,11 @@ void dobwm::Ev::maprequest(void) {
   ::DBGMSG("Event MapRequest ", x.get().ev.type);
   static ::XWindowAttributes wa;
   ::XMapRequestEvent &mrev { x.get().ev.xmaprequest };
-  if (!::XGetWindowAttributes(x.get().dpy, mrev.window, &wa) || wa.override_redirect)
-    return;
-  const auto C_ { std::ranges::find_if(C, 
-    [w = mrev.window](const auto &C) { return C.w == w; }) };
-  if (C_ == C.end()) {
-    // setup client window mrev.window using wa
-  }
+  if (!::XGetWindowAttributes(x.get().dpy, mrev.window, &wa) ||
+    wa.override_redirect) return;
+  const auto W { mrev.window };
+  if (std::ranges::find_if(C, [W](const auto &C) { return C.w == W; }) == C.end())
+    m.client(W, wa);
 }
 
 void dobwm::Ev::configurerequest(void) {
@@ -510,8 +550,6 @@ void dobwm::Ev::keypress(void) const {
     
     a.shcmd(std::get<1>(V));
   } catch (...) { }
-  //if (!a.call(CMDS.at(KEY)))
-    //try { a.shcmd(SHCMDS.at(KEY)); } catch (...) { }
 }
 
 void dobwm::Ev::buttonpress(void) {
@@ -588,26 +626,6 @@ int main(const int ARGC, const char *ARGV[]) {
     */
     ::XGrabKey(x.dpy, AnyKey, dobwm::MODKEY & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
 
-    // Atoms
-    using Wm = dobwm::X::Atom::Wm;
-    x.atom.WM[static_cast<std::size_t>(Wm::PROTO)] =
-      ::XInternAtom(x.dpy, "WM_PROTOCOLS", false);
-    x.atom.WM[static_cast<std::size_t>(Wm::DELWIN)] =
-      ::XInternAtom(x.dpy, "WM_DELETE_WINDOW", false);
-    using Net = dobwm::X::Atom::Net;
-    x.atom.NET[static_cast<std::size_t>(Net::SUPP)] =
-      ::XInternAtom(x.dpy, "_NET_SUPPORTED", false);
-    x.atom.NET[static_cast<std::size_t>(Net::STATE)] =
-      ::XInternAtom(x.dpy, "_NET_WM_STATE", false);
-    x.atom.NET[static_cast<std::size_t>(Net::ACT)] =
-      ::XInternAtom(x.dpy, "_NET_ACTIVE_WINDOW", false);
-    x.atom.NET[static_cast<std::size_t>(Net::FSCRN)] =
-      ::XInternAtom(x.dpy, "_NET_WM_STATE_FULLSCREEN", false);
-    ::XChangeProperty(x.dpy, x.root, 
-      x.atom.NET[static_cast<std::size_t>(Net::SUPP)],
-      XA_ATOM, 32, PropModeReplace,
-        reinterpret_cast<unsigned char *>(x.atom.NET.data()),
-          static_cast<std::size_t>(Net::Z));
     ::XSync(x.dpy, false);
     /*
     for (const auto &D : x.MONS()) {

@@ -84,28 +84,6 @@ Some Buttons {
 */
 
 namespace dobwm {
-/*
-  static constexpr auto MOD1_KEY { Mod1Mask };
-  static constexpr auto MOD4_KEY { Mod4Mask };
-  static constexpr auto CTRL_KEY { ControlMask };
-  static constexpr auto SHIFT_KEY { ShiftMask };
-  static constexpr auto M1              { MOD1_KEY };
-  static constexpr auto M4              { MOD4_KEY };
-  static constexpr auto M14             { MOD1_KEY | MOD4_KEY };
-  static constexpr auto SM4             { SHIFT_KEY | MOD4_KEY };
-  static constexpr auto CM4             { CTRL_KEY | MOD4_KEY };
-  static constexpr auto SCM4            { SHIFT_KEY | CTRL_KEY | MOD4_KEY };
-*/
-  // Number of Commands
-  //static constexpr auto MAX_NBTN        { 8 };
-  //using Kb = std::pair<unsigned, ::KeySym>;
-  //using Btn = std::pair<unsigned, Button>;
-  //using Btns = std::array<Btn, MAX_NBTN>;
-  //using Cmd = std::pair<Key, std::string_view>;
-  //using Cmd = std::tuple<int, ::KeySym, std::string_view>;
-  //using MCmd = std::tuple<int, int, std::string_view>;
-
-
   // Number of Tags per Monitor
   static constexpr auto NT                { 4 };
   static constexpr auto BAR_HEIGHT        { 8 };
@@ -119,6 +97,7 @@ namespace dobwm {
   static constexpr auto MODKEY            { Mod4Mask };
 
   enum class Calls : std::size_t {
+    // Declare pool of calls
     QUIT,
     UNMAPALL,
     REMAPALL,
@@ -137,65 +116,8 @@ namespace dobwm {
     SELECT,
     RESIZE,
     Z // Terminator
-    /*
-    QUIT = MODKEY | XK_q,
-    UNMAPALL = MODKEY | XK_u,
-    REMAPALL = MODKEY | XK_v,
-    KILL = MODKEY | XK_k,
-    SWFOCUS = MODKEY | XK_Tab,
-    SELTOGGLE = MODKEY | XK_space,
-    SELCLEAR = MODKEY | XK_c,
-    MOVEUP = MODKEY | ShiftMask | XK_Up,
-    MOVEDOWN = MODKEY | ShiftMask | XK_Down,
-    MOVELEFT = MODKEY | ShiftMask | XK_Left,
-    MOVERIGHT = MODKEY | ShiftMask | XK_Right,
-    RESIZEVINC = MODKEY | ControlMask | XK_Up,
-    RESIZEVDEC = MODKEY | ControlMask | XK_Down,
-    RESIZEHDEC = MODKEY | ControlMask | XK_Left,
-    RESIZEHINC = MODKEY | ControlMask | XK_Right,
-    SELECT = Button1,
-    RESIZE = MODKEY | Button3,
-    Z = XK_VoidSymbol // Terminator
-    */
   };
-  /*
-  // Internal Cmds
-  using Cmd = std::tuple<unsigned, unsigned, std::variant<Calls, std::string_view>>;
-  static constexpr auto NC { 24 };
-  using Cmds = std::array<Cmd, NC>;
-  // Cmd Bindings
-  static constexpr Cmds CMDS {
-    // KB Bindings
-    Cmd { Mod4Mask, XK_q, Calls::QUIT },
-    Cmd { Mod4Mask, XK_u, Calls::UNMAPALL },
-    Cmd { Mod4Mask, XK_v, Calls::REMAPALL },
-    Cmd { Mod4Mask, XK_k, Calls::KILL },
-    Cmd { Mod4Mask, XK_Tab, Calls::SWFOCUS },
-    Cmd { Mod4Mask, XK_space, Calls::SELTOGGLE },
-    Cmd { Mod4Mask, XK_c, Calls::SELCLEAR },
-    Cmd { Mod4Mask | ShiftMask, XK_Up, Calls::MOVEUP },
-    Cmd { Mod4Mask | ShiftMask, XK_Down, Calls::MOVEDOWN },
-    Cmd { Mod4Mask | ShiftMask, XK_Left, Calls::MOVELEFT },
-    Cmd { Mod4Mask | ShiftMask, XK_Right, Calls::MOVERIGHT },
-    Cmd { Mod4Mask | ControlMask, XK_Up, Calls::RESIZEVINC },
-    Cmd { Mod4Mask | ControlMask, XK_Down, Calls::RESIZEVDEC },
-    Cmd { Mod4Mask | ControlMask, XK_Left, Calls::RESIZEHDEC },
-    Cmd { Mod4Mask | ControlMask, XK_Right, Calls::RESIZEHINC },
-    // Mouse Bindings
-    Cmd { { }, Button1, Calls::SELECT },
-    Cmd { Mod4Mask, Button3, Calls::RESIZE },
-  // User definable Cmds
-  };
-
-  static constexpr Cmds USERCMDS {
-    Cmd { { }, XK_n, "notify-send \"No Modkey\"" },
-    Cmd { Mod4Mask, XK_Escape, "dmenu_run" },
-    Cmd { Mod4Mask, XK_l, "slock" },
-    Cmd { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
-    Cmd { Mod4Mask, XK_d, "xclock" },
-    Cmd { Mod4Mask, XK_Return, "xterm" }
-  };
-  */
+  
   static const std::map<std::size_t, std::variant<Calls, std::string_view>> CMDS {
     { MODKEY | XK_q, Calls::QUIT },
     { MODKEY | XK_u, Calls::UNMAPALL },
@@ -223,15 +145,4 @@ namespace dobwm {
     { MODKEY | XK_d, "xclock" },
     { MODKEY | XK_Return, "xterm" }
   };
-  // Mouse Bindings
-  /*
-  static constexpr Btn SELECT       { { }, Button::Left };
-  static constexpr Btn RESIZE       { MODKEY, Button::Right };
-  */
-  /*
-  static constexpr Btns BTNS {
-      Btn { { { }, Button::Left },      "SELECT" },
-      Btn { { MODKEY, Button::Right },  "RESIZE" }
-  };
-  */
 }
