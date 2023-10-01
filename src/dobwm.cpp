@@ -1,12 +1,13 @@
 #include <iostream>
 //#include <print>
 #include <algorithm>
-#include <cstdlib>
+//#include <cstdlib>
 #include <csignal>
 #include <unistd.h>
 #include <sstream>
 #include <functional>
 #include <X11/Xatom.h>
+#include <X11/XKBlib.h>
 #include <dobwm.h>
 #include <msg.h>
 #include <panel.h>
@@ -290,7 +291,7 @@ auto dobwm::Box::button(void) {
 */
 namespace dobwm {
   struct X {
-    int modmask { };
+    int modmask { };  // This mask needs repeated updates
     ::Display *dpy { ::XOpenDisplay(nullptr) };
     ::Window root { };
   };
@@ -311,14 +312,15 @@ namespace dobwm {
       F[static_cast<std::size_t>(C)](); }
     void shcmd(std::string_view CMD) const { if (fork() == 0) {
       ::close(ConnectionNumber(dpy));
-      ::system(CMD.data()); } }
+      ::setsid();
+      ::execvp(CMD.data(), nullptr); } }
   };
 
   class Manage {
     struct Atom_ {
       enum class Wm : std::size_t { PROTO, DELWIN, STATE, FOCUS, Z };
       enum class Net : std::size_t { 
-        /*SUPP, NAME,*/ STATE, ACT, FSCRN, /*CLIS,*/ WTYPE, WDIALOG, Z };
+        STATE, ACT, FSCRN, WTYPE, WDIALOG, Z };
       std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
       //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
       std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
@@ -332,11 +334,12 @@ namespace dobwm {
       FocusChangeMask |
       PropertyChangeMask |
       StructureNotifyMask };
+    static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask };
   public:
     Manage(const auto) noexcept;
     void client(const ::Window, const auto &);
-    void configure(const Client &);
-    ::Atom atomprop(const ::Window, ::Atom);
+    //void configure(const Client &);
+    ::Atom atomprop(const ::Window, const ::Atom);
   };
 
   class Ev {
@@ -348,7 +351,7 @@ namespace dobwm {
   public:
     Ev(void) = delete;
     explicit Ev(X &);
-    auto next(void) { return ::XNextEvent(x.get().dpy, &ev); }
+    bool next(void) { return ::XNextEvent(x.get().dpy, &ev) == 0; }
     void mapnotify(void);
     void unmapnotify(void);
     void clientmessage(void);
@@ -405,22 +408,12 @@ dobwm::Manage::Manage(const auto DPY) noexcept : dpy { DPY } {
   atom.WM[static_cast<std::size_t>(Wm::FOCUS)] =
     ::XInternAtom(dpy, "WM_TAKE_FOCUS", false);
   using Net = Atom_::Net;
-  /*
-  atom.NET[static_cast<std::size_t>(Net::SUPP)] =
-    ::XInternAtom(dpy, "_NET_SUPPORTED", false);
-  atom.NET[static_cast<std::size_t>(Net::NAME)] =
-    ::XInternAtom(dpy, "_NET_WM_NAME", false);
-  */
   atom.NET[static_cast<std::size_t>(Net::STATE)] =
     ::XInternAtom(dpy, "_NET_WM_STATE", false);
   atom.NET[static_cast<std::size_t>(Net::ACT)] =
     ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
   atom.NET[static_cast<std::size_t>(Net::FSCRN)] =
     ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
-  /*
-  atom.NET[static_cast<std::size_t>(Net::CLIS)] =
-    ::XInternAtom(dpy, "_NET_CLIENT_LIST", false);
-  */
   atom.NET[static_cast<std::size_t>(Net::WTYPE)] =
     ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", false);
   atom.NET[static_cast<std::size_t>(Net::WDIALOG)] =
@@ -429,23 +422,26 @@ dobwm::Manage::Manage(const auto DPY) noexcept : dpy { DPY } {
 
 void dobwm::Manage::client(const ::Window W, const auto &WA) {
   C.emplace_back(Client { W, { WA.width, WA.height }, { WA.x, WA.y } });
-  ::XWindowChanges wc;
-  wc.border_width = BDR_WIDTH;
-  ::XConfigureWindow(dpy, W, CWBorderWidth, &wc);
   ::XSetWindowBorder(dpy, W, static_cast<std::size_t>(INACTBDR_COLOR));
-  /*
-  configure(C.back());
-  ::Atom state { atomprop(W, atom.NET[static_cast<std::size_t>(Atom_::Net::STATE)]) };
-  if (state == atom.NET[static_cast<std::size_t>(Atom_::Net::FSCRN)])
-    ;// set FS
-  */
-  // Detect WM Hints
+    static constexpr auto WMASK {
+      EnterWindowMask |
+      FocusChangeMask |
+      PropertyChangeMask |
+      StructureNotifyMask };
   ::XSelectInput(dpy, W, WMASK);
-  // Grab Buttons for W
-  ::XRaiseWindow(dpy, W);
+  ::XUngrabButton(dpy, AnyButton, AnyModifier, W);
+  ::XGrabButton(dpy, AnyButton, AnyModifier, W, False, BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
+  ///::XRaiseWindow(dpy, W);
+
+  /*
+  long DATA[] { NormalState, None };
+  ::XChangeProperty(dpy, W, atom.WM[static_cast<std::size_t>(Atom_::Wm::STATE)], 
+    atom.WM[static_cast<std::size_t>(Atom_::Wm::STATE)], 32,
+      PropModeReplace, reinterpret_cast<unsigned char *>(DATA), 2);
+  */
   ::XMapWindow(dpy, W);
 }
-
+/*
 void dobwm::Manage::configure(const Client &C) {
   ::XConfigureEvent ce;
   ce.type = ConfigureNotify;
@@ -461,14 +457,14 @@ void dobwm::Manage::configure(const Client &C) {
   ce.override_redirect = False;
   ::XSendEvent(dpy, C.w, False, StructureNotifyMask, reinterpret_cast<::XEvent *>(&ce));
 }
-
-::Atom dobwm::Manage::atomprop(const ::Window W, ::Atom prop) {
+*/
+::Atom dobwm::Manage::atomprop(const ::Window W, const ::Atom PROP) {
   int di;
   unsigned long dl;
   unsigned char *p { };
   ::Atom da, atom { None };
 
-  if (::XGetWindowProperty(dpy, W, prop, 0L, sizeof atom, False, XA_ATOM,
+  if (::XGetWindowProperty(dpy, W, PROP, 0L, sizeof atom, False, XA_ATOM,
       &da, &di, &dl, &dl, &p) == Success && p) {
     atom = *(::Atom *) p;
     ::XFree(p);
@@ -519,18 +515,23 @@ void dobwm::Ev::configurenotify(void) {
 void dobwm::Ev::maprequest(void) {
   ::DBGMSG("Event MapRequest ", ev.type);
   static ::XWindowAttributes wa;
-  ::XMapRequestEvent &mrev { ev.xmaprequest };
-  const auto W { mrev.window };
+  const auto W { ev.xmaprequest.window };
   if (!::XGetWindowAttributes(x.get().dpy, W, &wa) ||
     wa.override_redirect) return;
-  if (std::ranges::find_if(C, [W](const auto &C) { return C.w == W; }) == C.end())
+  else if (std::ranges::find_if(C, [W](const auto &C) { return C.w == W; }) == C.end())
     m.client(W, wa);
+
+  ::XSync(x.get().dpy, false);
 }
 
 void dobwm::Ev::configurerequest(void) {
   ::DBGMSG("Event ConfigureRequest ", ev.type);
   ::XConfigureRequestEvent &crev { ev.xconfigurerequest };
-  ::XWindowChanges wc;
+  ::XWindowChanges wc {
+    crev.x, crev.y, crev.width, crev.height, 
+      crev.border_width, crev.above, crev.detail };
+  if (::XConfigureWindow(x.get().dpy, crev.window, crev.value_mask, &wc))
+    ::XSync(x.get().dpy, false);
 }
 
 void dobwm::Ev::motionnotify(void) {
@@ -542,20 +543,7 @@ void dobwm::Ev::motionnotify(void) {
 void dobwm::Ev::keypress(void) {
   ::DBGMSG("Event KeyPress ", ev.type);
   ::XKeyEvent &kev { ev.xkey };
-  ::KeySym keysym { ::XKeycodeToKeysym(x.get().dpy, kev.keycode, 0) };
- /*
-  for (const auto &C : CMDS)
-    if (std::get<0>(C) == kev.state && std::get<1>(C) == keysym) {
-      a.call(std::get<Calls>(std::get<2>(C)));
-      return;
-    }
-  
-  for (const auto &C : USERCMDS)
-    if (std::get<0>(C) == kev.state && std::get<1>(C) == keysym) {
-      a.shcmd(std::get<std::string_view>(std::get<2>(C)));
-      return;
-    }
-  */
+  ::KeySym keysym { ::XkbKeycodeToKeysym(x.get().dpy, kev.keycode, 0, 0) };
   const std::size_t KEY { kev.state | keysym };
   try {
     const auto &V { CMDS.at(KEY) };
@@ -587,8 +575,6 @@ volatile std::sig_atomic_t sig_status;
 
 auto sig_handler(int sig) {
   sig_status = sig;
-  //::XEvent ev { 0 };
-  //::XSendEvent(x.dpy, x.root, 0, 0, &ev);
 }
 
 static bool error;
@@ -684,13 +670,13 @@ int main(const int ARGC, const char *ARGV[]) {
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
     while (!sig_status)
-      if (ev.next() == 0) {
+      if (ev.next()) {
         ev.call();
         p.draw("...");
       }
     
     ::XCloseDisplay(x.dpy);
-    ::DBGMSG("\nWM exit");
+    ::DBGMSG("WM exit");
   } catch (const std::exception &E) {
       ::DBGMSG("Ex.", E.what());
       //std::println("Ex. { }", E.what());
