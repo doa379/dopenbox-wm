@@ -92,7 +92,7 @@ namespace dobwm {
   static constexpr auto INACTBDR_COLOR    { Palette::Cyan };
   static constexpr auto SELBDR_COLOR      { Palette::Yellow };
   static constexpr auto WINDOW_GAP        { 0 };
-  static constexpr auto SLOPPY_FOCUS      { false };
+  static constexpr auto SLOPPY_FOCUS      { true };
   static constexpr auto MOVESTEP_PX       { 5 };
   static constexpr auto MODKEY            { Mod4Mask };
 
@@ -103,6 +103,8 @@ namespace dobwm {
     REMAPALL,
     KILL,
     SWFOCUS,
+    PREVCLI,
+    NEXTCLI,
     SELTOGGLE,
     SELCLEAR,
     MOVEUP,
@@ -119,13 +121,15 @@ namespace dobwm {
   };
   
   static const std::map<std::size_t, std::variant<Calls, std::string_view>> CMDS {
-    { MODKEY | XK_q, Calls::QUIT },
     { MODKEY | XK_u, Calls::UNMAPALL },
     { MODKEY | XK_v, Calls::REMAPALL },
-    { MODKEY | XK_k, Calls::KILL },
     { MODKEY | XK_Tab, Calls::SWFOCUS },
+    { MODKEY | XK_o, Calls::PREVCLI },
+    { MODKEY | XK_p, Calls::NEXTCLI },
     { MODKEY | XK_space, Calls::SELTOGGLE },
     { MODKEY | XK_c, Calls::SELCLEAR },
+    { MODKEY | ShiftMask | XK_q, Calls::QUIT },
+    { MODKEY | ShiftMask | XK_k, Calls::KILL },
     { MODKEY | ShiftMask | XK_Up, Calls::MOVEUP },
     { MODKEY | ShiftMask | XK_Down, Calls::MOVEDOWN },
     { MODKEY | ShiftMask | XK_Left, Calls::MOVELEFT },
