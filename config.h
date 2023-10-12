@@ -128,7 +128,8 @@ namespace dobwm {
     { MODKEY | XK_p, Calls::NEXTCLI },
     { MODKEY | XK_space, Calls::SELTOGGLE },
     { MODKEY | XK_c, Calls::SELCLEAR },
-    { MODKEY | ShiftMask | XK_q, Calls::QUIT },
+    // Fix this ShiftMask
+    { MODKEY | ShiftMask | XK_w, Calls::QUIT },
     { MODKEY | ShiftMask | XK_k, Calls::KILL },
     { MODKEY | ShiftMask | XK_Up, Calls::MOVEUP },
     { MODKEY | ShiftMask | XK_Down, Calls::MOVEDOWN },
@@ -146,6 +147,7 @@ namespace dobwm {
     { MODKEY | XK_Escape, "dmenu_run" },
     { MODKEY | XK_l, "slock" },
     { MODKEY | XF86XK_Sleep, "slock & yyy M" },
+    { MODKEY | XK_c, "xconsole" },
     { MODKEY | XK_d, "xclock" },
     { MODKEY | XK_Return, "xterm" }
   };

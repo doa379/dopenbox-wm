@@ -149,7 +149,9 @@ dobwm::Manage::Manage(auto &P) noexcept : dpy { x.dpy }, p { P } {
   for (auto &f : F)
     f = [] { };
 
-  F[static_cast<std::size_t>(Calls::QUIT)] = [] { std::raise(SIGINT); };
+  F[static_cast<std::size_t>(Calls::QUIT)] = [] { 
+    std::raise(SIGINT); 
+  };
   F[static_cast<std::size_t>(Calls::UNMAPALL)] = [] { };
   F[static_cast<std::size_t>(Calls::REMAPALL)] = [] { };
   F[static_cast<std::size_t>(Calls::KILL)] = [&] { kill(); };
@@ -178,6 +180,14 @@ void dobwm::Manage::mapnotify(void) {
 
 void dobwm::Manage::unmapnotify(const auto &UMAP) {
   ::DBGMSG("Event UnmapNotify");
+  const auto C { std::ranges::find_if(T, 
+    [W = UMAP.window](const auto &C) { return C.w == W; }) };
+  if (C < T.end()) {
+    //curr.emplace(prev.value());
+    //focus(curr.value());
+    client(-1);
+    T.erase(C);
+  }
 }
 
 void dobwm::Manage::clientmessage(const auto &CMSG) {
@@ -186,14 +196,14 @@ void dobwm::Manage::clientmessage(const auto &CMSG) {
     [W = CMSG.window](const auto &C) { return C.w == W; }) };
   if (C < T.end()) {
     // Handle messages
+    /*
     if (CMSG.message_type == atom.WM[static_cast<std::size_t>(Wm::PROTO)] &&
         CMSG.data.l[0] == atom.WM[static_cast<std::size_t>(Wm::DELWIN)]) {
-      //if (C - 1 < T.end()) focus((C - 1)->w);
-      client(-1);
-      T.erase(C);
+    
     } else if (true) {
         // Handle other msgs
     }
+    */
   }
 }
 
@@ -204,11 +214,11 @@ void dobwm::Manage::configurenotify(const auto &CONF) {
 void dobwm::Manage::maprequest(const auto &MREQ) {
   ::DBGMSG("Event MapRequest");
   static ::XWindowAttributes wa;
-  const auto W { MREQ.window };
-  if (!::XGetWindowAttributes(dpy, W, &wa) || 
-      wa.override_redirect ||
-      wa.map_state != IsViewable) 
+  //::Window P { MREQ.parent };
+  const ::Window W { MREQ.window };
+  if (!::XGetWindowAttributes(dpy, W, &wa) || wa.override_redirect)
     return;
+
   else if (std::ranges::find_if(T, [W](const auto &C) { return C.w == W; }) == T.end()) {
     T.emplace_back(Client { W, { wa.width, wa.height }, { wa.x, wa.y } });
     static constexpr auto WMASK {
@@ -287,22 +297,19 @@ void dobwm::Manage::shcmd(std::string_view CMD) const {
 void dobwm::Manage::focus(::Window w) {
   if (!T.size()) {
     ::XDeleteProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::ACT)]);
+    prev = curr = std::nullopt;
     return;
+  } else if (curr.has_value()) {
+    ::XSetWindowBorder(x.dpy, curr.value(), static_cast<std::size_t>(INACTBDR_COLOR));
+    prev.emplace(curr.value());
   }
 
-  for (const auto &C : T) {
-    ::XSetWindowBorder(x.dpy, C.w, static_cast<std::size_t>(INACTBDR_COLOR));
-    ::XSetWindowBorderWidth(x.dpy, C.w, BDR_WIDTH);
-    if (C.w == w) {
-      ::XSetWindowBorder(x.dpy, w, static_cast<std::size_t>(ACTBDR_COLOR));
-      ::XSetInputFocus(x.dpy, w, RevertToPointerRoot, CurrentTime);
-      ::XChangeProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::ACT)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-      ::XRaiseWindow(dpy, w);
-      if (curr.has_value())
-        prev.emplace(curr.value());
-      curr.emplace(w);
-    }
-  }
+  ::XSetWindowBorder(x.dpy, w, static_cast<std::size_t>(ACTBDR_COLOR));
+  ::XSetWindowBorderWidth(x.dpy, w, BDR_WIDTH);
+  ::XSetInputFocus(x.dpy, w, RevertToPointerRoot, CurrentTime);
+  ::XChangeProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::ACT)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XRaiseWindow(dpy, w);
+  curr.emplace(w);
 }
 
 void dobwm::Manage::kill(void) const {
@@ -400,18 +407,21 @@ int main(const int ARGC, const char *ARGV[]) {
     static dobwm::Manage m { p };
 
     // Pickup clients
-  unsigned n;
-  ::Window d1, d2, *w { };
-  if (::XQueryTree(x.dpy, x.root, &d1, &d2, &w, &n)) {
-    for (unsigned i { }; i < n; i++) {
-      if (::XGetTransientForHint(x.dpy, w[i], &d1)) continue;
-      ::XMapRequestEvent ev { .window = w[i] };
-      m.maprequest(ev);
+    unsigned n;
+    ::Window root, parent, *w { };
+    if (::XQueryTree(x.dpy, x.root, &root, &parent, &w, &n)) {
+      for (unsigned i { }; i < n; i++) {
+        ::XWindowAttributes wa;
+        if (::XGetWindowAttributes(x.dpy, w[i], &wa) && wa.map_state == IsViewable) {
+          ::XMapRequestEvent ev { .window = w[i] };
+          m.maprequest(ev);
+        }
+      }
+
+      if (w) ::XFree(w);
     }
-
-    if (w) ::XFree(w);
-  }
-
+    
+    ::DBGMSG("T.size() ", T.size());
     // Ev loop
     std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
     for (auto &f : F)
@@ -438,6 +448,8 @@ int main(const int ARGC, const char *ARGV[]) {
       }
     
     // Deinit
+    ::XUngrabKey(x.dpy, AnyKey, AnyModifier, x.root);
+    ::XUngrabButton(x.dpy, AnyButton, AnyModifier, x.root);
     ::XCloseDisplay(x.dpy);
     ::DBGMSG("WM exit");
   } catch (const std::exception &E) {
