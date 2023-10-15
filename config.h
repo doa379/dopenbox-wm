@@ -3,7 +3,8 @@
 #include <X11/XF86keysym.h>
 #include <palette.h>
 #include <variant>
-#include <map>
+#include <array>
+#include <tuple>
 
 /*
 Some ::KeySym {
@@ -94,7 +95,6 @@ namespace dobwm {
   static constexpr auto WINDOW_GAP        { 0 };
   static constexpr auto SLOPPY_FOCUS      { true };
   static constexpr auto MOVESTEP_PX       { 5 };
-  static constexpr auto MODKEY            { Mod4Mask };
 
   enum class Calls : std::size_t {
     // Declare pool of calls
@@ -120,35 +120,39 @@ namespace dobwm {
     Z // Terminator
   };
   
-  static const std::map<std::size_t, std::variant<Calls, std::string_view>> CMDS {
-    { MODKEY | XK_u, Calls::UNMAPALL },
-    { MODKEY | XK_v, Calls::REMAPALL },
-    { MODKEY | XK_Tab, Calls::SWFOCUS },
-    { MODKEY | XK_o, Calls::PREVCLI },
-    { MODKEY | XK_p, Calls::NEXTCLI },
-    { MODKEY | XK_space, Calls::SELTOGGLE },
-    { MODKEY | XK_c, Calls::SELCLEAR },
-    // Fix this ShiftMask
-    { MODKEY | ShiftMask | XK_w, Calls::QUIT },
-    { MODKEY | ShiftMask | XK_k, Calls::KILL },
-    { MODKEY | ShiftMask | XK_Up, Calls::MOVEUP },
-    { MODKEY | ShiftMask | XK_Down, Calls::MOVEDOWN },
-    { MODKEY | ShiftMask | XK_Left, Calls::MOVELEFT },
-    { MODKEY | ShiftMask | XK_Right, Calls::MOVERIGHT },
-    { MODKEY | ControlMask | XK_Up, Calls::RESIZEVINC },
-    { MODKEY | ControlMask | XK_Down, Calls::RESIZEVDEC },
-    { MODKEY | ControlMask | XK_Left, Calls::RESIZEHDEC },
-    { MODKEY | ControlMask | XK_Right, Calls::RESIZEHINC },
+  using Input = std::tuple<std::size_t, std::size_t, std::variant<Calls, std::string_view>>;
+  
+  static constexpr std::array<Input, 32> KEYS {
+    Input { Mod4Mask, XK_u, Calls::UNMAPALL },
+      { Mod4Mask, XK_v, Calls::REMAPALL },
+      { Mod4Mask, XK_Tab, Calls::SWFOCUS },
+      { Mod4Mask, XK_o, Calls::PREVCLI },
+      { Mod4Mask, XK_p, Calls::NEXTCLI },
+      { Mod4Mask, XK_space, Calls::SELTOGGLE },
+      { Mod4Mask, XK_c, Calls::SELCLEAR },
+      { Mod4Mask | ShiftMask, XK_k, Calls::KILL },
+      { Mod4Mask | ShiftMask, XK_Up, Calls::MOVEUP },
+      { Mod4Mask | ShiftMask, XK_Down, Calls::MOVEDOWN },
+      { Mod4Mask | ShiftMask, XK_Left, Calls::MOVELEFT },
+      { Mod4Mask | ShiftMask, XK_Right, Calls::MOVERIGHT },
+      { Mod4Mask | ControlMask, XK_Up, Calls::RESIZEVINC },
+      { Mod4Mask | ControlMask, XK_Down, Calls::RESIZEVDEC },
+      { Mod4Mask | ControlMask, XK_Left, Calls::RESIZEHDEC },
+      { Mod4Mask | ControlMask, XK_Right, Calls::RESIZEHINC },
+      { Mod4Mask | ShiftMask | ControlMask, XK_q, Calls::QUIT },
+      // Shell Bindings
+      { Mod4Mask, XK_n, "notify-send \"Test Key\"" },
+      { Mod4Mask, XK_Escape, "dmenu_run" },
+      { Mod4Mask, XK_l, "slock" },
+      { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
+      { Mod4Mask, XK_c, "xconsole" },
+      { Mod4Mask, XK_d, "xclock" },
+      { Mod4Mask, XK_Return, "xterm" }
+  };
+  
+  static constexpr std::array<Input, 8> BTNS {
     // Mouse Bindings
-    { Button1, Calls::SELECT },
-    { MODKEY | Button3, Calls::RESIZE },
-    // Shell Bindings
-    { MODKEY | XK_n, "notify-send \"Test Key\"" },
-    { MODKEY | XK_Escape, "dmenu_run" },
-    { MODKEY | XK_l, "slock" },
-    { MODKEY | XF86XK_Sleep, "slock & yyy M" },
-    { MODKEY | XK_c, "xconsole" },
-    { MODKEY | XK_d, "xclock" },
-    { MODKEY | XK_Return, "xterm" }
+    Input { 0, Button1, Calls::SELECT },
+      { Mod4Mask, Button3, Calls::RESIZE },
   };
 }

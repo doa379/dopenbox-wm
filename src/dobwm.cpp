@@ -87,8 +87,24 @@ namespace dobwm {
       enum class Net : std::size_t { 
         STATE, ACT, FSCRN, WTYPE, WDIALOG, Z };
       std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
-      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
       std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
+      /*
+      static constexpr std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM {
+
+        ::XInternAtom(dpy, "WM_PROTOCOLS", false),
+        ::XInternAtom(dpy, "WM_DELETE_WINDOW", false),
+        ::XInternAtom(dpy, "WM_STATE", false),
+        ::XInternAtom(dpy, "WM_TAKE_FOCUS", false)
+      };
+      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
+      static constexpr std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET {
+        ::XInternAtom(dpy, "_NET_WM_STATE", false),
+        ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false),
+        ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false),
+        ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", false),
+        ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", false),
+      };
+      */
       //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
     };
     Atom_ atom;
@@ -145,7 +161,7 @@ dobwm::Manage::Manage(auto &P) noexcept : dpy { x.dpy }, p { P } {
     ::XInternAtom(x.dpy, "_NET_WM_WINDOW_TYPE", false);
   atom.NET[static_cast<std::size_t>(Net::WDIALOG)] =
     ::XInternAtom(x.dpy, "_NET_WM_WINDOW_TYPE_DIALOG", false);
-  
+
   for (auto &f : F)
     f = [] { };
 
@@ -214,7 +230,6 @@ void dobwm::Manage::configurenotify(const auto &CONF) {
 void dobwm::Manage::maprequest(const auto &MREQ) {
   ::DBGMSG("Event MapRequest");
   static ::XWindowAttributes wa;
-  //::Window P { MREQ.parent };
   const ::Window W { MREQ.window };
   if (!::XGetWindowAttributes(dpy, W, &wa) || wa.override_redirect)
     return;
@@ -256,17 +271,15 @@ void dobwm::Manage::motionnotify(const auto &MOTN) {
 
 void dobwm::Manage::keypress(const auto &KEY) {
   ::DBGMSG("Event KeyPress ");
+  const auto KMOD { KEY.state & x.modmask };
   const auto KSYM { ::XkbKeycodeToKeysym(dpy, KEY.keycode, 0, 0) };
-  const std::size_t K { KEY.state | KSYM };
-  try {
-    const auto &V { CMDS.at(K) };
-    if (V.index() == 0) {
-      call(std::get<0>(V));
+  for (const auto &KEY : KEYS)
+    if (std::get<1>(KEY) == KSYM && (std::get<0>(KEY) & x.modmask) == KMOD) {
+      const auto &V { std::get<2>(KEY) };
+      if (V.index() == 0) call(std::get<0>(V));
+      else shcmd(std::get<1>(V));
       return;
     }
-    
-    shcmd(std::get<1>(V));
-  } catch (...) { }
 }
 
 void dobwm::Manage::buttonpress(const auto &BTNP) {
@@ -398,12 +411,15 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
-    ::XGrabKey(x.dpy, AnyKey, dobwm::MODKEY & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
+    
+    for (const auto &KEY : dobwm::KEYS)
+      ::XGrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, std::get<1>(KEY)), std::get<0>(KEY) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
+    
+    for (const auto &BTN : dobwm::BTNS) { }
 
     ::XSync(x.dpy, false);
     dobwm::Panel p { x.dpy, x.root, SCR };
     std::signal(SIGINT, sig_handler);
-    static ::XEvent ev;
     static dobwm::Manage m { p };
 
     // Pickup clients
@@ -423,6 +439,7 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::DBGMSG("T.size() ", T.size());
     // Ev loop
+    static ::XEvent ev;
     std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
     for (auto &f : F)
       f = [] { };
