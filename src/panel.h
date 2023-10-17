@@ -10,12 +10,13 @@ namespace dobwm {
     ::Display *dpy;
     ::Window w;
     int scr;
+    unsigned bh;
     std::pair<unsigned, unsigned> size;
     ::Drawable drawable;
     ::GC gc;
     std::vector<std::string> S;
 public:
-    Panel(::Display *, ::Window, const int);
+    Panel(::Display *, ::Window, const int, const unsigned);
     ~Panel(void);
     void draw(std::string_view);
   };
