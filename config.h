@@ -86,7 +86,7 @@ Some Buttons {
 
 namespace dobwm {
   // Number of Tags per Monitor
-  static constexpr auto NT                { 4 };
+  //static constexpr auto NT                { 4 };
   static constexpr auto BAR_HEIGHT        { 14 };
   static constexpr auto BDR_WIDTH         { 4 };
   static constexpr auto ACTBDR_COLOR      { Palette::Red };

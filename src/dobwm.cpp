@@ -6,6 +6,7 @@
 #include <sstream>
 #include <functional>
 #include <optional>
+#include <unordered_map>
 #include <X11/Xatom.h>
 #include <X11/XKBlib.h>
 #include <dobwm.h>
@@ -78,7 +79,7 @@ namespace dobwm {
   struct Client {
     std::string title;
     Dim size, pos;
-    ::Window w { };
+    //::Window w { };
     bool trans { }, mut { }, sel { };
   };
   
@@ -128,8 +129,7 @@ namespace dobwm {
 }
 
 static dobwm::X x;
-//static std::array<std::vector<Client>, NT> T;
-static std::vector<dobwm::Client> T;
+static std::unordered_map<::Window, dobwm::Client> T;
 
 dobwm::Manage::Manage(auto &P) noexcept : dpy { x.dpy }, p { P } {
   // Init. Atoms
@@ -158,9 +158,10 @@ dobwm::Manage::Manage(auto &P) noexcept : dpy { x.dpy }, p { P } {
   atom.NET[static_cast<std::size_t>(Net::WDIALOG)] =
     ::XInternAtom(x.dpy, "_NET_WM_WINDOW_TYPE_DIALOG", false);
 
+/*
   ::XChangeProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::SUPP)], XA_ATOM, 32, PropModeReplace, reinterpret_cast<unsigned char *>(atom.NET.data()), static_cast<std::size_t>(Net::Z));
   ::XSync(x.dpy, false);
-
+*/
   for (auto &f : F) f = [] { };
   F[static_cast<std::size_t>(Calls::QUIT)] = [] { 
     std::raise(SIGINT); 
@@ -197,31 +198,18 @@ void dobwm::Manage::mapnotify(void) {
 
 void dobwm::Manage::unmapnotify(const auto &UMAP) {
   ::DBGMSG("Event UnmapNotify");
-  const auto C { std::ranges::find_if(T, 
-    [W = UMAP.window](const auto &C) { return C.w == W; }) };
-  if (C < T.end()) {
-    //curr.emplace(prev.value());
-    //focus(curr.value());
+  const auto W { UMAP.window };
+  if (T.find(W) != T.end()) {
     client(-1);
-    T.erase(C);
+    T.erase(W);
   }
 }
 
 void dobwm::Manage::clientmessage(const auto &CMSG) {
   ::DBGMSG("Event ClientMessage ");
-  const auto C { std::ranges::find_if(T, 
-    [W = CMSG.window](const auto &C) { return C.w == W; }) };
-  if (C < T.end()) {
-    // Handle messages
-    /*
-    if (CMSG.message_type == atom.WM[static_cast<std::size_t>(Wm::PROTO)] &&
-        CMSG.data.l[0] == atom.WM[static_cast<std::size_t>(Wm::DELWIN)]) {
-    
-    } else if (true) {
-        // Handle other msgs
-    }
-    */
-  }
+  const auto W { CMSG.window };
+  
+  // Handle messages
 }
 
 void dobwm::Manage::configurenotify(const auto &CONF) {
@@ -235,28 +223,27 @@ void dobwm::Manage::maprequest(const auto &MREQ) {
   ::DBGMSG("Window ", W);
   if (!::XGetWindowAttributes(dpy, W, &wa) || wa.override_redirect)
     return;
+  
+  ::Window t { };
+  T[W] = Client {
+    .size = Dim { wa.width, wa.height }, 
+    .pos = Dim { wa.x, wa.y < Y ? wa.y += Y : wa.y },
+    .trans = static_cast<bool>(::XGetTransientForHint(x.dpy, W, &t))
+  };
 
-  else if (std::ranges::find_if(T, [W](const auto &C) { return C.w == W; }) == T.end()) {
-    ::Window t { };
-    T.emplace_back(Client { 
-      .size = Dim { wa.width, wa.height }, 
-      .pos = Dim { wa.x, wa.y < Y ? wa.y += Y : wa.y },
-      .w = W, 
-      .trans = static_cast<bool>(::XGetTransientForHint(x.dpy, W, &t)) });
-    static constexpr auto WMASK {
-      EnterWindowMask |
-      FocusChangeMask |
-      PropertyChangeMask |
-      StructureNotifyMask };
+  static constexpr auto WMASK {
+    EnterWindowMask |
+    FocusChangeMask |
+    PropertyChangeMask |
+    StructureNotifyMask };
 
-    ::XSelectInput(dpy, W, WMASK);
-    ::XUngrabButton(dpy, AnyButton, AnyModifier, W);
-    static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask };
-    ::XGrabButton(dpy, AnyButton, AnyModifier, W, false, BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
-    ::XMoveWindow(x.dpy, W, 0, wa.y);
-    ::XMapWindow(dpy, W);
-    focus(T.back().w);
-  }
+  ::XSelectInput(dpy, W, WMASK);
+  ::XUngrabButton(dpy, AnyButton, AnyModifier, W);
+  static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask };
+  ::XGrabButton(dpy, AnyButton, AnyModifier, W, false, BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
+  ::XMoveWindow(x.dpy, W, 0, wa.y);
+  ::XMapWindow(dpy, W);
+  focus(W);
 
   //::XSync(dpy, false);
   ::DBGMSG("End MapRequest");
@@ -299,10 +286,9 @@ void dobwm::Manage::buttonpress(const auto &BTNP) {
 void dobwm::Manage::enternotify(const auto &XING) {
   ::DBGMSG("Event EnterNotify ");
   if ((XING.mode != NotifyNormal || XING.detail == NotifyInferior) && 
-      XING.window != x.root) return;
-  if (const auto C { std::ranges::find_if(T, 
-      [W = XING.window](const auto &C) { return C.w == W; }) }; C < T.end())
-    focus(C->w);
+      XING.window == x.root) return;
+  
+  focus(XING.window);
 }
 
 void dobwm::Manage::propertynotify(const auto &PROP) {
@@ -310,15 +296,20 @@ void dobwm::Manage::propertynotify(const auto &PROP) {
   const auto W { PROP.window };
   if (W == x.root /*&& PROP.atom == XA_WM_NAME*/) {
     ::DBGMSG("Root property");
-    /*
-    std::string t;
-    for (const auto &C : T)
-      t += C.title + "\t";
-    */
+    for (auto &[w, c] : T) {
+      if (::XTextProperty tp;
+        ::XGetTextProperty(x.dpy, w, &tp, atom.WM[static_cast<std::size_t>(Wm::NAME)]) && tp.nitems) {
+        c.title = reinterpret_cast<const char *>(tp.value);
+      }
+    }
+
     p.get().draw("Root Property");
   } else {
-    // Handle W
-    
+      /*
+      const auto C { 
+        std::ranges::find_if(T, [W](const auto &C) { return C.w == W; }) };
+      */
+      p.get().draw(T[W].title);
   }
 
   const auto WM_NAME { atom.NET[static_cast<std::size_t>(Wm::NAME)] };
@@ -381,19 +372,14 @@ void dobwm::Manage::focus(::Window w) {
   ::XSetWindowBorder(x.dpy, w, static_cast<std::size_t>(ACTBDR_COLOR));
   ::XSetWindowBorderWidth(x.dpy, w, BDR_WIDTH);
   ::XSetInputFocus(x.dpy, w, RevertToPointerRoot, CurrentTime);
-  ::XChangeProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::ACT)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XChangeProperty(x.dpy, x.root, atom.NET[static_cast<std::size_t>(Net::STATE)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XChangeProperty(x.dpy, w, atom.NET[static_cast<std::size_t>(Net::ACT)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
   ::XRaiseWindow(dpy, w);
   curr.emplace(w);
 }
 
 void dobwm::Manage::kill(void) const {
   if (!T.size()) return;
-  /*
-  ::Window w;
-  int revert_to;
-  ::XGetInputFocus(dpy, &w, &revert_to);
-  if (w == None) return;
-  */
   const ::Window W { curr.value() };
   ::XEvent ev { .type = ClientMessage };
   ev.xclient.window = W;
@@ -411,11 +397,16 @@ void dobwm::Manage::swfocus(void) {
 
 void dobwm::Manage::client(const char O) {
   if (T.size() < 2) return;
-  const auto C { std::ranges::find_if(T, 
-      [&](const auto &C) { return C.w == curr.value(); }) + O };
-  if (C == T.end()) focus(T.front().w);
-  else if (C < T.begin()) focus(T.back().w);
-  else focus(C->w);
+  decltype(T)::const_iterator t { T.find(curr.value()) };
+  if (O > 0) {
+    if (std::next(t) == T.cend()) focus(T.cbegin()->first);
+    else focus(std::next(t)->first);
+  } else if (O < 0) {
+      if (t == T.begin())
+        focus(std::next(T.begin(), T.size() - 1)->first);
+      else
+        focus(std::next(T.cbegin(), std::distance(T.cbegin(), t) - 1)->first);
+  }
 }
 
 volatile std::sig_atomic_t sig_status;
@@ -484,25 +475,6 @@ int main(const int ARGC, const char *ARGV[]) {
     std::signal(SIGINT, sig_handler);
     static dobwm::Manage m { p };
 
-    // Pickup clients
-    unsigned n;
-    ::Window root, parent, *w { };
-    if (::XQueryTree(x.dpy, x.root, &root, &parent, &w, &n)) {
-      for (unsigned i { }; i < n; i++) {
-        ::XWindowAttributes wa;
-        if (::XGetWindowAttributes(x.dpy, w[i], &wa) && wa.map_state == IsViewable) {
-          // Send as native event
-          // ...
-          ::XMapRequestEvent ev { .window = w[i] };
-          m.maprequest(ev);
-        }
-      }
-
-      if (w) ::XFree(w);
-    }
-    
-    ::DBGMSG("T.size() ", T.size());
-    // Ev loop
     static ::XEvent ev;
     std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
     for (auto &f : F) f = [] { };
@@ -517,8 +489,33 @@ int main(const int ARGC, const char *ARGV[]) {
     F[ButtonPress] = [] { m.buttonpress(ev.xbutton); };
     F[EnterNotify] = [] { m.enternotify(ev.xcrossing); };
     F[PropertyNotify] = [] { m.propertynotify(ev.xproperty); };
+
+    unsigned n;
+    ::Window root, parent, *w { };
+    if (::XQueryTree(x.dpy, x.root, &root, &parent, &w, &n)) {
+      for (unsigned i { }; i < n; i++) {
+        ::XWindowAttributes wa;
+        if (::XGetWindowAttributes(x.dpy, w[i], &wa) && wa.map_state == IsViewable) {
+          // Send as native event
+          ::XEvent ev { .type = MapRequest };
+          ev.xmaprequest.send_event = true,
+          ev.xmaprequest.parent = x.root;
+          ev.xmaprequest.window = w[i];
+          ::XSendEvent(x.dpy, x.root, true, ROOTMASK, &ev);
+          //::XMapRequestEvent ev { .window = w[i] };
+          //m.maprequest(ev);
+        }
+      }
+
+      if (w) ::XFree(w);
+    }
+    
+    ::XSync(x.dpy, false);
+
+    ::DBGMSG("T.size() ", T.size());
     ::DBGMSG("WM initialized");
     ::MSG("Welcome msg", dobwm::Urg::NORMAL, 1000);
+    // Ev loop
     while (!sig_status)
       if (::XNextEvent(x.dpy, &ev) == 0) {
         F[ev.type]();
