@@ -3,8 +3,11 @@
 #include <X11/XF86keysym.h>
 #include <palette.h>
 #include <variant>
+/*
 #include <array>
 #include <tuple>
+*/
+#include <map>
 
 /*
 Some ::KeySym {
@@ -119,7 +122,7 @@ namespace dobwm {
     RESIZE,
     Z // Terminator
   };
-  
+  /*
   using Input = std::tuple<std::size_t, std::size_t, std::variant<Calls, std::string_view>>;
   
   static constexpr std::array<Input, 32> KEYS {
@@ -155,4 +158,48 @@ namespace dobwm {
     Input { 0, Button1, Calls::SELECT },
       { Mod4Mask, Button3, Calls::RESIZE },
   };
+*/
+  static const std::map<std::size_t, 
+    std::map<std::size_t, std::variant<Calls, std::string_view>>> KEYS {
+      { Mod4Mask, { { XK_u, Calls::UNMAPALL },
+                    { XK_v, Calls::REMAPALL },
+                    { XK_Tab, Calls::SWFOCUS },
+                    { XK_o, Calls::PREVCLI },
+                    { XK_p, Calls::NEXTCLI },
+                    { XK_space, Calls::SELTOGGLE },
+                    { XK_c, Calls::SELCLEAR },
+                    // Shell Bindings
+                    { XK_n, "notify-send \"Test Key\"" },
+                    { XK_Escape, "dmenu_run" },
+                    { XK_l, "slock" },
+                    { XF86XK_Sleep, "slock & yyy M" },
+                    { XK_c, "xconsole" },
+                    { XK_d, "xclock" },
+                    { XK_Return, "xterm" }
+                  }
+      },
+      { Mod4Mask | ShiftMask, { { XK_k, Calls::KILL },
+                                { XK_Up, Calls::MOVEUP },
+                                { XK_Down, Calls::MOVEDOWN },
+                                { XK_Left, Calls::MOVELEFT },
+                                { XK_Right, Calls::MOVERIGHT }
+                              }
+      },
+      { Mod4Mask | ControlMask, { { XK_Up, Calls::RESIZEVINC },
+                                  { XK_Down, Calls::RESIZEVDEC },
+                                  { XK_Left, Calls::RESIZEHDEC },
+                                  { XK_Right, Calls::RESIZEHINC }
+                                }
+      },
+      { Mod4Mask | ShiftMask | ControlMask, { { XK_q, Calls::QUIT }
+                                            } 
+      }
+    }, BTNS {
+        { 0,  { { Button1, Calls::SELECT },
+              }
+        },
+        { Mod4Mask, { { Button3, Calls::RESIZE },
+                    },
+        }
+    };
 }
