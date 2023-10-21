@@ -159,8 +159,9 @@ namespace dobwm {
       { Mod4Mask, Button3, Calls::RESIZE },
   };
 */
+
   static const std::map<std::size_t, 
-    std::map<std::size_t, std::variant<Calls, std::string_view>>> KEYS {
+    std::unordered_map<std::size_t, std::variant<Calls, std::string_view>>> KEYS {
       { Mod4Mask, { { XK_u, Calls::UNMAPALL },
                     { XK_v, Calls::REMAPALL },
                     { XK_Tab, Calls::SWFOCUS },
@@ -201,5 +202,39 @@ namespace dobwm {
         { Mod4Mask, { { Button3, Calls::RESIZE },
                     },
         }
+    };
+
+  static const std::multimap<std::size_t, 
+    std::pair<std::size_t, std::variant<Calls, std::string_view>>> KEYSMM {
+      { Mod4Mask, { XK_u, Calls::UNMAPALL } },
+      { Mod4Mask, { XK_v, Calls::REMAPALL } },
+      { Mod4Mask, { XK_Tab, Calls::SWFOCUS } },
+      { Mod4Mask, { XK_o, Calls::PREVCLI } },
+      { Mod4Mask, { XK_p, Calls::NEXTCLI } },
+      { Mod4Mask, { XK_space, Calls::SELTOGGLE } },
+      { Mod4Mask, { XK_c, Calls::SELCLEAR } },
+      // Shell Bindings
+      { Mod4Mask, { XK_n, "notify-send \"Test Key\"" } },
+      { Mod4Mask, { XK_Escape, "dmenu_run" } },
+      { Mod4Mask, { XK_l, "slock" } },
+      { Mod4Mask, { XF86XK_Sleep, "slock & yyy M" } },
+      { Mod4Mask, { XK_c, "xconsole" } },
+      { Mod4Mask, { XK_d, "xclock" } },
+      { Mod4Mask, { XK_Return, "xterm" } },
+      
+      { Mod4Mask | ShiftMask, { XK_k, Calls::KILL } },
+      { Mod4Mask | ShiftMask, { XK_Up, Calls::MOVEUP } },
+      { Mod4Mask | ShiftMask, { XK_Down, Calls::MOVEDOWN } },
+      { Mod4Mask | ShiftMask, { XK_Left, Calls::MOVELEFT } },
+      { Mod4Mask | ShiftMask, { XK_Right, Calls::MOVERIGHT } },
+      
+      { Mod4Mask | ControlMask, { XK_Up, Calls::RESIZEVINC } },
+      { Mod4Mask | ControlMask, { XK_Down, Calls::RESIZEVDEC } },
+      { Mod4Mask | ControlMask, { XK_Left, Calls::RESIZEHDEC } },
+      { Mod4Mask | ControlMask, { XK_Right, Calls::RESIZEHINC } },
+      { Mod4Mask | ShiftMask | ControlMask, { XK_q, Calls::QUIT } },
+    }, BTNSMM {
+        { 0,  { Button1, Calls::SELECT } },
+        { Mod4Mask, { Button3, Calls::RESIZE } },
     };
 }

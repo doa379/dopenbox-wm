@@ -70,21 +70,13 @@ namespace dobwm {
   struct X {  // Base class
     int modmask { };  // This mask needs repeated updates
     static inline ::Display *dpy { ::XOpenDisplay(nullptr) };
-    ::Window root { };
-    struct Atom_ {
-      enum class Wm : std::size_t { PROTO, NAME, DELWIN, STATE, FOCUS, Z };
-      enum class Net : std::size_t { 
-        SUPP, STATE, NAME, ACT, FSCRN, WTYPE, WDIALOG, Z };
-      std::array<::Atom, static_cast<std::size_t>(Wm::Z)> WM;
-      std::array<::Atom, static_cast<std::size_t>(Net::Z)> NET;
-      //std::array<::Atom, std::to_underlying(Wm::Z)> WM;
-      //std::array<::Atom, std::to_underlying(Net::CNT)> NET;
-      Atom_(void) noexcept;
+    static inline std::unordered_map<std::string_view, ::Atom> ATOM;
+    static constexpr auto REGATOM { [] (std::string_view MSG) {
+        ATOM[MSG] = ::XInternAtom(dpy, MSG.data(), false);
+      }
     };
-
-    using Wm = Atom_::Wm;
-    using Net = Atom_::Net;
-    Atom_ atom;
+    
+    ::Window root { };
   };
 
   using Dim = std::pair<std::size_t, std::size_t>;
@@ -239,7 +231,7 @@ void dobwm::Manage::propertynotify(const auto &PROP) {
     ::DBGMSG("Root property");
     for (auto &[w, c] : T) {
       if (::XTextProperty tp;
-        ::XGetTextProperty(x.dpy, w, &tp, x.atom.WM[static_cast<std::size_t>(X::Wm::NAME)]) && tp.nitems) {
+        ::XGetTextProperty(x.dpy, w, &tp, x.ATOM["WM_NAME"]) && tp.nitems) {
         c.title = reinterpret_cast<const char *>(tp.value);
       }
     }
@@ -248,16 +240,6 @@ void dobwm::Manage::propertynotify(const auto &PROP) {
   } else {
       p.get().draw(T[W].title);
   }
-
-/*
-  const auto WM_NAME { atom.NET[static_cast<std::size_t>(Wm::NAME)] };
-  const auto NET_NAME { atom.NET[static_cast<std::size_t>(Net::NAME)] };
-  ::DBGMSG("Property Window ", W);
-  ::DBGMSG("WM_NAME ", WM_NAME);
-  ::DBGMSG("_NET_WM_NAME ", NET_NAME);
-  ::DBGMSG("XA_WM_NAME ", XA_WM_NAME);
-  ::DBGMSG("Window Property atom ", PROP.atom);
-*/
 
   /*
   if (const auto C { std::ranges::find_if(T, 
@@ -327,19 +309,19 @@ void dobwm::Action::shcmd(std::string_view CMD) const {
 
 void dobwm::Action::focus(::Window w) {
   if (!T.size()) {
-    ::XDeleteProperty(x.dpy, x.root, x.atom.NET[static_cast<std::size_t>(X::Net::ACT)]);
+    ::XDeleteProperty(x.dpy, x.root, x.ATOM["_NET_ACTIVE_WINDOW"]);
     prev = curr = T.cend();
     return;
   } else if (curr != T.cend()) {
-    ::XSetWindowBorder(x.dpy, curr->first, static_cast<std::size_t>(INACTBDR_COLOR));
-    prev = curr;
+      ::XSetWindowBorder(x.dpy, curr->first, static_cast<std::size_t>(INACTBDR_COLOR));
+      prev = curr;
   }
 
   ::XSetWindowBorder(x.dpy, w, static_cast<std::size_t>(ACTBDR_COLOR));
   ::XSetWindowBorderWidth(x.dpy, w, BDR_WIDTH);
   ::XSetInputFocus(x.dpy, w, RevertToPointerRoot, CurrentTime);
-  ::XChangeProperty(x.dpy, x.root, x.atom.NET[static_cast<std::size_t>(X::Net::STATE)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-  ::XChangeProperty(x.dpy, w, x.atom.NET[static_cast<std::size_t>(X::Net::ACT)], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XChangeProperty(x.dpy, x.root, x.ATOM["_NET_WM_STATE"], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
+  ::XChangeProperty(x.dpy, w, x.ATOM["_NET_ACTIVE_WINDOW"], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
   ::XRaiseWindow(x.dpy, w);
   curr = T.find(w);
 }
@@ -349,9 +331,9 @@ void dobwm::Action::kill(void) const {
   const ::Window W { curr->first };
   ::XEvent ev { ClientMessage };
   ev.xclient.window = W;
-  ev.xclient.message_type = x.atom.WM[static_cast<std::size_t>(X::Wm::PROTO)];
+  ev.xclient.message_type = x.ATOM["WM_PROTOCOLS"];
   ev.xclient.format = 32;
-  ev.xclient.data.l[0] = x.atom.WM[static_cast<std::size_t>(X::Wm::DELWIN)];
+  ev.xclient.data.l[0] = x.ATOM["WM_DELETE_WINDOW"];
   ev.xclient.data.l[1] = CurrentTime;
   ::XSendEvent(x.dpy, W, false, NoEventMask, &ev);
 }
@@ -375,36 +357,6 @@ void dobwm::Action::client(const char O) {
   }
 }
 
-dobwm::X::Atom_::Atom_(void) noexcept {
-  using Wm = Atom_::Wm;
-  using Net = Atom_::Net;
-  // Init. Atoms
-  WM[static_cast<std::size_t>(Wm::PROTO)] =
-    ::XInternAtom(dpy, "WM_PROTOCOLS", false);
-  WM[static_cast<std::size_t>(Wm::NAME)] =
-    ::XInternAtom(dpy, "WM_NAME", false);
-  WM[static_cast<std::size_t>(Wm::DELWIN)] =
-    ::XInternAtom(dpy, "WM_DELETE_WINDOW", false);
-  WM[static_cast<std::size_t>(Wm::STATE)] =
-    ::XInternAtom(dpy, "WM_STATE", false);
-  WM[static_cast<std::size_t>(Wm::FOCUS)] =
-    ::XInternAtom(dpy, "WM_TAKE_FOCUS", false);
-  NET[static_cast<std::size_t>(Net::SUPP)] =
-    ::XInternAtom(dpy, "_NET_SUPPORTED", false);
-  NET[static_cast<std::size_t>(Net::STATE)] =
-    ::XInternAtom(dpy, "_NET_WM_STATE", false);
-  NET[static_cast<std::size_t>(Net::NAME)] =
-    ::XInternAtom(dpy, "_NET_WM_NAME", false);
-  NET[static_cast<std::size_t>(Net::ACT)] =
-    ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false);
-  NET[static_cast<std::size_t>(Net::FSCRN)] =
-    ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false);
-  NET[static_cast<std::size_t>(Net::WTYPE)] =
-    ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", false);
-  NET[static_cast<std::size_t>(Net::WDIALOG)] =
-    ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", false);
-}
-
 volatile std::sig_atomic_t sig_status;
 
 auto sig_handler(int sig) {
@@ -425,6 +377,18 @@ int main(const int ARGC, const char *ARGV[]) {
     if (!x.dpy) throw std::runtime_error("Unable to open display");
 
     static const auto SCR { DefaultScreen(x.dpy) };
+    x.REGATOM("WM_PROTOCOLS");
+    x.REGATOM("WM_NAME");
+    x.REGATOM("WM_DELETE_WINDOW");
+    x.REGATOM("WM_STATE");
+    x.REGATOM("WM_TAKE_FOCUS");
+    x.REGATOM("_NET_SUPPORTED");
+    x.REGATOM("_NET_WM_STATE");
+    x.REGATOM("_NET_WM_NAME");
+    x.REGATOM("_NET_ACTIVE_WINDOW");
+    x.REGATOM("_NET_WM_STATE_FULLSCREEN");
+    x.REGATOM("_NET_WM_WINDOW_TYPE");
+    x.REGATOM("_NET_WM_WINDOW_TYPE_DIALOG");
     // Root window
     x.root = RootWindow(x.dpy, SCR);
     ::DBGMSG("Root Window ", x.root);
@@ -467,11 +431,11 @@ int main(const int ARGC, const char *ARGV[]) {
     for (const auto &BTN : dobwm::BTNS) { }
     */
     for (const auto &MOD : dobwm::KEYS)
-      for (const auto &[KEY, CMD] : std::get<1>(MOD))
-        ::XGrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, KEY), std::get<0>(MOD) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
+      for (const auto &KEY : std::get<1>(MOD))
+        ::XGrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, std::get<0>(KEY)), std::get<0>(MOD) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
     
     for (const auto &MOD : dobwm::BTNS)
-      for (const auto &[KEY, CMD] : std::get<1>(MOD)) { }
+      for (const auto &KEY : std::get<1>(MOD)) { }
 
     ::XSync(x.dpy, false);
     dobwm::Panel p { x.dpy, x.root, SCR, dobwm::BAR_HEIGHT };
