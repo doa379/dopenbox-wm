@@ -1,6 +1,7 @@
 #pragma once
 
 #include <X11/XF86keysym.h>
+#include <X11/Xutil.h>
 #include <palette.h>
 #include <variant>
 /*
@@ -88,14 +89,13 @@ Some Buttons {
 */
 
 namespace dobwm {
-  // Number of Tags per Monitor
-  //static constexpr auto NT                { 4 };
-  static constexpr auto BAR_HEIGHT        { 14 };
-  static constexpr auto BDR_WIDTH         { 4 };
+  static constexpr auto NWKS              { 8 };
+  static constexpr auto BARH              { 14 };
+  static constexpr auto BDRW              { 4 };
   static constexpr auto ACTBDR_COLOR      { Palette::Red };
   static constexpr auto INACTBDR_COLOR    { Palette::Cyan };
   static constexpr auto SELBDR_COLOR      { Palette::Yellow };
-  static constexpr auto WINDOW_GAP        { 0 };
+  static constexpr auto WINGAP            { 0 };
   static constexpr auto SLOPPY_FOCUS      { true };
   static constexpr auto MOVESTEP_PX       { 5 };
 
@@ -120,7 +120,16 @@ namespace dobwm {
     RESIZEHINC,
     SELECT,
     RESIZE,
-    Z // Terminator
+    WKS0,
+    WKS1,
+    WKS2,
+    WKS3,
+    WKS4,
+    WKS5,
+    WKS6,
+    WKS7,
+    WKS8,
+    WKS9,
   };
   /*
   using Input = std::tuple<std::size_t, std::size_t, std::variant<Calls, std::string_view>>;
@@ -169,6 +178,9 @@ namespace dobwm {
                     { XK_p, Calls::NEXTCLI },
                     { XK_space, Calls::SELTOGGLE },
                     { XK_c, Calls::SELCLEAR },
+                    { XK_0, Calls::WKS0 },
+                    { XK_1, Calls::WKS1 },
+                    { XK_2, Calls::WKS2 },
                     // Shell Bindings
                     { XK_n, "notify-send \"Test Key\"" },
                     { XK_Escape, "dmenu_run" },

@@ -34,23 +34,23 @@ EXEC = dobwm
   EXEC = dobwm~dbg
 .endif
 
-SRC = src/msg.cpp src/dobwm.cpp src/panel.cpp
+SRC = src/msg.cpp src/dobwm.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
 all: $(EXEC)
 
-clean:
-	@echo Cleaning...
-	rm -f $(OBJ)
-	rm -f $(EXEC).bin $(EXEC)~dbg.bin *.tmp *.core
+.SUFFIXES: .cpp .o
+.cpp.o: config.h
+	@echo Build $< "-->" $@ ...
+	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o $@
 
 $(EXEC): $(OBJ)
 	@echo Linking...
 	@$(CPPC) $(CPPC_FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@.bin
 	@echo $(EXEC).bin
 
-.SUFFIXES: .cpp .o
-.cpp.o: config.h src/dobwm.h
-	@echo CPPC $< "-->" $@
-	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o $@
+clean:
+	@echo Cleaning...
+	rm -f $(OBJ)
+	rm -f $(EXEC).bin $(EXEC)~dbg.bin *.tmp *.core
