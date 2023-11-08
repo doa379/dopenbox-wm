@@ -169,7 +169,7 @@ namespace dobwm {
   };
 */
 
-  static const std::map<std::size_t, 
+  static const std::unordered_map<std::size_t, 
     std::unordered_map<std::size_t, std::variant<Calls, std::string_view>>> KEYS {
       { Mod4Mask, { { XK_u, Calls::UNMAPALL },
                     { XK_v, Calls::REMAPALL },
