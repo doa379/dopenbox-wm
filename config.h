@@ -90,6 +90,7 @@ Some Buttons {
 
 namespace dobwm {
   static constexpr auto NWKS              { 8 };
+  static constexpr auto INITWKS           { 1 };
   static constexpr auto BARH              { 14 };
   static constexpr auto BDRW              { 4 };
   static constexpr auto ACTBDR_COLOR      { Palette::Red };
@@ -178,9 +179,14 @@ namespace dobwm {
                     { XK_p, Calls::NEXTCLI },
                     { XK_space, Calls::SELTOGGLE },
                     { XK_c, Calls::SELCLEAR },
-                    { XK_0, Calls::WKS0 },
                     { XK_1, Calls::WKS1 },
                     { XK_2, Calls::WKS2 },
+                    { XK_3, Calls::WKS3 },
+                    { XK_4, Calls::WKS4 },
+                    { XK_5, Calls::WKS5 },
+                    { XK_6, Calls::WKS6 },
+                    { XK_7, Calls::WKS7 },
+                    { XK_8, Calls::WKS8 },
                     // Shell Bindings
                     { XK_n, "notify-send \"Test Key\"" },
                     { XK_Escape, "dmenu_run" },

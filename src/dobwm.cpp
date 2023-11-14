@@ -96,19 +96,40 @@ namespace sys {
 }
 
 namespace dobwm {
-  using Dim = std::pair<std::size_t, std::size_t>;
+  //using Dim = std::pair<std::size_t, std::size_t>;
   struct X {  // Base class
     int modmask { };  // This mask needs repeated updates
     static inline ::Display *dpy { ::XOpenDisplay(nullptr) };
-    static inline std::unordered_map<std::string_view, ::Atom> ATOM;
-    ::Window root { };
-    Dim scr;
+    static inline ::Window root { };
+    struct Atom_ {
+      std::size_t PROTOCOLS { ::XInternAtom(dpy, "WM_PROTOCOLS", false) },
+        NAME { ::XInternAtom(dpy, "WM_NAME", false) },
+        DELETE_WINDOW { ::XInternAtom(dpy, "WM_DELETE_WINDOW", false) },
+        STATE { ::XInternAtom(dpy, "WM_STATE", false) },
+        TAKE_FOCUS { ::XInternAtom(dpy, "WM_TAKE_FOCUS", false) },
+        SUPPORTED { ::XInternAtom(dpy, "_NET_SUPPORTED", false) },
+        WM_STATE { ::XInternAtom(dpy, "_NET_WM_STATE", false) },
+        WM_NAME { ::XInternAtom(dpy, "_NET_WM_NAME", false) },
+        ACTIVE_WINDOW { ::XInternAtom(dpy, "_NET_ACTIVE_WINDOW", false) },
+        WM_STATE_FULLSCREEN { ::XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", false) },
+        WM_WINDOW_TYPE { ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", false) },
+        WM_WINDOW_TYPE_DIALOG { ::XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", false) },
+        CLIENT_LIST { ::XInternAtom(dpy, "_NET_CLIENT_LIST", false) },
+        NUMBER_OF_DESKTOPS { ::XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", false) },
+        WM_DESKTOP { ::XInternAtom(dpy, "_NET_WM_DESKTOP", false) },
+        CURRENT_DESKTOP { ::XInternAtom(dpy, "_NET_CURRENT_DESKTOP", false) };
+    };
+    
+    Atom_ atom;
+    //Dim scr;
+    std::pair<std::size_t, std::size_t> scr;
   };
 
   struct Client {
     std::vector<::Window>::const_iterator w;
     std::string title;
-    Dim size, pos;
+    std::pair<unsigned, unsigned> size, pos;
+    //Dim size, pos;
     bool trans { }, mut { }, sel { };
   };
   
@@ -126,6 +147,9 @@ namespace dobwm {
     std::unordered_map<Calls, std::function<void(void)>> F;
     sys::Ordered_map<::Window, Client> T;
     decltype(T)::const_iterator prev { T.cend() }, curr { T.cend() };
+    //sys::Ordered_map<::Window, std::vector<::Window>::const_iterator> T;
+    //std::vector<::Window>::const_iterator prev, curr;
+    //std::vector<::Window> S; // Apply features
   public:
     explicit Action(auto &) noexcept;
     ~Action(void) noexcept { };
@@ -135,16 +159,17 @@ namespace dobwm {
     void maprequest(const ::Window) noexcept;
     void motionnotify(const ::Window) noexcept;
     void keypress(const auto, const auto) noexcept;
-    void buttonpress(void) noexcept;
+    void buttonpress(const ::Window, const auto, const auto) noexcept;
     void enternotify(const ::Window) noexcept;
     void propertynotify(const ::Window) noexcept;
     ///////////////////////////////////
     void call(const Calls C) const noexcept { F.at(C)(); }
     void shcmd(std::string_view CMD) const noexcept;
-    void set_act(::Window) const noexcept;
+    void set_act(const ::Window) const noexcept;
     void set_inact(const ::Window) const noexcept;
     void kill(const ::Window) const noexcept;
     void focus(const auto) noexcept;
+    std::pair<unsigned, unsigned> arrange(const unsigned, const unsigned) noexcept;
     void workspace(const unsigned char) const noexcept;
   };
 }
@@ -175,9 +200,9 @@ dobwm::Panel::~Panel(void) noexcept {
 }
 
 void dobwm::Panel::draw(std::string_view S) {
-  ::XSetForeground(x.dpy, gc, 0xF9F9F9);
+  ::XSetForeground(x.dpy, gc, static_cast<std::size_t>(Palette::Cyan20));
   ::XFillRectangle(x.dpy, x.root, gc, 0, 0, std::get<0>(x.scr), BARH);
-  ::XSetForeground(x.dpy, gc, 0x000000);
+  ::XSetForeground(x.dpy, gc, static_cast<std::size_t>(Palette::Gray1));
   ::XDrawString(x.dpy, x.root, gc, 0, BARH - 2, S.data(), S.size());
 }
 
@@ -186,9 +211,9 @@ dobwm::Action::Action(auto &P) noexcept : p { P } {
   F[Calls::UNMAPALL] = [] { };
   F[Calls::REMAPALL] = [] { };
   F[Calls::KILL] = [&] { if (curr < T.cend()) kill(*curr); };
-  F[Calls::SWFOCUS] = [&] { if (T.size() > 1) focus(prev); };
-  F[Calls::PREVCLI] = [&] { if (T.size() > 1) focus(T.cprev(curr)); };
-  F[Calls::NEXTCLI] = [&] { if (T.size() > 1) focus(T.cnext(curr)); };
+  F[Calls::SWFOCUS] = [&] { focus(prev); };
+  F[Calls::PREVCLI] = [&] { focus(T.cprev(curr)); };
+  F[Calls::NEXTCLI] = [&] { focus(T.cnext(curr)); };
   F[Calls::SELTOGGLE] = [] { };
   F[Calls::SELCLEAR] = [] { };
   F[Calls::MOVEUP] = [] { msg::DBG("Move Up"); };
@@ -216,14 +241,16 @@ dobwm::Action::Action(auto &P) noexcept : p { P } {
 void dobwm::Action::unmapnotify(const ::Window W) {
   msg::DBG("Event UnmapNotify");
   const auto O { T.at(W).w }, P { O == T.cbegin() ? T.cbegin() + 1 : O - 1 };
-  ::XDeleteProperty(x.dpy, W, x.ATOM["_NET_ACTIVE_WINDOW"]);
   set_inact(W);
   curr = P;
   set_act(*curr);
   T.erase(O);
+  ::XDeleteProperty(x.dpy, x.root, x.atom.CLIENT_LIST);
   // Refresh associations
-  for (auto &[w, c] : T)
+  for (auto &[w, c] : T) {
     c.w = T.find(w);
+    ::XChangeProperty(x.dpy, x.root, x.atom.CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, reinterpret_cast<const unsigned char *>(&w), 1);
+  }
 }
 
 void dobwm::Action::clientmessage(const ::Window W) noexcept {
@@ -247,27 +274,13 @@ void dobwm::Action::maprequest(const ::Window W) noexcept {
     PropertyChangeMask |
     StructureNotifyMask };
   ::XSelectInput(x.dpy, W, WMASK);
-  ::XUngrabButton(x.dpy, AnyButton, AnyModifier, W);
-  static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask };
-  ::XGrabButton(x.dpy, AnyButton, AnyModifier, W, false, BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
-  if (T.size())
-    for (auto w { T.cend() - 1 }; w > T.cbegin() - 1; w--) {
-      const auto C { T[*w] };
-      // West
-      if (std::get<0>(C.pos) > wa.width && wa.height)
-        // iterate over each client
-        ;
-      // East
-      else if (std::get<0>(x.scr) - wa.width > wa.width && wa.height)
-        ;
-      // North
-      else if (std::get<1>(C.pos) > wa.height)
-        ;
-      // South
-      else if (std::get<1>(x.scr) - wa.height > wa.height)
-        ;
-    }
-  
+  ::XChangeProperty(x.dpy, x.root, x.atom.CLIENT_LIST, XA_WINDOW, 32, PropModeAppend, reinterpret_cast<const unsigned char *>(&W), 1);
+  if (T.size()) {
+    const auto POS { arrange(wa.width, wa.height) };
+    wa.x = std::get<0>(POS);
+    wa.y = std::get<1>(POS);
+  }
+
   ::XMoveWindow(x.dpy, W, wa.x, wa.y);
   ::XMapWindow(x.dpy, W);
   
@@ -275,8 +288,8 @@ void dobwm::Action::maprequest(const ::Window W) noexcept {
   static constexpr auto Y_ { BARH + BDRW / 2 }; // BH offset
   ::Window t { };
   T[W] = Client {
-    .size = Dim { wa.width, wa.height }, 
-    .pos = Dim { wa.x, wa.y < Y_ ? wa.y += Y_ : wa.y },
+    .size = std::pair<unsigned, unsigned> { wa.width, wa.height }, 
+    .pos = std::pair<unsigned, unsigned> { wa.x, wa.y < Y_ ? wa.y += Y_ : wa.y },
     .trans = static_cast<bool>(::XGetTransientForHint(x.dpy, W, &t))
   };
   
@@ -288,7 +301,8 @@ void dobwm::Action::maprequest(const ::Window W) noexcept {
 }
 
 void dobwm::Action::motionnotify(const ::Window W) noexcept {
-  //msg::DBG("Event MotionNotify ");
+  //msg::DBG("Event MotionNotify Window ", W);
+  //focus(T[W].w);
 }
 
 void dobwm::Action::keypress(const auto STATE, const auto CODE) noexcept {
@@ -300,16 +314,13 @@ void dobwm::Action::keypress(const auto STATE, const auto CODE) noexcept {
   else shcmd(std::get<1>(V));
 }
 
-void dobwm::Action::buttonpress(void) noexcept {
-  msg::DBG("Event ButtonPress");
+void dobwm::Action::buttonpress(const ::Window W, const auto STATE, const auto BTN) noexcept {
+  msg::DBG("Event ButtonPress Window ", W);
+  ::XUngrabPointer(x.dpy, CurrentTime);
 }
 
 void dobwm::Action::enternotify(const ::Window W) noexcept {
-  msg::DBG("Event EnterNotify ");
-  /*
-  if ((XING.mode != NotifyNormal || XING.detail == NotifyInferior) && 
-      XING.window != x.root) return;
-  */
+  msg::DBG("Event EnterNotify Window ", W);
   focus(T[W].w);
 }
 
@@ -319,7 +330,7 @@ void dobwm::Action::propertynotify(const ::Window W) noexcept {
     msg::DBG("Root property");
     for (auto &[w, c] : T) {
       if (::XTextProperty tp;
-        ::XGetTextProperty(x.dpy, w, &tp, x.ATOM["WM_NAME"]) && tp.nitems) {
+        ::XGetTextProperty(x.dpy, w, &tp, x.atom.NAME) && tp.nitems) {
         c.title = reinterpret_cast<const char *>(tp.value);
       }
     }
@@ -329,30 +340,6 @@ void dobwm::Action::propertynotify(const ::Window W) noexcept {
       p.get().draw(T[W].title);
   }
 
-  /*
-  if (const auto C { std::ranges::find_if(T, 
-      [W](const auto &C) { return C.w == W; }) }; C < T.end()) {
-    if (PROP.atom == XA_WM_NAME || 
-          PROP.atom == atom.NET[static_cast<std::size_t>(Net::NAME)]) {
-      msg::DBG("Prop detected");
-      if (::XTextProperty tp;
-        ::XGetTextProperty(x.dpy, W, &tp, atom.NET[static_cast<std::size_t>(Net::NAME)]) && tp.nitems) {
-        int n;
-        if (tp.encoding == XA_STRING)
-          C->title = std::string { (char *) tp.value };
-        else if (char **list { };
-          ::XmbTextPropertyToTextList(x.dpy, &tp, &list, &n) >= Success && n > 0 && *list) {
-          C->title = std::string { (char *) *list };
-          ::XFreeStringList(list);
-        }
-
-        ::XFree(tp.value);
-        msg::DBG(C->title);
-      }
-    }
-  }
-  */
-  
   msg::DBG("End PropertyNotify");
 }
 
@@ -364,77 +351,82 @@ void dobwm::Action::shcmd(std::string_view CMD) const noexcept {
   }
 }
 
-void dobwm::Action::set_act(::Window w) const noexcept {
-  ::XSetWindowBorder(x.dpy, w, static_cast<std::size_t>(ACTBDR_COLOR));
-  ::XSetWindowBorderWidth(x.dpy, w, BDRW);
-  ::XSetInputFocus(x.dpy, w, RevertToPointerRoot, CurrentTime);
-  ::XChangeProperty(x.dpy, x.root, x.ATOM["_NET_WM_STATE"], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-  ::XChangeProperty(x.dpy, w, x.ATOM["_NET_ACTIVE_WINDOW"], XA_WINDOW, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&w), 1);
-  ::XRaiseWindow(x.dpy, w);
+void dobwm::Action::set_act(const ::Window W) const noexcept {
+  ::XSetWindowBorder(x.dpy, W, static_cast<std::size_t>(ACTBDR_COLOR));
+  ::XSetWindowBorderWidth(x.dpy, W, BDRW);
+  ::XSetInputFocus(x.dpy, W, RevertToPointerRoot, CurrentTime);
+  ::XChangeProperty(x.dpy, x.root, x.atom.WM_STATE, XA_WINDOW, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&W), 1);
+  ::XChangeProperty(x.dpy, W, x.atom.ACTIVE_WINDOW, XA_WINDOW, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&W), 1);
+  ::XRaiseWindow(x.dpy, W);
+////////////////////////////////////////////////////////////////////////////  
+  static constexpr auto BUTTONMASK { ButtonPressMask | ButtonReleaseMask };
+  for (const auto &MOD : BTNS)
+    for (const auto &BTN : std::get<1>(MOD)) {
+      ::XUngrabButton(x.dpy, std::get<0>(BTN), std::get<0>(MOD) & x.modmask, W);
+      ::XGrabButton(x.dpy, std::get<0>(BTN), std::get<0>(MOD) & x.modmask, W, false, BUTTONMASK, GrabModeSync, GrabModeSync, None, None);
+    }
 }
 
 void dobwm::Action::set_inact(const ::Window W) const noexcept {
-  ::XDeleteProperty(x.dpy, W, x.ATOM["_NET_ACTIVE_WINDOW"]);
+  for (const auto &MOD : BTNS)
+    for (const auto &BTN : std::get<1>(MOD))
+      ::XUngrabButton(x.dpy, std::get<0>(BTN), std::get<0>(MOD) & x.modmask, x.root);
+  
+  ::XDeleteProperty(x.dpy, W, x.atom.ACTIVE_WINDOW);
   ::XSetWindowBorder(x.dpy, W, static_cast<std::size_t>(INACTBDR_COLOR));
 }
 
 void dobwm::Action::kill(const ::Window W) const noexcept {
   ::XEvent xev { ClientMessage };
   xev.xclient.window = W;
-  xev.xclient.message_type = x.ATOM["WM_PROTOCOLS"];
+  xev.xclient.message_type = x.atom.PROTOCOLS;
   xev.xclient.format = 32;
-  xev.xclient.data.l[0] = x.ATOM["WM_DELETE_WINDOW"];
+  xev.xclient.data.l[0] = x.atom.DELETE_WINDOW;
   xev.xclient.data.l[1] = CurrentTime;
   ::XSendEvent(x.dpy, W, false, NoEventMask, &xev);
 }
 
-void dobwm::Action::focus(const auto I) noexcept {
+void dobwm::Action::focus(const auto W) noexcept {
+  if (W == curr) return;
   set_inact(*curr);
   prev = curr;
-  curr = I;
+  curr = W;
   set_act(*curr);
 }
 
+std::pair<unsigned, unsigned> 
+dobwm::Action::arrange(const unsigned W, const unsigned H) noexcept {
+  for (auto &[w, c] : T)
+    for (auto &[v, b] : T) {
+      if (v == w) continue;
+      // West
+      else if (std::get<0>(b.pos) > W && H)
+        ;
+      // East
+      else if (std::get<0>(x.scr) - W > W && H)
+        ;
+      // North
+      else if (std::get<1>(b.pos) > H)
+        ;
+      // South
+      else if (std::get<1>(x.scr) - H > H)
+        ;
+    }
+
+  return { };
+}
+
 void dobwm::Action::workspace(const unsigned char N) const noexcept {
-  unsigned long *wks;
-/*
-  ::Atom xa_ret_type;
-  int ret_format;
-  unsigned long ret_nitems;
-  unsigned long ret_bytes_after;
-  unsigned char *ret_prop;
-  const auto COUNT { 
-    ::XGetWindowProperty(x.dpy, curr->first, x.ATOM["_WIN_WORKSPACE"], 0, 1024, false, XA_CARDINAL, &xa_ret_type, &ret_format, &ret_nitems, &ret_bytes_after, &ret_prop) == Success };
-  if (COUNT) {
-    msg::DBG("DTP nitems ", ret_nitems);
-    //msg::DBG("DTP ", ret_prop[0]);
-    ::XFree(ret_prop);
-  }
-*/
-  ::XEvent ev { ClientMessage };
-  ev.xclient.window = x.root;
-  //ev.xclient.message_type = x.ATOM["_NET_CURRENT_DESKTOP"];
-  ev.xclient.message_type = x.ATOM["_WIN_WORKSPACE"];
-  ev.xclient.format = 32;
-  ev.xclient.data.l[0] = 0;
-  ev.xclient.data.l[1] = 0;
-  ::XSendEvent(x.dpy, x.root, false, NoEventMask, &ev);
-/*
-  unsigned char data[1];
-  data[0] = N;
-  ::XChangeProperty(x.dpy, x.root, x.ATOM["_NET_WM_DESKTOP"], XA_CARDINAL, 32, PropModeReplace, (unsigned char *) data, 1);
-*/
   /*
-  ::Atom xa_ret_type;
-  int ret_format;
-  unsigned long ret_nitems;
-  unsigned long ret_bytes_after;
-  unsigned char *ret_prop;
-  if (::XGetWindowProperty(x.dpy, x.root, x.ATOM["_WIN_WORKSPACE"], 0, 1024, false, XA_CARDINAL, &xa_ret_type, &ret_format, &ret_nitems, &ret_bytes_after, &ret_prop) == Success) {
-    msg::DBG("_WIN_WORKSPACE ", ret_prop[0]);
-    ::XFree(ret_prop);
-  }
+  ::XChangeProperty(x.dpy, x.root, x::NET::CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&N), 1);
   */
+  ::XEvent xev { ClientMessage };
+  xev.xclient.window = x.root;
+  xev.xclient.message_type = x.atom.CURRENT_DESKTOP;
+  xev.xclient.format = 32;
+  xev.xclient.data.l[0] = N;
+  xev.xclient.data.l[1] = CurrentTime;
+  ::XSendEvent(x.dpy, x.root, false, NoEventMask, &xev);
 }
 
 int main(const int ARGC, const char *ARGV[]) {
@@ -443,7 +435,7 @@ int main(const int ARGC, const char *ARGV[]) {
     msg::DBG(msg::WMNAME, "ver. ", msg::VER);
     if (!x.dpy) throw std::runtime_error("Unable to open display");
     static const auto SCRN { DefaultScreen(x.dpy) };
-    x.scr = dobwm::Dim { DisplayWidth(x.dpy, SCRN), DisplayHeight(x.dpy, SCRN) };
+    x.scr = std::pair<unsigned, unsigned> { DisplayWidth(x.dpy, SCRN), DisplayHeight(x.dpy, SCRN) };
     // Root window
     x.root = RootWindow(x.dpy, SCRN);
     msg::DBG("Root Window ", x.root);
@@ -467,7 +459,7 @@ int main(const int ARGC, const char *ARGV[]) {
     }
 
     ::XUngrabKey(x.dpy, AnyKey, AnyModifier, x.root);
-    ::XUngrabButton(x.dpy, AnyButton, AnyModifier, x.root);
+    //::XUngrabButton(x.dpy, AnyButton, AnyModifier, x.root);
     // Modifier Mask
     ::XModifierKeymap *modmap { ::XGetModifierMapping(x.dpy) };
     unsigned numlockmask { };
@@ -479,70 +471,16 @@ int main(const int ARGC, const char *ARGV[]) {
     
     ::XFreeModifiermap(modmap);
     x.modmask = ~(numlockmask | LockMask);
-    /*
-    for (const auto &KEY : dobwm::KEYS)
-      ::XGrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, std::get<1>(KEY)), std::get<0>(KEY) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
-    
-    for (const auto &BTN : dobwm::BTNS) { }
-    */
     for (const auto &MOD : dobwm::KEYS)
       for (const auto &KEY : std::get<1>(MOD))
         ::XGrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, std::get<0>(KEY)), std::get<0>(MOD) & x.modmask, x.root, true, GrabModeAsync, GrabModeAsync);
     
-    for (const auto &MOD : dobwm::BTNS)
-      for (const auto &BTN : std::get<1>(MOD)) {
-        (void) BTN;
-      }
-
     ::XSync(x.dpy, false);
-    // Init. Atoms
-    static constexpr auto REGATOM { [](std::string_view MSG) {
-        x.ATOM[MSG] = ::XInternAtom(x.dpy, MSG.data(), false);
-      }
-    };
-
-    REGATOM("WM_PROTOCOLS");
-    REGATOM("WM_NAME");
-    REGATOM("WM_DELETE_WINDOW");
-    REGATOM("WM_STATE");
-    REGATOM("WM_TAKE_FOCUS");
-    REGATOM("_NET_SUPPORTED");
-    REGATOM("_NET_WM_STATE");
-    REGATOM("_NET_WM_NAME");
-    REGATOM("_NET_ACTIVE_WINDOW");
-    REGATOM("_NET_WM_STATE_FULLSCREEN");
-    REGATOM("_NET_WM_WINDOW_TYPE");
-    REGATOM("_NET_WM_WINDOW_TYPE_DIALOG");
-    REGATOM("_WIN_WORKSPACE_COUNT");
-    REGATOM("_WIN_WORKSPACE");
-    REGATOM("_NET_NUMBER_OF_DESKTOPS");
-    REGATOM("_NET_WM_DESKTOP");
-    REGATOM("_NET_CURRENT_DESKTOP");
-////////////////////////////////////////////////////////////////////////
-  unsigned char data[1];
-  data[0] = dobwm::NWKS;
-  ::XChangeProperty(x.dpy, x.root, x.ATOM["_WIN_WORKSPACE_COUNT"], XA_CARDINAL, 32, PropModeReplace, (unsigned char *) data, 1);
-
-    ::Atom xa_ret_type;
-    int ret_format;
-    unsigned long ret_nitems;
-    unsigned long ret_bytes_after;
-    unsigned char *ret_prop;
-    if (::XGetWindowProperty(x.dpy, x.root, x.ATOM["_WIN_WORKSPACE_COUNT"], 0, 1024, false, XA_CARDINAL, &xa_ret_type, &ret_format, &ret_nitems, &ret_bytes_after, &ret_prop) == Success) {
-      msg::DBG("WIN_WORKSPACE_COUNT ", ret_prop[0]);
-      //::XFree(ret_prop);
-    }
-    /*
-    if (::XGetWindowProperty(x.dpy, x.root, x.ATOM["_NET_NUMBER_OF_DESKTOPS"], 0, 1024, false, XA_CARDINAL, &xa_ret_type, &ret_format, &ret_nitems, &ret_bytes_after, &ret_prop) == Success) {
-      msg::DBG("_NET_NUMBER_OF_DESKTOPS ", ret_prop[0]);
-      ::XFree(ret_prop);
-    }
-    */
-////////////////////////////////////////////////////////////////////////
+    
     static dobwm::Panel p { SCRN };
     static dobwm::Action a { p };
     static ::XEvent xev;
-    std::array<std::function<void(void)>, LASTEvent> F;  // Literal defn.
+    static std::array<std::function<void(void)>, LASTEvent> F; // Literal defn.
     for (auto &f : F) f = [] { };
     F[MapNotify] = [] { msg::DBG("Event MapNotify"); };
     F[UnmapNotify] = [] {
@@ -562,28 +500,29 @@ int main(const int ARGC, const char *ARGV[]) {
           CONF.border_width, CONF.above, CONF.detail };
       ::XConfigureWindow(x.dpy, CONF.window, CONF.value_mask, &wc);
     };
-    F[MotionNotify] = [] { 
-      if (xev.xmotion.window == x.root)
-        a.motionnotify(xev.xmotion.window);
-    };
+    F[MotionNotify] = [] { a.motionnotify(xev.xmotion.window); };
     F[KeyPress] = [] { a.keypress(xev.xkey.state, xev.xkey.keycode); };
     F[ButtonPress] = [] { 
-      (void) xev.xbutton;
-      a.buttonpress();
+      a.buttonpress(xev.xbutton.window, xev.xbutton.state, xev.xbutton.button);
     };
     F[EnterNotify] = [] { 
-      if (xev.xcrossing.mode == NotifyNormal && 
-          xev.xcrossing.detail != NotifyInferior)
+      const auto &XING { xev.xcrossing };
+      if ((XING.mode != NotifyNormal || XING.detail == NotifyInferior) && 
+        XING.window == x.root) return;
+      //if (XING.window != x.root)
         a.enternotify(xev.xcrossing.window);
     };
     F[PropertyNotify] = [] { a.propertynotify(xev.xproperty.window); };
 
+    ::XChangeProperty(x.dpy, x.root, x.atom.NUMBER_OF_DESKTOPS, XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&dobwm::NWKS), 1);
+    ::XChangeProperty(x.dpy, x.root, x.atom.CURRENT_DESKTOP, XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&dobwm::INITWKS), 1);
+    ::XDeleteProperty(x.dpy, x.root, x.atom.CLIENT_LIST);
     unsigned n;
     ::Window root, parent, *w { };
     if (::XQueryTree(x.dpy, x.root, &root, &parent, &w, &n)) {
       for (unsigned i { }; i < n; i++) {
         ::XWindowAttributes wa;
-        if (::XGetWindowAttributes(x.dpy, w[i], &wa) &&
+        if (::XGetWindowAttributes(x.dpy, w[i], &wa) && 
             wa.map_state == IsViewable) {
           ::XEvent xev { MapRequest };
           xev.xmaprequest.send_event = true,
@@ -609,8 +548,14 @@ int main(const int ARGC, const char *ARGV[]) {
       }
     
     // Deinit
-    ::XUngrabKey(x.dpy, AnyKey, AnyModifier, x.root);
-    ::XUngrabButton(x.dpy, AnyButton, AnyModifier, x.root);
+    for (const auto &MOD : dobwm::KEYS)
+      for (const auto &KEY : std::get<1>(MOD))
+        ::XUngrabKey(x.dpy, ::XKeysymToKeycode(x.dpy, std::get<0>(KEY)), std::get<0>(MOD) & x.modmask, x.root);
+    /* 
+    for (const auto &MOD : dobwm::BTNS)
+      for (const auto &BTN : std::get<1>(MOD))
+        ::XUngrabButton(x.dpy, std::get<0>(BTN), std::get<0>(MOD) & x.modmask, x.root);
+    */
     ::XSetInputFocus(x.dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
     ::XCloseDisplay(x.dpy);
     msg::DBG("WM exit");
