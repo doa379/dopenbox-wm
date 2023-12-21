@@ -93,9 +93,13 @@ namespace dobwm {
   static constexpr auto INITWKS           { 1 };
   static constexpr auto BARH              { 14 };
   static constexpr auto BDRW              { 4 };
-  static constexpr auto ACTBDR_COLOR      { Palette::Red };
-  static constexpr auto INACTBDR_COLOR    { Palette::Cyan };
-  static constexpr auto SELBDR_COLOR      { Palette::Yellow };
+  static constexpr auto WKSFG             { Palette::Gray1 };
+  static constexpr auto WKSBG             { Palette::Cyan40 };
+  static constexpr auto TITLEFG           { Palette::Gray1 };
+  static constexpr auto TITLEBG           { Palette::Cyan20 };
+  static constexpr auto ACTBDR            { Palette::Red };
+  static constexpr auto INACTBDR          { Palette::Cyan };
+  static constexpr auto FTBDR             { Palette::Yellow };
   static constexpr auto WINGAP            { 0 };
   static constexpr auto SLOPPY_FOCUS      { true };
   static constexpr auto MOVESTEP_PX       { 5 };
@@ -131,6 +135,7 @@ namespace dobwm {
     WKS7,
     WKS8,
     WKS9,
+    STATE,
   };
   /*
   using Input = std::tuple<std::size_t, std::size_t, std::variant<Calls, std::string_view>>;
@@ -210,7 +215,8 @@ namespace dobwm {
                                   { XK_Right, Calls::RESIZEHINC }
                                 }
       },
-      { Mod4Mask | ShiftMask | ControlMask, { { XK_q, Calls::QUIT }
+      { Mod4Mask | ShiftMask | ControlMask, { { XK_s, Calls::STATE },
+                                              { XK_q, Calls::QUIT }
                                             } 
       }
     }, BTNS {
