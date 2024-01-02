@@ -13,11 +13,11 @@ namespace dobwm {
     }
   };
 
-  struct X {  // Base class
+  struct Root {  // Base class
     static inline ::Display* dpy { ::XOpenDisplay(nullptr) };
     static inline int scrn;
+    static inline ::Window w;
     static inline std::pair<std::size_t, std::size_t> size;
-    static inline ::Window root;
     static inline int modmask;  // This mask needs repeated updates
     static constexpr auto ROOTMASK {
       SubstructureRedirectMask | 
@@ -50,25 +50,26 @@ namespace dobwm {
         NUMBER_OF_DESKTOPS {
           ::XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", false) },
         WM_DESKTOP { ::XInternAtom(dpy, "_NET_WM_DESKTOP", false) },
-        CURRENT_DESKTOP { ::XInternAtom(dpy, "_NET_CURRENT_DESKTOP", false) };
+        CURRENT_DESKTOP { ::XInternAtom(dpy, "_NET_CURRENT_DESKTOP", false) },
+        SHOWING_DESKTOP { ::XInternAtom(dpy, "_NET_SHOWING_DESKTOP", false) };
     } atom;
 
-    X() {
+    Root() {
       if (!dpy)
         throw std::runtime_error("Unable to open display");
       
       scrn = DefaultScreen(dpy);
-      size = std::pair<std::size_t, std::size_t> { 
-        DisplayWidth(dpy, scrn), DisplayHeight(dpy, scrn) };
-      root = RootWindow(dpy, scrn);
+      w = RootWindow(dpy, scrn);
       ::XSetErrorHandler(XError);
-      ::XSelectInput(dpy, root, ROOTMASK);
+      ::XSelectInput(dpy, w, ROOTMASK);
       if (xerror) {
         ::XCloseDisplay(dpy);
         throw std::runtime_error("Initialization error (another wm running?)");
       }
       
-      ::XUngrabKey(dpy, AnyKey, AnyModifier, root);
+      size = std::pair<std::size_t, std::size_t> { 
+        DisplayWidth(dpy, scrn), DisplayHeight(dpy, scrn) };
+      ::XUngrabKey(dpy, AnyKey, AnyModifier, w);
       // Modifier Mask
       ::XModifierKeymap* modmap { ::XGetModifierMapping(dpy) };
       unsigned numlockmask { };
@@ -82,18 +83,18 @@ namespace dobwm {
       modmask = ~(numlockmask | LockMask);
     }
 
-    ~X() {
+    ~Root() {
       ::XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
       ::XCloseDisplay(dpy);
     }
 
     void grab_key(const std::size_t MOD, const std::size_t KEY) {
-      ::XGrabKey(dpy, ::XKeysymToKeycode(dpy, KEY), MOD & modmask, root, 
+      ::XGrabKey(dpy, ::XKeysymToKeycode(dpy, KEY), MOD & modmask, w, 
         true, GrabModeAsync, GrabModeAsync);
     }
     
     void ungrab_key(const std::size_t MOD, const std::size_t KEY) {
-      ::XUngrabKey(dpy, ::XKeysymToKeycode(dpy, KEY), MOD & modmask, root);
+      ::XUngrabKey(dpy, ::XKeysymToKeycode(dpy, KEY), MOD & modmask, w);
     }
   };
 }
