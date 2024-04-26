@@ -16,25 +16,21 @@ LIBSPATH = -L $(LOCAL)/ -Wl,-R$(LOCAL)/ '-Wl,-R$$ORIGIN' \
 LIBS = -l X11 -l Xinerama -l dbus-1
 
 CPPC = clang++
-CPPC_FLAGS = -std=c++2b -Wall -fPIE -fPIC -pedantic -stdlib=libstdc++
-REL_CFLAGS = -O3
-REL_LDFLAGS = -s
+FLAGS = -std=c++23 -Wall -fPIE -fPIC -pedantic
 #DBG_CFLAGS = -O1 -g -fsanitize=address -fno-omit-frame-pointer
 #DBG_LDFLAGS = -g -fsanitize=address
-DBG_CFLAGS = -O1 -g -fno-omit-frame-pointer
-DBG_LDFLAGS =
 
-CFLAGS = $(REL_CFLAGS)
-LDFLAGS = $(REL_LDFLAGS)
-EXEC = dobwm
+CFLAGS = -O3
+LDFLAGS = -s
+EXEC = dopenboxwm.bin
 
 .if "$(DEBUG)" == "1"
-  CFLAGS = $(DBG_CFLAGS)
-  LDFLAGS = $(DBG_LDFLAGS)
-  EXEC = dobwm~dbg
+  CFLAGS = -O1 -g -fno-omit-frame-pointer
+  LDFLAGS =
+  EXEC = dopenboxwm~dbg.bin
 .endif
 
-SRC = src/msg.cpp src/dobwm.cpp
+SRC = src/main.cpp src/Xlib.cpp src/wm.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .POSIX:
@@ -43,14 +39,14 @@ all: $(EXEC)
 .SUFFIXES: .cpp .o
 .cpp.o: config.h
 	@echo Build $< "-->" $@ ...
-	@$(CPPC) $(CPPC_FLAGS) -c $(CFLAGS) $(INCS) $< -o $@
+	@$(CPPC) $(FLAGS) -c $(CFLAGS) $(INCS) $< -o $@
 
 $(EXEC): $(OBJ)
 	@echo Linking...
-	@$(CPPC) $(CPPC_FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@.bin
-	@echo $(EXEC).bin
+	@$(CPPC) $(FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@
+	@echo $(EXEC)
 
 clean:
 	@echo Cleaning...
 	rm -f $(OBJ)
-	rm -f $(EXEC).bin $(EXEC)~dbg.bin *.tmp *.core
+	rm -f $(EXEC) $(DBG_EXEC) *.tmp *.core

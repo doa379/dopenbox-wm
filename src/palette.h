@@ -1,6 +1,6 @@
 #pragma once
 
-enum class Palette {
+enum palette {
   Black       = 0x000000,
   Gray1       = 0x222222,
   Gray2       = 0x444444,
@@ -15,6 +15,7 @@ enum class Palette {
   Gray70      = 0xb3b3b3,
   Gray80      = 0xcccccc,
   Gray90      = 0xe6e6e6,
+  White       = 0xffffff,
   Cyan10      = 0xccf1ff,
   Cyan20      = 0x99e2ff,
   Cyan30      = 0x66d4ff,
@@ -31,6 +32,11 @@ enum class Palette {
   Magenta20   = 0xff99ff,
   Magenta30   = 0xff66ff,
   Magenta     = 0x750075,
+  Red95       = 0xff004d,
+  Red90       = 0xff0080,
+  Red80       = 0xff8080,
   Red         = 0xff0000,
+  RedAlt      = 0xa03232,
+  Maroon      = 0xdc0000,
 };
 

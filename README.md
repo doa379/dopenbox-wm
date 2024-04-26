@@ -1,33 +1,10 @@
 # dopenboxwm
 Dopenboxwm X11 WM
 
-Dopenboxwm is an open plan X11 window manager written in modern C++. Features easily adaptable and flexible workflows, essential config settings through source header, discretionary tiling, integrated panel, minimal overheads on resources. Dopenboxwm is inspired by projects dwm, Openbox and JWM. This project is presently at version -0.0.
+Dopenboxwm is a zero budget WM written in C++.
 
 Build prerequisites/deps:
 
-BSD Make (bmake)  
-libX11 (dev, devel)  
-libXinerama (dev, devel)  
-dbus-1 (dev, devel)
+BSD Make (bmake), libX11, libXinerama, *dbus-1
 
 Target(s): BSD, Linux
-
-TODO
-
-|- -Lifecycle of the window mgmt process-
-|- Xinerama
-|- Refactor X
-|- Import GL
-|- Impl arrangements
-
-Preliminary Xinerama
-
-Preliminary client arrangements
-
-Impl status bar
-
-Further arrangements
-
-~Integrate acpi mgmt (Linux only)
-
-(Optional) Integrate acpi dbus

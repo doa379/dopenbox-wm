@@ -1,16 +1,11 @@
 #pragma once
 
+#include <X11/Xutil.h>
 #include <X11/XF86keysym.h>
 #include <palette.h>
-#include <variant>
-/*
-#include <array>
-#include <tuple>
-*/
-#include <map>
 
 /*
-Some ::KeySym {
+KeySym {
   XK_Escape,
   XK_F1,
   XK_F2,
@@ -78,186 +73,134 @@ Some ::KeySym {
   XF86XK_Sleep,
 }
 
-Some Buttons {
+Buttons {
   Left      = Button1,
   Middle    = Button2,
   Right     = Button3,
   Up        = Button4,
   Down      = Button5,
 }
+
+Modifiers {
+  Mod1Mask,
+  Mod2Mask,
+  Mod3Mask,
+  Mod4Mask,
+  Mod5Mask,
+  ShiftMask,
+  ControlMask,
+  LockMask
 */
 
-namespace dobwm {
-  static constexpr auto NWKS              { 8 };
-  static constexpr auto INITWKS           { 1 };
-  static constexpr auto BARH              { 14 };
-  static constexpr auto BDRW              { 4 };
-  static constexpr auto WKSFG             { Palette::Gray1 };
-  static constexpr auto WKSBG             { Palette::Cyan40 };
-  static constexpr auto TITLEFG           { Palette::Gray1 };
-  static constexpr auto TITLEBG           { Palette::Cyan20 };
-  static constexpr auto ACTBDR            { Palette::Red };
-  static constexpr auto INACTBDR          { Palette::Cyan };
-  static constexpr auto FTBDR             { Palette::Yellow };
-  static constexpr auto WINGAP            { 0 };
-  static constexpr auto SLOPPY_FOCUS      { true };
-  static constexpr auto MOVESTEP_PX       { 5 };
+static constexpr char* WMNAME = { "dopenboxwm" };
+static constexpr char* WMVER = { "-0.0" };
+static constexpr auto NWKS = { 8 };
+static constexpr auto SLOPPY_FOCUS = { true };
 
-  enum class Calls : std::size_t {
-    // Declare pool of calls
-    QUIT,
-    UNMAPALL,
-    REMAPALL,
-    KILL,
-    SWFOCUS,
-    PREVCLI,
-    NEXTCLI,
-    SELTOGGLE,
-    SELCLEAR,
-    MOVEUP,
-    MOVEDOWN,
-    MOVELEFT,
-    MOVERIGHT,
-    RESIZEVINC,
-    RESIZEVDEC,
-    RESIZEHDEC,
-    RESIZEHINC,
-    SELECT,
-    RESIZE,
-    WKS0,
-    WKS1,
-    WKS2,
-    WKS3,
-    WKS4,
-    WKS5,
-    WKS6,
-    WKS7,
-    WKS8,
-    WKS9,
-    STATE,
-  };
-  /*
-  using Input = std::tuple<std::size_t, std::size_t, std::variant<Calls, std::string_view>>;
-  
-  static constexpr std::array<Input, 32> KEYS {
-    Input { Mod4Mask, XK_u, Calls::UNMAPALL },
-      { Mod4Mask, XK_v, Calls::REMAPALL },
-      { Mod4Mask, XK_Tab, Calls::SWFOCUS },
-      { Mod4Mask, XK_o, Calls::PREVCLI },
-      { Mod4Mask, XK_p, Calls::NEXTCLI },
-      { Mod4Mask, XK_space, Calls::SELTOGGLE },
-      { Mod4Mask, XK_c, Calls::SELCLEAR },
-      { Mod4Mask | ShiftMask, XK_k, Calls::KILL },
-      { Mod4Mask | ShiftMask, XK_Up, Calls::MOVEUP },
-      { Mod4Mask | ShiftMask, XK_Down, Calls::MOVEDOWN },
-      { Mod4Mask | ShiftMask, XK_Left, Calls::MOVELEFT },
-      { Mod4Mask | ShiftMask, XK_Right, Calls::MOVERIGHT },
-      { Mod4Mask | ControlMask, XK_Up, Calls::RESIZEVINC },
-      { Mod4Mask | ControlMask, XK_Down, Calls::RESIZEVDEC },
-      { Mod4Mask | ControlMask, XK_Left, Calls::RESIZEHDEC },
-      { Mod4Mask | ControlMask, XK_Right, Calls::RESIZEHINC },
-      { Mod4Mask | ShiftMask | ControlMask, XK_q, Calls::QUIT },
-      // Shell Bindings
-      { Mod4Mask, XK_n, "notify-send \"Test Key\"" },
-      { Mod4Mask, XK_Escape, "dmenu_run" },
-      { Mod4Mask, XK_l, "slock" },
-      { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
-      { Mod4Mask, XK_c, "xconsole" },
-      { Mod4Mask, XK_d, "xclock" },
-      { Mod4Mask, XK_Return, "xterm" }
-  };
-  
-  static constexpr std::array<Input, 8> BTNS {
-    // Mouse Bindings
-    Input { 0, Button1, Calls::SELECT },
-      { Mod4Mask, Button3, Calls::RESIZE },
-  };
-*/
+enum calls {
+  // Declare pool of calls
+  WK0,
+  WK1,
+  WK2,
+  WK3,
+  WK4,
+  WK5,
+  WK6,
+  WK7,
+  WK8,
+  WK9,
+  MON0,
+  MON1,
+  MON2,
+  MON3,
+  MON4,
+  MON5,
+  MON6,
+  MON7,
+  MON8,
+  MON9,
+  UNMAPALL,
+  REMAPALL,
+  KILL,
+  SWFOCUS,
+  TOGGLEMODE,
+  PREVCLI,
+  NEXTCLI,
+  SELTOGGLE,
+  SELCLEAR,
+  MOVEUP,
+  MOVEDOWN,
+  MOVELEFT,
+  MOVERIGHT,
+  RESIZEVINC,
+  RESIZEVDEC,
+  RESIZEHDEC,
+  RESIZEHINC,
+  QUIT,
+  SELECT,
+  RESIZE,
+  STATE,
+};
 
-  static const std::unordered_map<std::size_t, 
-    std::unordered_map<std::size_t, std::variant<Calls, std::string_view>>> KEYS {
-      { Mod4Mask, { { XK_u, Calls::UNMAPALL },
-                    { XK_v, Calls::REMAPALL },
-                    { XK_Tab, Calls::SWFOCUS },
-                    { XK_o, Calls::PREVCLI },
-                    { XK_p, Calls::NEXTCLI },
-                    { XK_space, Calls::SELTOGGLE },
-                    { XK_c, Calls::SELCLEAR },
-                    { XK_1, Calls::WKS1 },
-                    { XK_2, Calls::WKS2 },
-                    { XK_3, Calls::WKS3 },
-                    { XK_4, Calls::WKS4 },
-                    { XK_5, Calls::WKS5 },
-                    { XK_6, Calls::WKS6 },
-                    { XK_7, Calls::WKS7 },
-                    { XK_8, Calls::WKS8 },
-                    // Shell Bindings
-                    { XK_n, "notify-send \"Test Key\"" },
-                    { XK_Escape, "dmenu_run" },
-                    { XK_l, "slock" },
-                    { XF86XK_Sleep, "slock & yyy M" },
-                    { XK_c, "xconsole" },
-                    { XK_d, "xclock" },
-                    { XK_Return, "xterm" }
-                  }
-      },
-      { Mod4Mask | ShiftMask, { { XK_k, Calls::KILL },
-                                { XK_Up, Calls::MOVEUP },
-                                { XK_Down, Calls::MOVEDOWN },
-                                { XK_Left, Calls::MOVELEFT },
-                                { XK_Right, Calls::MOVERIGHT }
-                              }
-      },
-      { Mod4Mask | ControlMask, { { XK_Up, Calls::RESIZEVINC },
-                                  { XK_Down, Calls::RESIZEVDEC },
-                                  { XK_Left, Calls::RESIZEHDEC },
-                                  { XK_Right, Calls::RESIZEHINC }
-                                }
-      },
-      { Mod4Mask | ShiftMask | ControlMask, { { XK_s, Calls::STATE },
-                                              { XK_q, Calls::QUIT }
-                                            } 
-      }
-    }, BTNS {
-        { 0,  { { Button1, Calls::SELECT },
-              }
-        },
-        { Mod4Mask, { { Button3, Calls::RESIZE },
-                    },
-        }
-    };
+typedef struct {
+  int mod, key;
+  union {
+    enum calls call;
+    const char* cmd;
+  };
+} input_t;
 
-  static const std::multimap<std::size_t, 
-    std::pair<std::size_t, std::variant<Calls, std::string_view>>> KEYSMM {
-      { Mod4Mask, { XK_u, Calls::UNMAPALL } },
-      { Mod4Mask, { XK_v, Calls::REMAPALL } },
-      { Mod4Mask, { XK_Tab, Calls::SWFOCUS } },
-      { Mod4Mask, { XK_o, Calls::PREVCLI } },
-      { Mod4Mask, { XK_p, Calls::NEXTCLI } },
-      { Mod4Mask, { XK_space, Calls::SELTOGGLE } },
-      { Mod4Mask, { XK_c, Calls::SELCLEAR } },
-      // Shell Bindings
-      { Mod4Mask, { XK_n, "notify-send \"Test Key\"" } },
-      { Mod4Mask, { XK_Escape, "dmenu_run" } },
-      { Mod4Mask, { XK_l, "slock" } },
-      { Mod4Mask, { XF86XK_Sleep, "slock & yyy M" } },
-      { Mod4Mask, { XK_c, "xconsole" } },
-      { Mod4Mask, { XK_d, "xclock" } },
-      { Mod4Mask, { XK_Return, "xterm" } },
-      
-      { Mod4Mask | ShiftMask, { XK_k, Calls::KILL } },
-      { Mod4Mask | ShiftMask, { XK_Up, Calls::MOVEUP } },
-      { Mod4Mask | ShiftMask, { XK_Down, Calls::MOVEDOWN } },
-      { Mod4Mask | ShiftMask, { XK_Left, Calls::MOVELEFT } },
-      { Mod4Mask | ShiftMask, { XK_Right, Calls::MOVERIGHT } },
-      
-      { Mod4Mask | ControlMask, { XK_Up, Calls::RESIZEVINC } },
-      { Mod4Mask | ControlMask, { XK_Down, Calls::RESIZEVDEC } },
-      { Mod4Mask | ControlMask, { XK_Left, Calls::RESIZEHDEC } },
-      { Mod4Mask | ControlMask, { XK_Right, Calls::RESIZEHINC } },
-      { Mod4Mask | ShiftMask | ControlMask, { XK_q, Calls::QUIT } },
-    }, BTNSMM {
-        { 0,  { Button1, Calls::SELECT } },
-        { Mod4Mask, { Button3, Calls::RESIZE } },
-    };
-}
+static const input_t KBD[] = {
+  { Mod4Mask, XK_0, { WK0 } },
+  { Mod4Mask, XK_1, { WK1 } },
+  { Mod4Mask, XK_2, { WK2 } },
+  { Mod4Mask, XK_3, { WK3 } },
+  { Mod4Mask, XK_4, { WK4 } },
+  { Mod4Mask, XK_5, { WK5 } },
+  { Mod4Mask, XK_6, { WK6 } },
+  { Mod4Mask, XK_7, { WK7 } },
+  { Mod4Mask, XK_8, { WK8 } },
+  { Mod4Mask, XK_9, { WK9 } },
+  { Mod4Mask, XK_u, { UNMAPALL } },
+  { Mod4Mask, XK_v, { REMAPALL } },
+  { Mod4Mask, XK_Tab, { SWFOCUS } },
+  { Mod4Mask, XK_m, { TOGGLEMODE } },
+  { Mod4Mask, XK_o, { PREVCLI } },
+  { Mod4Mask, XK_p, { NEXTCLI } },
+  { Mod4Mask, XK_space, { SELTOGGLE } },
+  { Mod4Mask, XK_c, { SELCLEAR } },
+  { Mod4Mask | ShiftMask, XK_1, { MON1 } },
+  { Mod4Mask | ShiftMask, XK_2, { MON2 } },
+  { Mod4Mask | ShiftMask, XK_3, { MON3 } },
+  { Mod4Mask | ShiftMask, XK_4, { MON4 } },
+  { Mod4Mask | ShiftMask, XK_5, { MON5 } },
+  { Mod4Mask | ShiftMask, XK_6, { MON6 } },
+  { Mod4Mask | ShiftMask, XK_7, { MON7 } },
+  { Mod4Mask | ShiftMask, XK_8, { MON8 } },
+  { Mod4Mask | ShiftMask, XK_9, { MON9 } },
+  { Mod4Mask | ShiftMask, XK_0, { MON0 } },
+  { Mod4Mask | ShiftMask, XK_k, { KILL } },
+  { Mod4Mask | ShiftMask, XK_Up, { MOVEUP } },
+  { Mod4Mask | ShiftMask, XK_Down, { MOVEDOWN } },
+  { Mod4Mask | ShiftMask, XK_Left, { MOVELEFT } },
+  { Mod4Mask | ShiftMask, XK_Right, { MOVERIGHT } },
+  { Mod4Mask | ControlMask, XK_Up, { RESIZEVINC } },
+  { Mod4Mask | ControlMask, XK_Down, { RESIZEVDEC } },
+  { Mod4Mask | ControlMask, XK_Left, { RESIZEHDEC } },
+  { Mod4Mask | ControlMask, XK_Right, { RESIZEHINC } },
+  { Mod4Mask | ShiftMask | ControlMask, XK_q, { QUIT } },
+  // Shell Bindings
+  { Mod4Mask, XK_n, { .cmd = "notify-send \"Test Key\"" } },
+  { Mod4Mask, XK_Escape, { .cmd = "dmenu_run" } },
+  { Mod4Mask, XK_l, { .cmd = "slock" } },
+  { Mod4Mask, XF86XK_Sleep, { .cmd = "slock & yyy M" } },
+  { Mod4Mask, XK_c, { .cmd = "xconsole" } },
+  { Mod4Mask, XK_d, { .cmd = "xclock" } },
+  { Mod4Mask, XK_Return, { .cmd = "xterm" } },
+};
+
+static const input_t BTN[] = {
+  // Mouse Bindings
+  { 0, Button1, { SELECT } },
+  { Mod4Mask, Button3, { RESIZE } },
+};
