@@ -6,12 +6,11 @@
 #include <Xlib.h>
 
 namespace some {
+  /*
   class Root {
     public:
     Root(::Display*);
     ~Root();
-    Xlib::Xlib xlib;
-    Xlib::Input input;
     ::Window w;
     private:
     static bool xerror;
@@ -20,6 +19,7 @@ namespace some {
       return 0;
     }
   };
+  */
   
   struct Client {
     ::Window w;
@@ -47,28 +47,37 @@ namespace some {
   
   class Wm {
     public:
-    Wm(::Display*);
+    Wm();
     ~Wm();
     void mapnotify();
     void unmapnotify();
     void clientmessage();
-    void configurenotify();
-    void maprequest();
+    void configurenotify(const ::Window, const int, const int);
+    void maprequest(const ::Window, const int, const int);
     void configurerequest();
     void motionnotify();
     void keypress();
-    void btnpress();
+    void btnpress(const::Window, const int, const int);
     void enternotify();
     void propertynotify();
     void expose();
     private:
-    ::Display* dpy;
-    Root root;
+    Display dpy;
+    Xlib::Xlib xlib;
+    Xlib::Input input;
+    Xlib::Draw draw;
+    static bool xerror;
+    static int handler(::Display*, ::XErrorEvent* xev) {
+      xerror = xev->error_code == BadAccess;
+      return 0;
+    }
+
     std::array<std::function<void()>, 128> CALL;
     std::vector<Wk> WK;
     std::vector<Wk>::iterator wk[2]; // Prev, Curr
     std::vector<Mon> MON;
     std::vector<Mon>::iterator mon;
+    ::Window rootw;
     ::Window panel;
     ::GC wkgc;
     ::GC statusgc;

@@ -2,27 +2,19 @@
 #include <wm.h>
 #include <../config.h>
 
-bool some::Root::xerror;
+bool some::Wm::xerror;
 
-some::Root::Root(::Display* dpy) : 
-  xlib { dpy }, input { dpy }, w { xlib.root() } {
-  
+some::Wm::Wm() : rootw { xlib.root() } {
   xlib.set_err(handler);
-  input.select_input(w, Xlib::ROOTMASK);
+  input.select(rootw, Xlib::ROOTMASK);
   if (xerror)
     throw std::runtime_error("Initialization error (another wm running?)");
 
-  input.ungrab_allkey(w);
+  input.ungrab_allkey(rootw);
   const auto MASK { input.modmask() };
   for (const auto& K : KBD)
-    input.grab_key(w, K.mod & MASK, K.key);
-}
-
-some::Root::~Root() {
-  input.set_inputfocus(w);
-}
-
-some::Wm::Wm(::Display* dpy) : dpy { dpy }, root { dpy } {
+    input.grab_key(rootw, K.mod & MASK, K.key);
+    
   CALL[WK0] = [] { };
   CALL[WK1] = [] { };
   CALL[WK2] = [] { };
@@ -65,16 +57,16 @@ some::Wm::Wm(::Display* dpy) : dpy { dpy }, root { dpy } {
   CALL[RESIZE] = [] { };
   CALL[STATE] = [] { };
 
-  some::Xlib::QueryTree query { dpy, root.w };
+  some::Xlib::QueryTree query { rootw };
   const auto W { query.get() };
   for (const auto& W_ : W)
     ;
 
-  some::Xlib::Xinerama xinerama { dpy };
+  some::Xlib::Xinerama xinerama;
 }
 
 some::Wm::~Wm() {
-
+  input.set_focus(rootw);
 }
 
 void some::Wm::mapnotify() {
@@ -89,11 +81,15 @@ void some::Wm::clientmessage() {
 
 }
 
-void some::Wm::configurenotify() {
+void some::Wm::configurenotify(const ::Window W, const int WIDTH, 
+const int HEIGHT) {
+  if (W == rootw) {
 
+  }
 }
 
-void some::Wm::maprequest() {
+void
+some::Wm::maprequest(const ::Window W, const int WIDTH, const int HEIGHT) {
 
 }
 
@@ -109,8 +105,8 @@ void some::Wm::keypress() {
 
 }
 
-void some::Wm::btnpress() {
-
+void some::Wm::btnpress(const ::Window W, const int STATE, const int CODE) {
+  // ungrab_pointer();
 }
 
 void some::Wm::enternotify() {

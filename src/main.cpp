@@ -33,14 +33,17 @@ int main(const int ARGC, const char* ARGV[]) {
   try {
     Sig sig;
     some::Display dpy;
-    some::Wm wm { dpy.ptr };
+    dpy.init();
+    some::Wm wm;
     some::Ev ev { wm };
     while (sig.none()) {
-      if (ev.next(dpy.ptr))
+      if (ev.next())
         ev.call();
 
-      ev.sync(dpy.ptr);
+      ev.sync();
     }
+
+    dpy.deinit();
   } catch (const std::exception& E) {
     std::cerr << E.what() << "\n";
   }

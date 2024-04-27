@@ -6,10 +6,13 @@
 
 namespace some {
   struct Display {
-    static ::Display* ptr;
-    Display();
+    Display() = default;
     Display(const Display&) = delete;
-    ~Display();
+    Display(Display&&) = delete;
+    ~Display() = default;
+    static ::Display* ptr;
+    static void init();
+    static void deinit();
   };
   
   class Wm;
@@ -17,8 +20,8 @@ namespace some {
     public:
     Ev(Wm&);
     ~Ev();
-    bool next(::Display* dpy) { return ::XNextEvent(dpy, &xev) == 0; }
-    void sync(::Display* dpy) { ::XSync(dpy, false); }
+    bool next();
+    void sync();
     void call() { F[xev.type](); }
     void mapnotify(Wm&) noexcept;
     void unmapnotify(Wm&) noexcept;
@@ -33,6 +36,7 @@ namespace some {
     void propertynotify(Wm&) noexcept;
     void expose(Wm&) noexcept;
     private:
+    Display dpy;
     ::XEvent xev;
     std::array<std::function<void()>, LASTEvent> F;
   };
@@ -47,62 +51,65 @@ namespace some {
       LeaveWindowMask |
       StructureNotifyMask |
       PropertyChangeMask |
-      ExposureMask };
+      ExposureMask
+    };
     static constexpr auto PARMASK {
       EnterWindowMask | 
       FocusChangeMask |
       PropertyChangeMask | 
-      StructureNotifyMask };
+      StructureNotifyMask
+    };
     
     class Xlib {
       public:
-      Xlib(::Display* dpy) : dpy { dpy } { };
-      ::Window root() { return ::XRootWindow(dpy, DefaultScreen(dpy)); }
-      ::XErrorHandler set_err(int (*handler)(::Display*, ::XErrorEvent*)) {
-        return ::XSetErrorHandler(handler); }
+      ::Window root();
+      ::XErrorHandler set_err(int (*)(::Display*, ::XErrorEvent*));
+      void mapwindow(const ::Window);
+      void unmapwindow(const ::Window);
+      void set_bdrcolor(const ::Window, const std::size_t);
+      void set_bdrwidth(const ::Window, const std::size_t);
+      void movewindow(const ::Window, const int, const int);
       private:
-      ::Display* dpy;
+      Display dpy;
     };
 
     class Input {
       public:
-      Input(::Display* dpy);
-      ~Input();
-      void select_input(const ::Window W, const long MASK) {
-        ::XSelectInput(dpy, W, MASK); }
-      void set_inputfocus(const ::Window W) {
-        ::XSetInputFocus(dpy, W, RevertToPointerRoot, CurrentTime); }
+      void select(const ::Window, const long);
+      void set_focus(const ::Window);
       unsigned modmask();
       void grab_key(const ::Window, const int, const int);
       void ungrab_key(const ::Window, const int, const int);
-      void ungrab_allkey(const ::Window W) {
-        ungrab_key(W, AnyModifier, AnyKey); }
+      void ungrab_allkey(const ::Window);
       void grab_btn(const ::Window, const int, const int);
       void ungrab_btn(const ::Window, const int, const int);
+      void ungrab_pointer();
       void warp_pointer(const ::Window, const int, const int);
       private:
-      ::Display* dpy;
+      Display dpy;
     };
 
     class QueryTree {
       public:
-      QueryTree(::Display*, const ::Window);
+      QueryTree(const ::Window);
       ~QueryTree();
       std::vector<::Window> get();
       private:
+      Display dpy;
       ::Window* w { };
       unsigned n { };
     };
 
     class Xinerama {
       public:
-      Xinerama(::Display* dpy) : dpy { dpy } { }
       private:
-      ::Display* dpy;
+      Display dpy;
     };
 
     class Draw {
-
+      public:
+      private:
+      Display dpy;
     };
   }
 }

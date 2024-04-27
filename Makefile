@@ -22,12 +22,12 @@ FLAGS = -std=c++23 -Wall -fPIE -fPIC -pedantic
 
 CFLAGS = -O3
 LDFLAGS = -s
-EXEC = dopenboxwm.bin
+EXEC = dopenboxwm
 
 .if "$(DEBUG)" == "1"
   CFLAGS = -O1 -g -fno-omit-frame-pointer
   LDFLAGS =
-  EXEC = dopenboxwm~dbg.bin
+  EXEC = dopenboxwm~dbg
 .endif
 
 SRC = src/main.cpp src/Xlib.cpp src/wm.cpp
@@ -43,10 +43,10 @@ all: $(EXEC)
 
 $(EXEC): $(OBJ)
 	@echo Linking...
-	@$(CPPC) $(FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@
-	@echo $(EXEC)
+	@$(CPPC) $(FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o $@.bin
+	@echo $(EXEC).bin
 
 clean:
 	@echo Cleaning...
 	rm -f $(OBJ)
-	rm -f $(EXEC) $(DBG_EXEC) *.tmp *.core
+	rm -f $(EXEC).bin $(EXEC)~dbg.bin $(DBG_EXEC) *.tmp *.core
