@@ -6,21 +6,6 @@
 #include <Xlib.h>
 
 namespace some {
-  /*
-  class Root {
-    public:
-    Root(::Display*);
-    ~Root();
-    ::Window w;
-    private:
-    static bool xerror;
-    static int handler(::Display*, ::XErrorEvent* xev) {
-      xerror = xev->error_code == BadAccess;
-      return 0;
-    }
-  };
-  */
-  
   struct Client {
     ::Window w;
     ::Window parw;
@@ -49,19 +34,7 @@ namespace some {
     public:
     Wm();
     ~Wm();
-    void mapnotify();
-    void unmapnotify();
-    void clientmessage();
-    void configurenotify(const ::Window, const int, const int);
-    void maprequest(const ::Window, const int, const int);
-    void configurerequest();
-    void motionnotify();
-    void keypress();
-    void btnpress(const::Window, const int, const int);
-    void enternotify();
-    void propertynotify();
-    void expose();
-    private:
+    protected:
     Display dpy;
     Xlib::Xlib xlib;
     Xlib::Input input;
@@ -81,5 +54,21 @@ namespace some {
     ::Window panel;
     ::GC wkgc;
     ::GC statusgc;
+  };
+  
+  template<typename T>
+  struct Recv : private Wm {
+    void mapnotify(const T&);
+    void unmapnotify(const T&);
+    void clientmessage(const T&);
+    void configurenotify(const T&);
+    void maprequest(const T&);
+    void configurerequest(const T&);
+    void motionnotify(const T&);
+    void keypress(const T&);
+    void btnpress(const T&);
+    void enternotify(const T&);
+    void propertynotify(const T&);
+    void expose(const T&);
   };
 }

@@ -1,4 +1,3 @@
-//#include <print>
 #include <iostream>
 #include <csignal>
 #include <wm.h>
@@ -34,11 +33,28 @@ int main(const int ARGC, const char* ARGV[]) {
     Sig sig;
     some::Display dpy;
     dpy.init();
-    some::Wm wm;
-    some::Ev ev { wm };
+
+    using T = long[8];
+    some::Recv<T> wm;
+    T data;
+    some::Ev<T> ev;
+    ev.init_mapnotify([&wm](T& data) { wm.mapnotify(data); });
+    ev.init_unmapnotify([&wm](T& data) { wm.unmapnotify(data); });
+    ev.init_clientmessage([&wm](T& data) { wm.clientmessage(data); });
+    ev.init_configurenotify([&wm](T& data) { wm.configurenotify(data); });
+    ev.init_maprequest([&wm](T& data) { wm.maprequest(data); });
+    ev.init_configurerequest([&wm](T& data) { wm.configurerequest(data); });
+    ev.init_motionnotify([&wm](T& data) { wm.motionnotify(data); });
+    ev.init_keypress([&wm](T& data) { wm.keypress(data); });
+    ev.init_btnpress([&wm](T& data) { wm.btnpress(data); });
+    ev.init_enternotify([&wm](T& data) { wm.enternotify(data); });
+    ev.init_propertynotify([&wm](T& data) { wm.propertynotify(data); });
+    ev.init_expose([&wm](T& data) { wm.expose(data); });
     while (sig.none()) {
-      if (ev.next())
-        ev.call();
+      if (ev.next()) {
+        const auto F { ev.call(data) };
+        F(data);
+      }
 
       ev.sync();
     }

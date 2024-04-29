@@ -63,60 +63,93 @@ some::Wm::Wm() : rootw { xlib.root() } {
     ;
 
   some::Xlib::Xinerama xinerama;
+  std::cout << WMNAME << " initialized, have a nice day!\n";
 }
 
 some::Wm::~Wm() {
   input.set_focus(rootw);
+  std::cout << WMNAME << " exit\n";
 }
 
-void some::Wm::mapnotify() {
-
-}
-
-void some::Wm::unmapnotify() {
-
-}
-
-void some::Wm::clientmessage() {
+template<typename T>
+void some::Recv<T>::mapnotify(const T&) {
+  std::cout << "EV: Mapnotify\n";
 
 }
 
-void some::Wm::configurenotify(const ::Window W, const int WIDTH, 
-const int HEIGHT) {
-  if (W == rootw) {
+template<typename T>
+void some::Recv<T>::unmapnotify(const T&) {
+  std::cout << "EV: Unmapnotify\n";
+
+}
+
+template<typename T>
+void some::Recv<T>::clientmessage(const T&) {
+  std::cout << "EV: Client Message\n";
+
+}
+
+template<typename T>
+void some::Recv<T>::configurenotify(const T& DATA) {
+  std::cout << "EV: Configure Notify\n";
+  if (DATA[0] == rootw) {
 
   }
 }
 
-void
-some::Wm::maprequest(const ::Window W, const int WIDTH, const int HEIGHT) {
+template<typename T>
+void some::Recv<T>::maprequest(const T& DATA) {
+  std::cout << "EV: Map Request\n";
+  /*
+  ::XWindowAttributes wa;
+  if (::XGetWindowAttributes(dpy.ptr, W, &wa) == 0 || wa.override_redirect)
+    wm.maprequest(W, wa.width, wa.height);
+  */
+}
+
+template<typename T>
+void some::Recv<T>::configurerequest(const T&) {
+  std::cout << "EV: Config Request\n";
 
 }
 
-void some::Wm::configurerequest() {
+template<typename T>
+void some::Recv<T>::motionnotify(const T& DATA) {
+  std::cout << "EV: Motionnotify on Window " << DATA[0] << "\n";
 
 }
 
-void some::Wm::motionnotify() {
+template<typename T>
+void some::Recv<T>::keypress(const T&) {
+  std::cout << "EV: Key Press\n";
 
 }
 
-void some::Wm::keypress() {
-
-}
-
-void some::Wm::btnpress(const ::Window W, const int STATE, const int CODE) {
+template<typename T>
+void some::Recv<T>::btnpress(const T& DATA) {
+  std::cout << "EV: Btn Press\n";
+  const auto W { static_cast<::Window>(DATA[0]) };
+  const auto STATE { static_cast<int>(DATA[1]) };
+  const auto CODE { static_cast<int>(DATA[2]) };
   // ungrab_pointer();
 }
 
-void some::Wm::enternotify() {
+template<typename T>
+void some::Recv<T>::enternotify(const T&) {
+  std::cout << "EV: Enter Notify\n";
 
 }
 
-void some::Wm::propertynotify() {
+template<typename T>
+void some::Recv<T>::propertynotify(const T&) {
+  std::cout << "EV: Prop Notify\n";
 
 }
 
-void some::Wm::expose() {
+template<typename T>
+void some::Recv<T>::expose(const T&) {
+  std::cout << "EV: Expose\n";
 
 }
+
+template struct some::Recv<long[8]>;

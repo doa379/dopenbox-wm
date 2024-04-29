@@ -1,8 +1,6 @@
 #include <stdexcept>
-#include <iostream>
 #include <X11/Xutil.h>
 #include <Xlib.h>
-#include <wm.h>
 
 ::Display* some::Display::ptr;
 
@@ -16,118 +14,166 @@ void some::Display::deinit() {
   ::XCloseDisplay(ptr);
 }
 
-some::Ev::Ev(Wm& wm) {
+template<typename T>
+some::Ev<T>::Ev() {
   for (auto& f : F)
-    f = [] { };
-  
-  F[MapNotify] = [this, &wm] { mapnotify(wm); };
-  F[UnmapNotify] = [this, &wm] { unmapnotify(wm); };
-  F[ClientMessage] = [this, &wm] { clientmessage(wm); };
-  F[ConfigureNotify] = [this, &wm] { configurenotify(wm); };
-  F[MapRequest] = [this, &wm] { maprequest(wm); };
-  F[ConfigureRequest] = [this, &wm] { configurerequest(wm); };
-  F[MotionNotify] = [this, &wm] { motionnotify(wm); };
-  F[KeyPress] = [this, &wm] { keypress(wm); };
-  F[ButtonPress] = [this, &wm] { btnpress(wm); };
-  F[EnterNotify] = [this, &wm] { enternotify(wm); };
-  F[PropertyNotify] = [this, &wm] { propertynotify(wm); };
-  F[Expose] = [this, &wm] { expose(wm); };
+    f = [](T&) { return [](T&) { }; };
 }
 
-some::Ev::~Ev() {
+template<typename T>
+bool some::Ev<T>::next() noexcept { return ::XNextEvent(dpy.ptr, &xev) == 0; }
 
-};
+template<typename T>
+void some::Ev<T>::sync() const noexcept { ::XSync(dpy.ptr, false); }
 
-bool some::Ev::next() { 
-  return ::XNextEvent(dpy.ptr, &xev) == 0;
+template<typename T>
+some::Ev<T>::S
+some::Ev<T>::call(T& data) const noexcept { return F[xev.type](data); }
+
+template<typename T>
+void some::Ev<T>::init_mapnotify(const S& f) noexcept {
+  F[MapNotify] = [this, f](T& data) { return mapnotify(f, data); };
 }
 
-void some::Ev::sync() { 
-  ::XSync(dpy.ptr, false);
+template<typename T>
+some::Ev<T>::S some::Ev<T>::mapnotify(const S& f, T& data) noexcept {
+  data[0] = 0;
+  return f;
 }
 
-void some::Ev::mapnotify(Wm& wm) noexcept {
-  std::cout << "EV: Mapnotify\n";
-  wm.mapnotify();
+template<typename T>
+void some::Ev<T>::init_unmapnotify(const S& f) noexcept {
+  F[UnmapNotify] = [this, f](T& data) { return unmapnotify(f, data); };
 }
 
-void some::Ev::unmapnotify(Wm& wm) noexcept {
-  std::cout << "EV: Unmapnotify\n";
-  const ::Window W { xev.xunmap.window };
-  wm.unmapnotify();
+template<typename T>
+some::Ev<T>::S some::Ev<T>::unmapnotify(const S& f, T& data) noexcept {
+  data[0] = 0;
+  return f;
 }
 
-void some::Ev::clientmessage(Wm& wm) noexcept {
-  std::cout << "EV: Client Message\n";
-  const ::Window W { xev.xclient.window };
-  wm.mapnotify();
+template<typename T>
+void some::Ev<T>::init_clientmessage(const S& f) noexcept {
+  F[ClientMessage] = [this, f](T& data) { return clientmessage(f, data); };
 }
 
-void some::Ev::configurenotify(Wm& wm) noexcept {
-  std::cout << "EV: Configure Notify\n";
-  const ::Window W { xev.xconfigure.window };
-  const auto WIDTH { xev.xconfigure.width };
-  const auto HEIGHT { xev.xconfigure.height };
-  wm.configurenotify(W, WIDTH, HEIGHT);
+template<typename T>
+some::Ev<T>::S some::Ev<T>::clientmessage(const S& f, T& data) noexcept {
+  data[0] = 0;
+  return f;
 }
 
-void some::Ev::maprequest(Wm& wm) noexcept {
-  std::cout << "EV: Map Request\n";
-  ::XWindowAttributes wa;
-  const ::Window W { xev.xmaprequest.window };
-  if (::XGetWindowAttributes(dpy.ptr, W, &wa) == 0 || wa.override_redirect)
-    wm.maprequest(W, wa.width, wa.height);
+template<typename T>
+void some::Ev<T>::init_configurenotify(const S& f) noexcept {
+  F[ConfigureNotify] = [this, f](T& data) { return configurenotify(f, data); };
 }
 
-void some::Ev::configurerequest(Wm& wm) noexcept {
-  std::cout << "EV: Config Request\n";
-  ::Display* dpy { xev.xconfigurerequest.display };
+template<typename T>
+some::Ev<T>::S some::Ev<T>::configurenotify(const S& f, T& data) noexcept {
+  data[0] = xev.xconfigure.window;
+  data[1] = xev.xconfigure.width;
+  data[2] = xev.xconfigure.height;
+  return f;
+}
+
+template<typename T>
+void some::Ev<T>::init_maprequest(const S& f) noexcept {
+  F[MapRequest] = [this, f](T& data) { return maprequest(f, data); };
+}
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::maprequest(const S& f, T& data) noexcept {
+  data[0] = xev.xmaprequest.window;
+  return f;
+}
+
+template<typename T>
+void some::Ev<T>::init_configurerequest(const S& f) noexcept {
+  F[ConfigureRequest] = 
+    [this, f](T& data) { return configurerequest(f, data); };
+}
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::configurerequest(const S& f, T& data) noexcept {
   const ::XConfigureRequestEvent& CONF { xev.xconfigurerequest };
   ::XWindowChanges wc {
     CONF.x, CONF.y, CONF.width, CONF.height,
     CONF.border_width, CONF.above, CONF.detail };
-  ::XConfigureWindow(dpy, CONF.window, CONF.value_mask, &wc);
+  ::XConfigureWindow(dpy.ptr, CONF.window, CONF.value_mask, &wc);
+  return f;
 }
 
-void some::Ev::motionnotify(Wm& wm) noexcept {
+template<typename T>
+void some::Ev<T>::init_motionnotify(const S& f) noexcept {
+  F[MotionNotify] = [this, f](T& data) { return motionnotify(f, data); };
+}
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::motionnotify(const S& f, T& data) noexcept {
   const ::Window W { xev.xmotion.window };
-  std::cout << "EV: Motion\n";
-  wm.motionnotify();
+  data[0] = W;
+  return f;
 }
 
-void some::Ev::keypress(Wm& wm) noexcept {
-  std::cout << "EV: Key Press\n";
-  const auto STATE { xev.xkey.state };
-  const auto CODE { xev.xkey.keycode };
-  wm.keypress();
+template<typename T>
+void some::Ev<T>::init_keypress(const S& f) noexcept {
+  F[KeyPress] = [this, f](T& data) { return keypress(f, data); };
 }
 
-void some::Ev::btnpress(Wm& wm) noexcept {
-  std::cout << "EV: Btn Press\n";
-  ::Display* dpy { xev.xbutton.display };
-  const ::Window W { xev.xbutton.window };
-  const auto STATE { xev.xbutton.state };
-  const auto CODE { xev.xbutton.button };
-  wm.btnpress(W, STATE, CODE);
+template<typename T>
+some::Ev<T>::S some::Ev<T>::keypress(const S& f, T& data) noexcept {
+  data[0] = xev.xkey.state;
+  data[1] = xev.xkey.keycode;
+  return f;
 }
 
-void some::Ev::enternotify(Wm& wm) noexcept {
-  std::cout << "EV: Enter Notify\n";
-  const ::Window W { xev.xcrossing.window };
-  wm.enternotify();
+template<typename T>
+void some::Ev<T>::init_btnpress(const S& f) noexcept {
+  F[ButtonPress] = [this, f](T& data) { return btnpress(f, data); };
 }
 
-void some::Ev::propertynotify(Wm& wm) noexcept {
-  std::cout << "EV: Prop Notify\n";
-  const ::Window W { xev.xproperty.window };
-  wm.propertynotify();
+template<typename T>
+some::Ev<T>::S some::Ev<T>::btnpress(const S& f, T& data) noexcept {
+  data[0] = xev.xbutton.window;
+  data[1] = xev.xbutton.state;
+  data[2] = xev.xbutton.button;
+  return f;
 }
 
-void some::Ev::expose(Wm& wm) noexcept {
-  std::cout << "EV: Expose\n";
-  const ::Window W { xev.xexpose.window };
-  wm.expose();
+template<typename T>
+void some::Ev<T>::init_enternotify(const S& f) noexcept {
+  F[EnterNotify] = [this, f](T& data) { return enternotify(f, data); };
 }
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::enternotify(const S& f, T& data) noexcept {
+  data[0] = xev.xcrossing.window;
+  return f;
+}
+
+template<typename T>
+void some::Ev<T>::init_propertynotify(const S& f) noexcept {
+  F[PropertyNotify] = [this, f](T& data) { return propertynotify(f, data); };
+}
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::propertynotify(const S& f, T& data) noexcept {
+  data[0] = xev.xproperty.window;
+  return f;
+}
+
+template<typename T>
+void some::Ev<T>::init_expose(const S& f) noexcept {
+  F[Expose] = [this, f](T& data) { return expose(f, data); };
+}
+
+template<typename T>
+some::Ev<T>::S some::Ev<T>::expose(const S& f, T& data) noexcept {
+  data[0] = xev.xexpose.window;
+  return f;
+}
+
+template class some::Ev<long[8]>;
 
 ::Window some::Xlib::Xlib::root() {
   return ::XRootWindow(dpy.ptr, DefaultScreen(dpy.ptr));
@@ -233,4 +279,3 @@ std::vector<::Window> some::Xlib::QueryTree::get() {
 
   return W;
 }
-
