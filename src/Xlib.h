@@ -16,39 +16,88 @@ namespace some {
     static void deinit();
   };
   
+  struct Data {
+    long D[16];
+    union MsgData {
+      char B[20];
+      short S[10];
+      long L[5];
+    };
+  
+    union MsgData msgdata;
+    char KEYMAP_VECTOR[32];
+    long& operator[](std::size_t i) noexcept { return D[i]; }
+    long operator[](std::size_t i) const noexcept { return D[i]; }
+  };
+  
+
   template<typename T>
   class Ev {
-    using S = std::function<void(T&)>;
+    using S = std::function<void(const T&)>;
     public:
     Ev();
     ~Ev() = default;
     bool next() noexcept;
     void sync() const noexcept;
     S call(T&) const noexcept;
-    void init_mapnotify(const S&) noexcept;
-    S mapnotify(const S&, T&) noexcept;
-    void init_unmapnotify(const S&) noexcept;
-    S unmapnotify(const S&, T&) noexcept;
-    void init_clientmessage(const S&) noexcept;
-    S clientmessage(const S&, T&) noexcept;
-    void init_configurenotify(const S&) noexcept;
-    S configurenotify(const S&, T&) noexcept;
-    void init_maprequest(const S&) noexcept;
-    S maprequest(const S&, T&) noexcept;
-    void init_configurerequest(const S&) noexcept;
-    S configurerequest(const S&, T&) noexcept;
-    void init_motionnotify(const S&) noexcept;
-    S motionnotify(const S&, T&) noexcept;
-    void init_keypress(const S&) noexcept;
-    S keypress(const S&, T&) noexcept;
-    void init_btnpress(const S&) noexcept;
-    S btnpress(const S&, T&) noexcept;
-    void init_enternotify(const S&) noexcept;
-    S enternotify(const S&, T&) noexcept;
-    void init_propertynotify(const S&) noexcept;
-    S propertynotify(const S&, T&) noexcept;
+    void init_key(const S&) noexcept;
+    S key(const S&, T&) const noexcept;
+    void init_button(const S&) noexcept;
+    S button(const S&, T&) const noexcept;
+    void init_motion(const S&) noexcept;
+    S motion(const S&, T&) const noexcept;
+    void init_crossing(const S&) noexcept;
+    S crossing(const S&, T&) const noexcept;
+    void init_focuschange(const S&) noexcept;
+    S focuschange(const S&, T&) const noexcept;
     void init_expose(const S&) noexcept;
-    S expose(const S&, T&) noexcept;
+    S expose(const S&, T&) const noexcept;
+    void init_graphicsexpose(const S&) noexcept;
+    S graphicsexpose(const S&, T&) const noexcept;
+    void init_noexpose(const S&) noexcept;
+    S noexpose(const S&, T&) const noexcept;
+    void init_visibility(const S&) noexcept;
+    S visibility(const S&, T&) const noexcept;
+    void init_createwindow(const S&) noexcept;
+    S createwindow(const S&, T&) const noexcept;
+    void init_destroywindow(const S&) noexcept;
+    S destroywindow(const S&, T&) const noexcept;
+    void init_unmap(const S&) noexcept;
+    S unmap(const S&, T&) const noexcept;
+    void init_map(const S&) noexcept;
+    S map(const S&, T&) const noexcept;
+    void init_maprequest(const S&) noexcept;
+    S maprequest(const S&, T&) const noexcept;
+    void init_reparent(const S&) noexcept;
+    S reparent(const S&, T&) const noexcept;
+    void init_configure(const S&) noexcept;
+    S configure(const S&, T&) const noexcept;
+    void init_gravity(const S&) noexcept;
+    S gravity(const S&, T&) const noexcept;
+    void init_resizerequest(const S&) noexcept;
+    S resizerequest(const S&, T&) const noexcept;
+    void init_configurerequest(const S&) noexcept;
+    S configurerequest(const S&, T&) const noexcept;
+    void init_circulate(const S&) noexcept;
+    S circulate(const S&, T&) const noexcept;
+    void init_circulaterequest(const S&) noexcept;
+    S circulaterequest(const S&, T&) const noexcept;
+    void init_property(const S&) noexcept;
+    S property(const S&, T&) const noexcept;
+    void init_selectionclear(const S&) noexcept;
+    S selectionclear(const S&, T&) const noexcept;
+    void init_selectionrequest(const S&) noexcept;
+    S selectionrequest(const S&, T&) const noexcept;
+    void init_selection(const S&) noexcept;
+    S selection(const S&, T&) const noexcept;
+    void init_colormap(const S&) noexcept;
+    S colormap(const S&, T&) const noexcept;
+    void init_clientmessage(const S&) noexcept;
+    S clientmessage(const S&, T&) const noexcept;
+    void init_mapping(const S&) noexcept;
+    S mapping(const S&, T&) const noexcept;
+    void init_keymap(const S&) noexcept;
+    S keymap(const S&, T&) const noexcept;
     private:
     Display dpy;
     ::XEvent xev;
@@ -56,6 +105,7 @@ namespace some {
   };
   
   namespace Xlib {
+    // Look to select masks
     static constexpr auto ROOTMASK { 
       SubstructureRedirectMask | 
       SubstructureNotifyMask | 
@@ -74,6 +124,30 @@ namespace some {
       StructureNotifyMask
     };
     
+    struct Atom {
+      ::Atom WM_PROTOCOLS;
+      ::Atom WM_NAME;
+      ::Atom WM_DELETE_WINDOW;
+      ::Atom WM_STATE;
+      ::Atom WM_TAKE_FOCUS;
+      ::Atom WM_ICON_NAME;
+      ::Atom NET_SUPPORTED;
+      ::Atom NET_WM_STATE;
+      ::Atom NET_WM_NAME;
+      ::Atom NET_WM_WINDOW_OPACITY;
+      ::Atom NET_ACTIVE_WINDOW;
+      ::Atom NET_WM_STATE_FULLSCREEN;
+      ::Atom NET_WM_WINDOW_TYPE;
+      ::Atom NET_WM_WINDOW_TYPE_DIALOG;
+      ::Atom NET_CLIENT_LIST;
+      ::Atom NET_NUMBER_OF_DESKTOPS;
+      ::Atom NET_WM_DESKTOP;
+      ::Atom NET_CURRENT_DESKTOP;
+      ::Atom NET_SHOWING_DESKTOP;
+      ::Atom NET_WM_ICON;
+      ::Atom NET_WM_ICON_NAME;
+    };
+
     class Xlib {
       public:
       ::Window root();

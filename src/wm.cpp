@@ -72,29 +72,48 @@ some::Wm::~Wm() {
 }
 
 template<typename T>
-void some::Recv<T>::mapnotify(const T&) {
-  std::cout << "EV: Mapnotify\n";
+void some::Recv<T>::key(const T&) {
+  std::cout << "EV: Key Press\n";
 
 }
 
 template<typename T>
-void some::Recv<T>::unmapnotify(const T&) {
+void some::Recv<T>::button(const T& DATA) {
+  std::cout << "EV: Btn Press\n";
+  const auto W { static_cast<::Window>(DATA[0]) };
+  const auto STATE { static_cast<int>(DATA[1]) };
+  const auto CODE { static_cast<int>(DATA[2]) };
+  // ungrab_pointer();
+}
+
+template<typename T>
+void some::Recv<T>::motion(const T& DATA) {
+  std::cout << "EV: Motionnotify on Window " << DATA[0] << "\n";
+
+}
+
+template<typename T>
+void some::Recv<T>::crossing(const T&) {
+  std::cout << "EV: Enter Notify\n";
+
+}
+
+template<typename T>
+void some::Recv<T>::expose(const T&) {
+  std::cout << "EV: Expose\n";
+
+}
+
+template<typename T>
+void some::Recv<T>::unmap(const T&) {
   std::cout << "EV: Unmapnotify\n";
 
 }
 
 template<typename T>
-void some::Recv<T>::clientmessage(const T&) {
-  std::cout << "EV: Client Message\n";
+void some::Recv<T>::map(const T&) {
+  std::cout << "EV: Mapnotify\n";
 
-}
-
-template<typename T>
-void some::Recv<T>::configurenotify(const T& DATA) {
-  std::cout << "EV: Configure Notify\n";
-  if (DATA[0] == rootw) {
-
-  }
 }
 
 template<typename T>
@@ -108,48 +127,29 @@ void some::Recv<T>::maprequest(const T& DATA) {
 }
 
 template<typename T>
+void some::Recv<T>::configure(const T& DATA) {
+  std::cout << "EV: Configure Notify\n";
+  if (DATA[0] == rootw) {
+
+  }
+}
+
+template<typename T>
 void some::Recv<T>::configurerequest(const T&) {
   std::cout << "EV: Config Request\n";
 
 }
 
 template<typename T>
-void some::Recv<T>::motionnotify(const T& DATA) {
-  std::cout << "EV: Motionnotify on Window " << DATA[0] << "\n";
-
-}
-
-template<typename T>
-void some::Recv<T>::keypress(const T&) {
-  std::cout << "EV: Key Press\n";
-
-}
-
-template<typename T>
-void some::Recv<T>::btnpress(const T& DATA) {
-  std::cout << "EV: Btn Press\n";
-  const auto W { static_cast<::Window>(DATA[0]) };
-  const auto STATE { static_cast<int>(DATA[1]) };
-  const auto CODE { static_cast<int>(DATA[2]) };
-  // ungrab_pointer();
-}
-
-template<typename T>
-void some::Recv<T>::enternotify(const T&) {
-  std::cout << "EV: Enter Notify\n";
-
-}
-
-template<typename T>
-void some::Recv<T>::propertynotify(const T&) {
+void some::Recv<T>::property(const T&) {
   std::cout << "EV: Prop Notify\n";
 
 }
 
 template<typename T>
-void some::Recv<T>::expose(const T&) {
-  std::cout << "EV: Expose\n";
+void some::Recv<T>::clientmessage(const T&) {
+  std::cout << "EV: Client Message\n";
 
 }
 
-template struct some::Recv<long[8]>;
+template struct some::Recv<some::Data>;

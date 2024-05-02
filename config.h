@@ -92,10 +92,10 @@ Modifiers {
   LockMask
 */
 
-static constexpr char* WMNAME = { "dopenboxwm" };
-static constexpr char* WMVER = { "-0.0" };
-static constexpr auto NWKS = { 8 };
-static constexpr auto SLOPPY_FOCUS = { true };
+static constexpr char WMNAME[] { "dopenboxwm" };
+static constexpr char WMVER[] { "-0.0" };
+static constexpr auto NWKS { 8 };
+static constexpr auto SLOPPY_FOCUS { true };
 
 enum calls {
   // Declare pool of calls
@@ -150,7 +150,7 @@ typedef struct {
   };
 } input_t;
 
-static const input_t KBD[] = {
+static const input_t KBD[] {
   { Mod4Mask, XK_0, { WK0 } },
   { Mod4Mask, XK_1, { WK1 } },
   { Mod4Mask, XK_2, { WK2 } },
@@ -199,7 +199,7 @@ static const input_t KBD[] = {
   { Mod4Mask, XK_Return, { .cmd = "xterm" } },
 };
 
-static const input_t BTN[] = {
+static const input_t BTN[] {
   // Mouse Bindings
   { 0, Button1, { SELECT } },
   { Mod4Mask, Button3, { RESIZE } },

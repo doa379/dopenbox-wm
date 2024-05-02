@@ -58,17 +58,17 @@ namespace some {
   
   template<typename T>
   struct Recv : private Wm {
-    void mapnotify(const T&);
-    void unmapnotify(const T&);
-    void clientmessage(const T&);
-    void configurenotify(const T&);
-    void maprequest(const T&);
-    void configurerequest(const T&);
-    void motionnotify(const T&);
-    void keypress(const T&);
-    void btnpress(const T&);
-    void enternotify(const T&);
-    void propertynotify(const T&);
+    void key(const T&);
+    void button(const T&);
+    void motion(const T&);
+    void crossing(const T&);
     void expose(const T&);
+    void unmap(const T&);
+    void map(const T&);
+    void maprequest(const T&);
+    void configure(const T&);
+    void configurerequest(const T&);
+    void property(const T&);
+    void clientmessage(const T&);
   };
 }

@@ -34,26 +34,27 @@ int main(const int ARGC, const char* ARGV[]) {
     some::Display dpy;
     dpy.init();
 
-    using T = long[8];
+    using T = some::Data;
     some::Recv<T> wm;
-    T data;
     some::Ev<T> ev;
-    ev.init_mapnotify([&wm](T& data) { wm.mapnotify(data); });
-    ev.init_unmapnotify([&wm](T& data) { wm.unmapnotify(data); });
-    ev.init_clientmessage([&wm](T& data) { wm.clientmessage(data); });
-    ev.init_configurenotify([&wm](T& data) { wm.configurenotify(data); });
-    ev.init_maprequest([&wm](T& data) { wm.maprequest(data); });
-    ev.init_configurerequest([&wm](T& data) { wm.configurerequest(data); });
-    ev.init_motionnotify([&wm](T& data) { wm.motionnotify(data); });
-    ev.init_keypress([&wm](T& data) { wm.keypress(data); });
-    ev.init_btnpress([&wm](T& data) { wm.btnpress(data); });
-    ev.init_enternotify([&wm](T& data) { wm.enternotify(data); });
-    ev.init_propertynotify([&wm](T& data) { wm.propertynotify(data); });
-    ev.init_expose([&wm](T& data) { wm.expose(data); });
+    ev.init_key([&wm](const T& data) { wm.key(data); });
+    ev.init_button([&wm](const T& data) { wm.button(data); });
+    ev.init_motion([&wm](const T& data) { wm.motion(data); });
+    ev.init_crossing([&wm](const T& data) { wm.crossing(data); });
+    ev.init_expose([&wm](const T& data) { wm.expose(data); });
+    ev.init_unmap([&wm](const T& data) { wm.unmap(data); });
+    ev.init_map([&wm](const T& data) { wm.map(data); });
+    ev.init_maprequest([&wm](const T& data) { wm.maprequest(data); });
+    ev.init_configure([&wm](const T& data) { wm.configure(data); });
+    ev.init_configurerequest([&wm](const T& data) { 
+      wm.configurerequest(data); });
+    ev.init_property([&wm](const T& data) { wm.property(data); });
+    ev.init_clientmessage([&wm](const T& data) { wm.clientmessage(data); });
     while (sig.none()) {
       if (ev.next()) {
-        const auto F { ev.call(data) };
-        F(data);
+        static T data;
+        const auto CALL { ev.call(data) };
+        CALL(data);
       }
 
       ev.sync();
