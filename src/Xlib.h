@@ -17,19 +17,32 @@ namespace some {
   };
   
   struct Data {
-    long D[16];
-    union MsgData {
+    long D[15];
+    union Msg {
       char B[20];
       short S[10];
       long L[5];
     };
   
-    union MsgData msgdata;
+    union Msg msg;
     char KEYMAP_VECTOR[32];
-    long& operator[](std::size_t i) noexcept { return D[i]; }
-    long operator[](std::size_t i) const noexcept { return D[i]; }
+    long& operator[](const std::size_t I) noexcept { return D[I]; }
+    long operator[](const std::size_t I) const noexcept { return D[I]; }
+  };
+    
+  struct MsgData {
+    long D[2];
+    union {
+      char B[20];
+      short S[10];
+      long L[5];
+    };
   };
   
+  struct KeymapData {
+    long D[2];
+    char KEYMAP_VECTOR[32];
+  };
 
   template<typename T>
   class Ev {
@@ -42,6 +55,7 @@ namespace some {
     S call(T&) const noexcept;
     void init_key(const S&) noexcept;
     S key(const S&, T&) const noexcept;
+    /*
     void init_button(const S&) noexcept;
     S button(const S&, T&) const noexcept;
     void init_motion(const S&) noexcept;
@@ -92,10 +106,11 @@ namespace some {
     S selection(const S&, T&) const noexcept;
     void init_colormap(const S&) noexcept;
     S colormap(const S&, T&) const noexcept;
+    */
     void init_clientmessage(const S&) noexcept;
     S clientmessage(const S&, T&) const noexcept;
-    void init_mapping(const S&) noexcept;
-    S mapping(const S&, T&) const noexcept;
+    //void init_mapping(const S&) noexcept;
+    //S mapping(const S&, T&) const noexcept;
     void init_keymap(const S&) noexcept;
     S keymap(const S&, T&) const noexcept;
     private:
@@ -117,11 +132,9 @@ namespace some {
       PropertyChangeMask |
       ExposureMask
     };
+    
     static constexpr auto PARMASK {
-      EnterWindowMask | 
-      FocusChangeMask |
-      PropertyChangeMask | 
-      StructureNotifyMask
+      SubstructureRedirectMask | SubstructureNotifyMask
     };
     
     struct Atom {
@@ -147,44 +160,78 @@ namespace some {
       ::Atom NET_WM_ICON;
       ::Atom NET_WM_ICON_NAME;
     };
+      
+    class DefaultXError {
+      public:
+      DefaultXError() { ::XSetErrorHandler(handler); }
+      ~DefaultXError() = default;
+      bool get() { return xerror; }
+      private:
+      static bool xerror;
+      static int handler(::Display*, ::XErrorEvent* xev) {
+        xerror = (xev->error_code == BadAccess ||
+          xev->error_code == BadWindow);
+        return 0;
+      };
+    };
 
+    using Win = ::Window;
     class Xlib {
       public:
-      ::Window root();
-      ::XErrorHandler set_err(int (*)(::Display*, ::XErrorEvent*));
-      void mapwindow(const ::Window);
-      void unmapwindow(const ::Window);
-      void set_bdrcolor(const ::Window, const std::size_t);
-      void set_bdrwidth(const ::Window, const std::size_t);
-      void movewindow(const ::Window, const int, const int);
+      Win root() const noexcept;
+      Win create_window(const Win, const int, const int) const noexcept;
+      void destroy_window(const Win) const noexcept;
+      void mapwindow(const Win) const noexcept;
+      void unmapwindow(const Win) const noexcept;
+      void set_bdrcolor(const Win, const std::size_t) const noexcept;
+      void set_bdrwidth(const Win, const int) const noexcept;
+      void movewindow(const Win, const int, const int) const noexcept;
+      void reparent(const Win, const Win, const int, const int) const noexcept;
       private:
       Display dpy;
     };
 
     class Input {
       public:
-      void select(const ::Window, const long);
-      void set_focus(const ::Window);
-      unsigned modmask();
-      void grab_key(const ::Window, const int, const int);
-      void ungrab_key(const ::Window, const int, const int);
-      void ungrab_allkey(const ::Window);
-      void grab_btn(const ::Window, const int, const int);
-      void ungrab_btn(const ::Window, const int, const int);
-      void ungrab_pointer();
-      void warp_pointer(const ::Window, const int, const int);
+      void select(const Win, const long) const noexcept;
+      void set_focus(const Win) const noexcept;
+      unsigned modmask() const noexcept;
+      void grab_key(const Win, const int, const int) const noexcept;
+      void ungrab_key(const Win, const int, const int) const noexcept;
+      void ungrab_allkey(const Win) const noexcept;
+      void grab_btn(const Win, const int, const int) const noexcept;
+      void ungrab_btn(const Win, const int, const int) const noexcept;
+      void ungrab_pointer() const noexcept;
+      void warp_pointer(const Win, const int, const int) const noexcept;
       private:
       Display dpy;
+    };
+    
+    class WinAttr {
+      public:
+      WinAttr() = delete;
+      WinAttr(const Win WIN) : 
+        status { ::XGetWindowAttributes(dpy.ptr, WIN, &wa) } { }
+      bool isvalid() const noexcept { 
+        return !(status == BadDrawable || status == BadWindow); }
+      bool override_redirect() const noexcept { return wa.override_redirect; }
+      std::pair<int, int> size() const noexcept { 
+        return { wa.width, wa.height }; }
+      std::pair<int, int> pos() const noexcept { return { wa.x, wa.y }; }
+      private:
+      Display dpy;
+      ::XWindowAttributes wa;
+      Status status;
     };
 
     class QueryTree {
       public:
-      QueryTree(const ::Window);
+      QueryTree(const Win);
       ~QueryTree();
-      std::vector<::Window> get();
+      std::vector<Win> get() const noexcept;
       private:
       Display dpy;
-      ::Window* w { };
+      Win* wins { };
       unsigned n { };
     };
 

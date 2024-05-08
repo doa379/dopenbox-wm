@@ -2,12 +2,10 @@
 #include <wm.h>
 #include <../config.h>
 
-bool some::Wm::xerror;
-
 some::Wm::Wm() : rootw { xlib.root() } {
-  xlib.set_err(handler);
+  Xlib::DefaultXError error; 
   input.select(rootw, Xlib::ROOTMASK);
-  if (xerror)
+  if (error.get())
     throw std::runtime_error("Initialization error (another wm running?)");
 
   input.ungrab_allkey(rootw);
@@ -37,11 +35,11 @@ some::Wm::Wm() : rootw { xlib.root() } {
   CALL[MON9] = [] { };
   CALL[UNMAPALL] = [] { };
   CALL[REMAPALL] = [] { };
-  CALL[KILL] = [] { };
+  CALL[KILL] = [&] { kill_client(); };
   CALL[SWFOCUS] = [] { };
   CALL[TOGGLEMODE] = [] { };
-  CALL[PREVCLI] = [] { };
-  CALL[NEXTCLI] = [] { };
+  CALL[PREVCLI] = [&] { prev_client(); };
+  CALL[NEXTCLI] = [&] { next_client(); };
   CALL[SELTOGGLE] = [] { };
   CALL[SELCLEAR] = [] { };
   CALL[MOVEUP] = [] { };
@@ -57,9 +55,12 @@ some::Wm::Wm() : rootw { xlib.root() } {
   CALL[RESIZE] = [] { };
   CALL[STATE] = [] { };
 
+  for (auto i { 0 }; i < NWKS; i++)
+    WK.emplace_back(Wk { .n = i });
+
   some::Xlib::QueryTree query { rootw };
   const auto W { query.get() };
-  for (const auto& W_ : W)
+  for (const auto W_ : W)
     ;
 
   some::Xlib::Xinerama xinerama;
@@ -71,6 +72,36 @@ some::Wm::~Wm() {
   std::cout << WMNAME << " exit\n";
 }
 
+void some::Wm::focus() {
+  if (wk[1]->client[1] < wk[1]->C.end()) {
+  // set unfocus
+
+  }
+  //set focus
+  //input.grab_btn();
+  //input.grab_key();
+}
+
+void some::Wm::spawn() {
+  
+}
+
+void some::Wm::prev_client() {
+  std::prev(wk[1]->client[1]);
+}
+
+void some::Wm::next_client() {
+  std::next(wk[1]->client[1]);
+
+}
+
+void some::Wm::kill_client() {
+  (void) wk[1]->client[1];
+
+}
+
+
+
 template<typename T>
 void some::Recv<T>::key(const T&) {
   std::cout << "EV: Key Press\n";
@@ -80,16 +111,18 @@ void some::Recv<T>::key(const T&) {
 template<typename T>
 void some::Recv<T>::button(const T& DATA) {
   std::cout << "EV: Btn Press\n";
-  const auto W { static_cast<::Window>(DATA[0]) };
+  const auto WIN { static_cast<Xlib::Win>(DATA[0]) };
   const auto STATE { static_cast<int>(DATA[1]) };
   const auto CODE { static_cast<int>(DATA[2]) };
-  // ungrab_pointer();
+  input.ungrab_pointer();
 }
 
 template<typename T>
 void some::Recv<T>::motion(const T& DATA) {
-  std::cout << "EV: Motionnotify on Window " << DATA[0] << "\n";
+  const auto WIN { static_cast<Xlib::Win>(DATA[0]) };
+  if (WIN == rootw) {
 
+  }
 }
 
 template<typename T>
@@ -119,37 +152,59 @@ void some::Recv<T>::map(const T&) {
 template<typename T>
 void some::Recv<T>::maprequest(const T& DATA) {
   std::cout << "EV: Map Request\n";
+  const auto PARW { static_cast<Xlib::Win>(DATA[0]) };
+  const auto WIN { static_cast<Xlib::Win>(DATA[1]) };
   /*
   ::XWindowAttributes wa;
   if (::XGetWindowAttributes(dpy.ptr, W, &wa) == 0 || wa.override_redirect)
     wm.maprequest(W, wa.width, wa.height);
   */
+  Xlib::WinAttr wa { WIN };
+  if (wa.isvalid()) {
+    const auto SIZE { wa.size() };
+    const Xlib::Win PARW { 
+      xlib.create_window(WIN, std::get<0>(SIZE), std::get<1>(SIZE)) };
+    input.select(PARW, Xlib::PARMASK);
+    xlib.reparent(WIN, PARW, 0, 0);
+    xlib.mapwindow(PARW);
+    xlib.set_bdrwidth(PARW, BDRW_PX);
+    //xlib.set_bdrcolor(PARW, BDRCOL);
+    const Client C { 
+      .w = PARW
+    };
+    
+    wk[1]->client[0] = wk[1]->client[1];
+    wk[1]->C.emplace_back(C);
+    wk[1]->client[1] = wk[1]->C.end() - 1;
+    focus();
+  }
 }
 
 template<typename T>
 void some::Recv<T>::configure(const T& DATA) {
   std::cout << "EV: Configure Notify\n";
-  if (DATA[0] == rootw) {
-
+  const auto WIN { static_cast<Xlib::Win>(DATA[1]) }; 
+  if (WIN == rootw) {
+    const auto X { static_cast<int>(DATA[2]) };
+    const auto Y { static_cast<int>(DATA[3]) };
+    const auto W { static_cast<int>(DATA[4]) };
+    const auto H { static_cast<int>(DATA[5]) };
   }
 }
 
 template<typename T>
 void some::Recv<T>::configurerequest(const T&) {
   std::cout << "EV: Config Request\n";
-
 }
 
 template<typename T>
 void some::Recv<T>::property(const T&) {
   std::cout << "EV: Prop Notify\n";
-
 }
 
 template<typename T>
 void some::Recv<T>::clientmessage(const T&) {
   std::cout << "EV: Client Message\n";
-
 }
 
 template struct some::Recv<some::Data>;

@@ -3,6 +3,7 @@
 #include <Xlib.h>
 
 ::Display* some::Display::ptr;
+bool some::Xlib::DefaultXError::xerror;
 
 void some::Display::init() {
   ptr = ::XOpenDisplay(nullptr);
@@ -41,7 +42,7 @@ some::Ev<T>::S some::Ev<T>::key(const S& f, T& data) const noexcept {
   data[1] = xev.xkey.keycode;
   return f;
 }
-
+/*
 template<typename T>
 void some::Ev<T>::init_button(const S& f) noexcept {
   F[ButtonPress] = [this, f](T& data) { return button(f, data); };
@@ -62,8 +63,17 @@ void some::Ev<T>::init_motion(const S& f) noexcept {
 
 template<typename T>
 some::Ev<T>::S some::Ev<T>::motion(const S& f, T& data) const noexcept {
-  const ::Window W { xev.xmotion.window };
-  data[0] = W;
+  data[0] = xev.xmotion.window;
+  data[1] = xev.xmotion.root;
+  data[2] = xev.xmotion.subwindow;
+  data[3] = xev.xmotion.time;
+  data[4] = xev.xmotion.x;
+  data[5] = xev.xmotion.y;
+  data[6] = xev.xmotion.x_root;
+  data[7] = xev.xmotion.y_root;
+  data[8] = xev.xmotion.state;
+  data[9] = xev.xmotion.is_hint;
+  data[10] = xev.xmotion.same_screen;
   return f;
 }
 
@@ -393,7 +403,7 @@ some::Ev<T>::colormap(const S& f, T& data) const noexcept {
   data[3] = xev.xcolormap.state;
   return f;
 }
-
+*/
 template<typename T>
 void some::Ev<T>::init_clientmessage(const S& f) noexcept {
   F[ClientMessage] = [this, f](T& data) { return clientmessage(f, data); };
@@ -403,14 +413,12 @@ template<typename T>
 some::Ev<T>::S some::Ev<T>::clientmessage(const S& f, T& data) const noexcept {
   data[0] = xev.xclient.window;
   data[1] = xev.xclient.message_type;
-  //data.md = xev.xclient.data; // copy union of arrays to variant
-
-  //std::copy(xev.xclient.data.b, 
-    //xev.xclient.data.b + sizeof(union Data::MsgData), data.msgdata);
-
+  std::copy(xev.xclient.data.b, 
+    // !!Warning flaw: This C union may not biject with C++ union!!
+    xev.xclient.data.b + sizeof(union Data::Msg), data.msg.B);
   return f;
 }
-
+/*
 template<typename T>
 void some::Ev<T>::init_mapping(const S& f) noexcept {
   F[MappingNotify] = [this, f](T& data) { return mapping(f, data); };
@@ -423,7 +431,7 @@ some::Ev<T>::S some::Ev<T>::mapping(const S& f, T& data) const noexcept {
   data[2] = xev.xmapping.count;
   return f;
 }
-
+*/
 template<typename T>
 void some::Ev<T>::init_keymap(const S& f) noexcept {
   F[KeymapNotify] = [this, f](T& data) { return keymap(f, data); };
@@ -438,46 +446,60 @@ some::Ev<T>::S some::Ev<T>::keymap(const S& f, T& data) const noexcept {
 }
 
 template class some::Ev<some::Data>;
+using Win = some::Xlib::Win;
 
-::Window some::Xlib::Xlib::root() {
+Win some::Xlib::Xlib::root() const noexcept {
   return ::XRootWindow(dpy.ptr, DefaultScreen(dpy.ptr));
 }
 
-::XErrorHandler 
-some::Xlib::Xlib::set_err(int (*handler)(::Display*, ::XErrorEvent*)) {
-  return ::XSetErrorHandler(handler);
+Win 
+some::Xlib::Xlib::create_window(const Win PARW, const int W, const int H) 
+const noexcept {
+  return ::XCreateSimpleWindow(dpy.ptr, W, 0, 0, W, H, 0, 0, 0);
 }
 
-void some::Xlib::Xlib::mapwindow(const ::Window W) {
-  ::XMapRaised(dpy.ptr, W);
+void some::Xlib::Xlib::destroy_window(const Win WIN) const noexcept {
+  ::XDestroyWindow(dpy.ptr, WIN);
 }
 
-void some::Xlib::Xlib::unmapwindow(const ::Window W) {
-  ::XUnmapWindow(dpy.ptr, W);
+void some::Xlib::Xlib::mapwindow(const Win WIN) const noexcept {
+  ::XMapRaised(dpy.ptr, WIN);
 }
 
-void some::Xlib::Xlib::set_bdrcolor(const ::Window W, const std::size_t COL) {
-  ::XSetWindowBorder(dpy.ptr, W, COL);
+void some::Xlib::Xlib::unmapwindow(const Win WIN) const noexcept {
+  ::XUnmapWindow(dpy.ptr, WIN);
+}
+
+void some::Xlib::Xlib::set_bdrcolor(const Win WIN, const std::size_t COL) 
+const noexcept {
+  ::XSetWindowBorder(dpy.ptr, WIN, COL);
 }
 
 void 
-some::Xlib::Xlib::set_bdrwidth(const ::Window W, const std::size_t PX) {
-  XSetWindowBorderWidth(dpy.ptr, W, PX);
+some::Xlib::Xlib::set_bdrwidth(const Win WIN, const int PX) const noexcept {
+  XSetWindowBorderWidth(dpy.ptr, WIN, PX);
 }
 
-void some::Xlib::Xlib::movewindow(const ::Window W, const int X, const int Y) {
-  ::XMoveWindow(dpy.ptr, W, X, Y);
+void some::Xlib::Xlib::movewindow(const Win WIN, const int X, const int Y) 
+const noexcept {
+  ::XMoveWindow(dpy.ptr, WIN, X, Y);
 }
 
-void some::Xlib::Input::select(const ::Window W, const long MASK) {
-  ::XSelectInput(dpy.ptr, W, MASK);
+void some::Xlib::Xlib::reparent(const Win WIN, const Win PARW, const int X, 
+const int Y) 
+const noexcept {
+  ::XReparentWindow(dpy.ptr, WIN, PARW, X, Y);
 }
 
-void some::Xlib::Input::set_focus(const ::Window W) {
-  ::XSetInputFocus(dpy.ptr, W, RevertToPointerRoot, CurrentTime);
+void some::Xlib::Input::select(const Win WIN, const long MASK) const noexcept {
+  ::XSelectInput(dpy.ptr, WIN, MASK);
 }
 
-unsigned some::Xlib::Input::modmask() {
+void some::Xlib::Input::set_focus(const Win WIN) const noexcept {
+  ::XSetInputFocus(dpy.ptr, WIN, RevertToPointerRoot, CurrentTime);
+}
+
+unsigned some::Xlib::Input::modmask() const noexcept {
   ::XModifierKeymap* map { ::XGetModifierMapping(dpy.ptr) };
   unsigned numlockmask { };
   for (int k { 0 }; k < 8; k++)
@@ -490,56 +512,58 @@ unsigned some::Xlib::Input::modmask() {
   return ~(numlockmask | LockMask);
 }
 
-void some::Xlib::Input::grab_key(const ::Window W, const int MOD, 
-const int KEY) {
-  ::XGrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, W, true, 
+void some::Xlib::Input::grab_key(const Win WIN, const int MOD, const int KEY) 
+const noexcept {
+  ::XGrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, WIN, true, 
     GrabModeAsync, GrabModeAsync);
 }
 
-void some::Xlib::Input::ungrab_key(const ::Window W, const int MOD, 
-const int KEY) {
-  ::XUngrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, W);
+void 
+some::Xlib::Input::ungrab_key(const Win WIN, const int MOD, const int KEY) 
+const noexcept {
+  ::XUngrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, WIN);
 }
 
-void some::Xlib::Input::ungrab_allkey(const ::Window W) {
-  ungrab_key(W, AnyModifier, AnyKey);
+void some::Xlib::Input::ungrab_allkey(const Win WIN) const noexcept {
+  ungrab_key(WIN, AnyModifier, AnyKey);
 }
 
-void some::Xlib::Input::grab_btn(const ::Window W, const int MOD, 
-const int BTN) {
+void some::Xlib::Input::grab_btn(const Win WIN, const int MOD, const int BTN) 
+const noexcept {
   static constexpr auto MASK { ButtonPressMask | ButtonReleaseMask };
-  ::XGrabButton(dpy.ptr, BTN, MOD, W, false, MASK, GrabModeSync, 
+  ::XGrabButton(dpy.ptr, BTN, MOD, WIN, false, MASK, GrabModeSync, 
   GrabModeSync, None, None);
 }
 
-void some::Xlib::Input::ungrab_btn(const ::Window W, const int MOD, 
-const int BTN) {
-  ::XUngrabButton(dpy.ptr, BTN, MOD, W);
+void
+some::Xlib::Input::ungrab_btn(const Win WIN, const int MOD, const int BTN) 
+const noexcept {
+  ::XUngrabButton(dpy.ptr, BTN, MOD, WIN);
 }
 
-void some::Xlib::Input::ungrab_pointer() {
+void some::Xlib::Input::ungrab_pointer() const noexcept {
   ::XUngrabPointer(dpy.ptr, CurrentTime);
 }
 
-void some::Xlib::Input::warp_pointer(const ::Window W, const int X, 
-const int Y) {
-  ::XWarpPointer(dpy.ptr, None, W, 0, 0, 0, 0, X, Y);
+void some::Xlib::Input::warp_pointer(const Win WIN, const int X, const int Y) 
+const noexcept {
+  ::XWarpPointer(dpy.ptr, None, WIN, 0, 0, 0, 0, X, Y);
 }
 
-some::Xlib::QueryTree::QueryTree(const ::Window W) {
-  ::Window root;
-  ::Window parw;
-  ::XQueryTree(dpy.ptr, W, &root, &parw, &w, &n);
+some::Xlib::QueryTree::QueryTree(const Win WIN) {
+  Win root;
+  Win parw;
+  ::XQueryTree(dpy.ptr, WIN, &root, &parw, &wins, &n);
 }
 
 some::Xlib::QueryTree::~QueryTree() {
-  ::XFree(w);
+  ::XFree(wins);
 }
 
-std::vector<::Window> some::Xlib::QueryTree::get() {
-  std::vector<::Window> W;
+std::vector<Win> some::Xlib::QueryTree::get() const noexcept {
+  std::vector<Win> WINS;
   for (unsigned i { }; i < n; i++)
-    W.emplace_back(w[i]);
+    WINS.emplace_back(wins[i]);
 
-  return W;
+  return WINS;
 }

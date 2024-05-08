@@ -1,59 +1,56 @@
 #pragma once
 
-#include <X11/Xlib.h>
 #include <vector>
 #include <tuple>
 #include <Xlib.h>
 
 namespace some {
   struct Client {
-    ::Window w;
-    ::Window parw;
-    ::Window shadow;
-    ::GC gc;
-    std::pair<unsigned, unsigned> pos;
-    std::pair<unsigned, unsigned> size;
+    Xlib::Win w;
+    //::GC gc;
+    std::pair<int, int> pos;
+    std::pair<int, int> size;
     unsigned mode;
     int sel;
     int ft;
-    int pad[2];
   };
 
   struct Wk {
     std::vector<Client> C;
-    std::vector<Client>::iterator client[2]; // Prev, Curr
-    unsigned n;
+    // Prev, Curr
+    std::vector<Client>::const_iterator client[2] { C.cbegin(), C.cbegin() }; 
+    int n;
   };
 
   struct Mon {
-    std::pair<unsigned, unsigned> pos;
-    std::pair<unsigned, unsigned> size;
+    std::pair<int, int> pos;
+    std::pair<int, int> size;
   };
   
   class Wm {
     public:
     Wm();
     ~Wm();
+    void focus();
+    void spawn();
+    void prev_client();
+    void next_client();
+    void kill_client();
     protected:
     Display dpy;
     Xlib::Xlib xlib;
     Xlib::Input input;
     Xlib::Draw draw;
-    static bool xerror;
-    static int handler(::Display*, ::XErrorEvent* xev) {
-      xerror = xev->error_code == BadAccess;
-      return 0;
-    }
-
     std::array<std::function<void()>, 128> CALL;
     std::vector<Wk> WK;
-    std::vector<Wk>::iterator wk[2]; // Prev, Curr
+    // Prev, Curr
+    std::vector<Wk>::iterator wk[2] { WK.begin(), WK.begin() }; 
     std::vector<Mon> MON;
-    std::vector<Mon>::iterator mon;
-    ::Window rootw;
-    ::Window panel;
-    ::GC wkgc;
-    ::GC statusgc;
+    std::vector<Mon>::const_iterator mon;
+    Xlib::Win rootw;
+    //::GC wkgc;
+    //::GC statusgc;
+    private:
   };
   
   template<typename T>

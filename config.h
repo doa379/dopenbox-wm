@@ -96,6 +96,8 @@ static constexpr char WMNAME[] { "dopenboxwm" };
 static constexpr char WMVER[] { "-0.0" };
 static constexpr auto NWKS { 8 };
 static constexpr auto SLOPPY_FOCUS { true };
+static constexpr auto BDRW_PX { 2 };
+static constexpr auto BDRCOL { Red };
 
 enum calls {
   // Declare pool of calls
