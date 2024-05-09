@@ -3,6 +3,7 @@
 #include <X11/Xlib.h>
 #include <array>
 #include <functional>
+#include <variant>
 
 namespace some {
   struct Display {
@@ -16,110 +17,101 @@ namespace some {
     static void deinit();
   };
   
-  struct Data {
-    long D[15];
-    union Msg {
-      char B[20];
-      short S[10];
-      long L[5];
+  namespace data {
+    struct L {
+      long D[12];
+      long& operator[](const std::size_t I) noexcept { return D[I]; }
+      long operator[](const std::size_t I) const noexcept { return D[I]; }
     };
-  
-    union Msg msg;
-    char KEYMAP_VECTOR[32];
-    long& operator[](const std::size_t I) noexcept { return D[I]; }
-    long operator[](const std::size_t I) const noexcept { return D[I]; }
-  };
-    
-  struct MsgData {
-    long D[2];
-    union {
-      char B[20];
-      short S[10];
-      long L[5];
-    };
-  };
-  
-  struct KeymapData {
-    long D[2];
-    char KEYMAP_VECTOR[32];
-  };
 
-  template<typename T>
+    struct Msg : public L {
+      union {
+        char B[20];
+        short S[10];
+        long L[5];
+      };
+    };
+    
+    struct Keymap : public L {
+      char KEYMAP_VECTOR[32];
+    };
+
+    using T = std::variant<L, Msg, Keymap>;
+  }
+
   class Ev {
-    using S = std::function<void(const T&)>;
+    using S = std::function<void(const data::T&)>;
     public:
     Ev();
     ~Ev() = default;
     bool next() noexcept;
     void sync() const noexcept;
-    S call(T&) const noexcept;
+    S call(data::T&) const noexcept;
     void init_key(const S&) noexcept;
-    S key(const S&, T&) const noexcept;
-    /*
+    S key(const S&, data::L&) const noexcept;
     void init_button(const S&) noexcept;
-    S button(const S&, T&) const noexcept;
+    S button(const S&, data::L&) const noexcept;
     void init_motion(const S&) noexcept;
-    S motion(const S&, T&) const noexcept;
+    S motion(const S&, data::L&) const noexcept;
     void init_crossing(const S&) noexcept;
-    S crossing(const S&, T&) const noexcept;
+    S crossing(const S&, data::L&) const noexcept;
     void init_focuschange(const S&) noexcept;
-    S focuschange(const S&, T&) const noexcept;
+    S focuschange(const S&, data::L&) const noexcept;
     void init_expose(const S&) noexcept;
-    S expose(const S&, T&) const noexcept;
+    S expose(const S&, data::L&) const noexcept;
     void init_graphicsexpose(const S&) noexcept;
-    S graphicsexpose(const S&, T&) const noexcept;
+    S graphicsexpose(const S&, data::L&) const noexcept;
     void init_noexpose(const S&) noexcept;
-    S noexpose(const S&, T&) const noexcept;
+    S noexpose(const S&, data::L&) const noexcept;
     void init_visibility(const S&) noexcept;
-    S visibility(const S&, T&) const noexcept;
+    S visibility(const S&, data::L&) const noexcept;
     void init_createwindow(const S&) noexcept;
-    S createwindow(const S&, T&) const noexcept;
+    S createwindow(const S&, data::L&) const noexcept;
     void init_destroywindow(const S&) noexcept;
-    S destroywindow(const S&, T&) const noexcept;
+    S destroywindow(const S&, data::L&) const noexcept;
     void init_unmap(const S&) noexcept;
-    S unmap(const S&, T&) const noexcept;
+    S unmap(const S&, data::L&) const noexcept;
     void init_map(const S&) noexcept;
-    S map(const S&, T&) const noexcept;
+    S map(const S&, data::L&) const noexcept;
     void init_maprequest(const S&) noexcept;
-    S maprequest(const S&, T&) const noexcept;
+    S maprequest(const S&, data::L&) const noexcept;
     void init_reparent(const S&) noexcept;
-    S reparent(const S&, T&) const noexcept;
+    S reparent(const S&, data::L&) const noexcept;
     void init_configure(const S&) noexcept;
-    S configure(const S&, T&) const noexcept;
+    S configure(const S&, data::L&) const noexcept;
     void init_gravity(const S&) noexcept;
-    S gravity(const S&, T&) const noexcept;
+    S gravity(const S&, data::L&) const noexcept;
     void init_resizerequest(const S&) noexcept;
-    S resizerequest(const S&, T&) const noexcept;
+    S resizerequest(const S&, data::L&) const noexcept;
     void init_configurerequest(const S&) noexcept;
-    S configurerequest(const S&, T&) const noexcept;
+    S configurerequest(const S&, data::L&) const noexcept;
     void init_circulate(const S&) noexcept;
-    S circulate(const S&, T&) const noexcept;
+    S circulate(const S&, data::L&) const noexcept;
     void init_circulaterequest(const S&) noexcept;
-    S circulaterequest(const S&, T&) const noexcept;
+    S circulaterequest(const S&, data::L&) const noexcept;
     void init_property(const S&) noexcept;
-    S property(const S&, T&) const noexcept;
+    S property(const S&, data::L&) const noexcept;
     void init_selectionclear(const S&) noexcept;
-    S selectionclear(const S&, T&) const noexcept;
+    S selectionclear(const S&, data::L&) const noexcept;
     void init_selectionrequest(const S&) noexcept;
-    S selectionrequest(const S&, T&) const noexcept;
+    S selectionrequest(const S&, data::L&) const noexcept;
     void init_selection(const S&) noexcept;
-    S selection(const S&, T&) const noexcept;
+    S selection(const S&, data::L&) const noexcept;
     void init_colormap(const S&) noexcept;
-    S colormap(const S&, T&) const noexcept;
-    */
+    S colormap(const S&, data::L&) const noexcept;
     void init_clientmessage(const S&) noexcept;
-    S clientmessage(const S&, T&) const noexcept;
-    //void init_mapping(const S&) noexcept;
-    //S mapping(const S&, T&) const noexcept;
+    S clientmessage(const S&, data::Msg&) const noexcept;
+    void init_mapping(const S&) noexcept;
+    S mapping(const S&, data::L&) const noexcept;
     void init_keymap(const S&) noexcept;
-    S keymap(const S&, T&) const noexcept;
+    S keymap(const S&, data::Keymap&) const noexcept;
     private:
     Display dpy;
     ::XEvent xev;
-    std::array<std::function<S(T&)>, LASTEvent> F;
+    std::array<std::function<S(data::T&)>, LASTEvent> F;
   };
   
-  namespace Xlib {
+  namespace xlib {
     // Look to select masks
     static constexpr auto ROOTMASK { 
       SubstructureRedirectMask | 

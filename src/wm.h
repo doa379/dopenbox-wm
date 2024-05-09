@@ -6,7 +6,7 @@
 
 namespace some {
   struct Client {
-    Xlib::Win w;
+    xlib::Win w;
     //::GC gc;
     std::pair<int, int> pos;
     std::pair<int, int> size;
@@ -38,34 +38,33 @@ namespace some {
     void kill_client();
     protected:
     Display dpy;
-    Xlib::Xlib xlib;
-    Xlib::Input input;
-    Xlib::Draw draw;
+    xlib::Xlib xlib;
+    xlib::Input input;
+    xlib::Draw draw;
     std::array<std::function<void()>, 128> CALL;
     std::vector<Wk> WK;
     // Prev, Curr
     std::vector<Wk>::iterator wk[2] { WK.begin(), WK.begin() }; 
     std::vector<Mon> MON;
     std::vector<Mon>::const_iterator mon;
-    Xlib::Win rootw;
+    xlib::Win rootw;
     //::GC wkgc;
     //::GC statusgc;
     private:
   };
   
-  template<typename T>
   struct Recv : private Wm {
-    void key(const T&);
-    void button(const T&);
-    void motion(const T&);
-    void crossing(const T&);
-    void expose(const T&);
-    void unmap(const T&);
-    void map(const T&);
-    void maprequest(const T&);
-    void configure(const T&);
-    void configurerequest(const T&);
-    void property(const T&);
-    void clientmessage(const T&);
+    void key(const data::L&);
+    void button(const data::L&);
+    void motion(const data::L&);
+    void crossing(const data::L&);
+    void expose(const data::L&);
+    void unmap(const data::L&);
+    void map(const data::L&);
+    void maprequest(const data::L&);
+    void configure(const data::L&);
+    void configurerequest(const data::L&);
+    void property(const data::L&);
+    void clientmessage(const data::L&);
   };
 }

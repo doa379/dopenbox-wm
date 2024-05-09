@@ -3,8 +3,8 @@
 #include <../config.h>
 
 some::Wm::Wm() : rootw { xlib.root() } {
-  Xlib::DefaultXError error; 
-  input.select(rootw, Xlib::ROOTMASK);
+  xlib::DefaultXError error; 
+  input.select(rootw, xlib::ROOTMASK);
   if (error.get())
     throw std::runtime_error("Initialization error (another wm running?)");
 
@@ -58,12 +58,12 @@ some::Wm::Wm() : rootw { xlib.root() } {
   for (auto i { 0 }; i < NWKS; i++)
     WK.emplace_back(Wk { .n = i });
 
-  some::Xlib::QueryTree query { rootw };
+  some::xlib::QueryTree query { rootw };
   const auto W { query.get() };
   for (const auto W_ : W)
     ;
 
-  some::Xlib::Xinerama xinerama;
+  some::xlib::Xinerama xinerama;
   std::cout << WMNAME << " initialized, have a nice day!\n";
 }
 
@@ -102,69 +102,62 @@ void some::Wm::kill_client() {
 
 
 
-template<typename T>
-void some::Recv<T>::key(const T&) {
+void some::Recv::key(const data::L& DATA) {
   std::cout << "EV: Key Press\n";
 
 }
 
-template<typename T>
-void some::Recv<T>::button(const T& DATA) {
+void some::Recv::button(const data::L& DATA) {
   std::cout << "EV: Btn Press\n";
-  const auto WIN { static_cast<Xlib::Win>(DATA[0]) };
+  const auto WIN { static_cast<xlib::Win>(DATA[0]) };
   const auto STATE { static_cast<int>(DATA[1]) };
   const auto CODE { static_cast<int>(DATA[2]) };
   input.ungrab_pointer();
 }
 
-template<typename T>
-void some::Recv<T>::motion(const T& DATA) {
-  const auto WIN { static_cast<Xlib::Win>(DATA[0]) };
+void some::Recv::motion(const data::L& DATA) {
+  const auto WIN { static_cast<xlib::Win>(DATA[0]) };
   if (WIN == rootw) {
 
   }
 }
 
-template<typename T>
-void some::Recv<T>::crossing(const T&) {
+void some::Recv::crossing(const data::L&) {
   std::cout << "EV: Enter Notify\n";
 
 }
 
-template<typename T>
-void some::Recv<T>::expose(const T&) {
+void some::Recv::expose(const data::L&) {
   std::cout << "EV: Expose\n";
 
 }
 
-template<typename T>
-void some::Recv<T>::unmap(const T&) {
+void some::Recv::unmap(const data::L&) {
   std::cout << "EV: Unmapnotify\n";
 
 }
 
-template<typename T>
-void some::Recv<T>::map(const T&) {
+void some::Recv::map(const data::L&) {
   std::cout << "EV: Mapnotify\n";
 
 }
 
-template<typename T>
-void some::Recv<T>::maprequest(const T& DATA) {
+void some::Recv::maprequest(const data::L& DATA) {
   std::cout << "EV: Map Request\n";
-  const auto PARW { static_cast<Xlib::Win>(DATA[0]) };
-  const auto WIN { static_cast<Xlib::Win>(DATA[1]) };
+  const auto PARW { static_cast<xlib::Win>(DATA[0]) };
+  const auto WIN { static_cast<xlib::Win>(DATA[1]) };
+
   /*
   ::XWindowAttributes wa;
   if (::XGetWindowAttributes(dpy.ptr, W, &wa) == 0 || wa.override_redirect)
     wm.maprequest(W, wa.width, wa.height);
   */
-  Xlib::WinAttr wa { WIN };
+  xlib::WinAttr wa { WIN };
   if (wa.isvalid()) {
     const auto SIZE { wa.size() };
-    const Xlib::Win PARW { 
+    const xlib::Win PARW { 
       xlib.create_window(WIN, std::get<0>(SIZE), std::get<1>(SIZE)) };
-    input.select(PARW, Xlib::PARMASK);
+    input.select(PARW, xlib::PARMASK);
     xlib.reparent(WIN, PARW, 0, 0);
     xlib.mapwindow(PARW);
     xlib.set_bdrwidth(PARW, BDRW_PX);
@@ -180,10 +173,9 @@ void some::Recv<T>::maprequest(const T& DATA) {
   }
 }
 
-template<typename T>
-void some::Recv<T>::configure(const T& DATA) {
+void some::Recv::configure(const data::L& DATA) {
   std::cout << "EV: Configure Notify\n";
-  const auto WIN { static_cast<Xlib::Win>(DATA[1]) }; 
+  const auto WIN { static_cast<xlib::Win>(DATA[1]) }; 
   if (WIN == rootw) {
     const auto X { static_cast<int>(DATA[2]) };
     const auto Y { static_cast<int>(DATA[3]) };
@@ -192,19 +184,14 @@ void some::Recv<T>::configure(const T& DATA) {
   }
 }
 
-template<typename T>
-void some::Recv<T>::configurerequest(const T&) {
+void some::Recv::configurerequest(const data::L&) {
   std::cout << "EV: Config Request\n";
 }
 
-template<typename T>
-void some::Recv<T>::property(const T&) {
+void some::Recv::property(const data::L&) {
   std::cout << "EV: Prop Notify\n";
 }
 
-template<typename T>
-void some::Recv<T>::clientmessage(const T&) {
+void some::Recv::clientmessage(const data::L&) {
   std::cout << "EV: Client Message\n";
 }
-
-template struct some::Recv<some::Data>;
