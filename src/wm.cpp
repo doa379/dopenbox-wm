@@ -1,4 +1,5 @@
 #include <iostream>
+#include <csignal>
 #include <wm.h>
 #include <../config.h>
 
@@ -10,53 +11,58 @@ some::Wm::Wm() : rootw { xlib.root() } {
 
   input.ungrab_allkey(rootw);
   const auto MASK { input.modmask() };
-  for (const auto& K : KBD)
-    input.grab_key(rootw, K.mod & MASK, K.key);
+  for (const auto& K : wmconf::KBD) {
+    const auto KCODE { input.keysym2keycode(K.sym) };
+    KCODE_KSYM[KCODE] = K.sym;
+    input.grab_key(rootw, K.mod & MASK, KCODE);
+  }
     
-  CALL[WK0] = [] { };
-  CALL[WK1] = [] { };
-  CALL[WK2] = [] { };
-  CALL[WK3] = [] { };
-  CALL[WK4] = [] { };
-  CALL[WK5] = [] { };
-  CALL[WK6] = [] { };
-  CALL[WK7] = [] { };
-  CALL[WK8] = [] { };
-  CALL[WK9] = [] { };
-  CALL[MON0] = [] { };
-  CALL[MON1] = [] { };
-  CALL[MON2] = [] { };
-  CALL[MON3] = [] { };
-  CALL[MON4] = [] { };
-  CALL[MON5] = [] { };
-  CALL[MON6] = [] { };
-  CALL[MON7] = [] { };
-  CALL[MON8] = [] { };
-  CALL[MON9] = [] { };
-  CALL[UNMAPALL] = [] { };
-  CALL[REMAPALL] = [] { };
-  CALL[KILL] = [&] { kill_client(); };
-  CALL[SWFOCUS] = [] { };
-  CALL[TOGGLEMODE] = [] { };
-  CALL[PREVCLI] = [&] { prev_client(); };
-  CALL[NEXTCLI] = [&] { next_client(); };
-  CALL[SELTOGGLE] = [] { };
-  CALL[SELCLEAR] = [] { };
-  CALL[MOVEUP] = [] { };
-  CALL[MOVEDOWN] = [] { };
-  CALL[MOVELEFT] = [] { };
-  CALL[MOVERIGHT] = [] { };
-  CALL[RESIZEVINC] = [] { };
-  CALL[RESIZEVDEC] = [] { };
-  CALL[RESIZEHDEC] = [] { };
-  CALL[RESIZEHINC] = [] { };
-  CALL[QUIT] = []{ };
-  CALL[SELECT] = [] { };
-  CALL[RESIZE] = [] { };
-  CALL[STATE] = [] { };
+  CALL[wmconf::WK0] = [] { };
+  CALL[wmconf::WK1] = [] { };
+  CALL[wmconf::WK2] = [] { };
+  CALL[wmconf::WK3] = [] { };
+  CALL[wmconf::WK4] = [] { };
+  CALL[wmconf::WK5] = [] { };
+  CALL[wmconf::WK6] = [] { };
+  CALL[wmconf::WK7] = [] { };
+  CALL[wmconf::WK8] = [] { };
+  CALL[wmconf::WK9] = [] { };
+  CALL[wmconf::MON0] = [] { };
+  CALL[wmconf::MON1] = [] { };
+  CALL[wmconf::MON2] = [] { };
+  CALL[wmconf::MON3] = [] { };
+  CALL[wmconf::MON4] = [] { };
+  CALL[wmconf::MON5] = [] { };
+  CALL[wmconf::MON6] = [] { };
+  CALL[wmconf::MON7] = [] { };
+  CALL[wmconf::MON8] = [] { };
+  CALL[wmconf::MON9] = [] { };
+  CALL[wmconf::UNMAPALL] = [] { };
+  CALL[wmconf::REMAPALL] = [] { };
+  CALL[wmconf::KILL] = [&] { kill_client(); };
+  CALL[wmconf::SWFOCUS] = [] { };
+  CALL[wmconf::TOGGLEMODE] = [] { };
+  CALL[wmconf::PREVCLI] = [&] { prev_client(); };
+  CALL[wmconf::NEXTCLI] = [&] { next_client(); };
+  CALL[wmconf::SELTOGGLE] = [] { };
+  CALL[wmconf::SELCLEAR] = [] { };
+  CALL[wmconf::MOVEUP] = [] { };
+  CALL[wmconf::MOVEDOWN] = [] { };
+  CALL[wmconf::MOVELEFT] = [] { };
+  CALL[wmconf::MOVERIGHT] = [] { };
+  CALL[wmconf::RESIZEVINC] = [] { };
+  CALL[wmconf::RESIZEVDEC] = [] { };
+  CALL[wmconf::RESIZEHDEC] = [] { };
+  CALL[wmconf::RESIZEHINC] = [] { };
+  CALL[wmconf::QUIT] = []{ std::raise(SIGINT); };
+  CALL[wmconf::SELECT] = [] { };
+  CALL[wmconf::RESIZE] = [] { };
+  CALL[wmconf::STATE] = [] { };
 
-  for (auto i { 0 }; i < NWKS; i++)
+  for (auto i { 0 }; i < wmconf::NWKS; i++)
     WK.emplace_back(Wk { .n = i });
+
+  wk[0] = wk[1] = WK.begin();
 
   some::xlib::QueryTree query { rootw };
   const auto W { query.get() };
@@ -64,35 +70,54 @@ some::Wm::Wm() : rootw { xlib.root() } {
     ;
 
   some::xlib::Xinerama xinerama;
-  std::cout << WMNAME << " initialized, have a nice day!\n";
+  std::cout << wmconf::WMNAME << " initialized, have a nice day!\n";
 }
 
 some::Wm::~Wm() {
   input.set_focus(rootw);
-  std::cout << WMNAME << " exit\n";
+  std::cout << wmconf::WMNAME << " exit\n";
 }
 
-void some::Wm::focus() {
-  if (wk[1]->client[1] < wk[1]->C.end()) {
-  // set unfocus
+void some::Wm::unfocus(const xlib::Win WIN) {
+  const auto MASK { input.modmask() };
+  for (const auto& B : wmconf::BTN)
+    input.ungrab_btn(WIN, B.mod & MASK, B.sym);
 
-  }
-  //set focus
-  //input.grab_btn();
-  //input.grab_key();
+  //delprop_active(wk[1]->client[1]->w);
+  xlib.set_bdrcolor(WIN, 0);
 }
 
-void some::Wm::spawn() {
+void some::Wm::focus(const xlib::Win WIN) {
+  input.set_focus(WIN);
+  const auto MASK { input.modmask() };
+  for (const auto& B : wmconf::BTN)
+    input.grab_btn(WIN, B.mod & MASK, B.sym);
   
+  xlib.set_bdrcolor(WIN, wmconf::BDRCOLOR);
 }
 
 void some::Wm::prev_client() {
-  std::prev(wk[1]->client[1]);
+  if (wk[1]->client[1] < wk[1]->C.cend())
+    unfocus(wk[1]->client[1]->win);
+
+  if (const auto CURR { std::prev(wk[1]->client[1]) };
+    CURR < wk[1]->C.cend()) {
+    wk[1]->client[0] = wk[1]->client[1];
+    wk[1]->client[1] = CURR;
+    focus(CURR->win);
+  }
 }
 
 void some::Wm::next_client() {
-  std::next(wk[1]->client[1]);
+  if (wk[1]->client[1] < wk[1]->C.cend())
+    unfocus(wk[1]->client[1]->win);
 
+  if (const auto CURR { std::next(wk[1]->client[1]) };
+    CURR < wk[1]->C.cend()) {
+    wk[1]->client[0] = wk[1]->client[1];
+    wk[1]->client[1] = CURR;
+    focus(CURR->win);
+  }
 }
 
 void some::Wm::kill_client() {
@@ -100,17 +125,28 @@ void some::Wm::kill_client() {
 
 }
 
-
-
 void some::Recv::key(const data::L& DATA) {
   std::cout << "EV: Key Press\n";
-
+  const auto MASK { input.modmask() };
+  const auto KMOD { static_cast<int>(DATA[0]) & MASK };
+  const auto KCODE { static_cast<int>(DATA[1]) };
+  for (const auto& K : wmconf::KBD)
+    if (K.mod == KMOD && K.sym == KCODE_KSYM[KCODE]) {
+      if (K.cmd) {
+        Sys sys;
+        sys.spawn(K.cmd);
+      } else
+        CALL[K.call]();
+      
+      break;
+    }
 }
 
 void some::Recv::button(const data::L& DATA) {
   std::cout << "EV: Btn Press\n";
+  const auto MASK { input.modmask() };
   const auto WIN { static_cast<xlib::Win>(DATA[0]) };
-  const auto STATE { static_cast<int>(DATA[1]) };
+  const auto KMOD { static_cast<int>(DATA[1]) & MASK };
   const auto CODE { static_cast<int>(DATA[2]) };
   input.ungrab_pointer();
 }
@@ -152,25 +188,27 @@ void some::Recv::maprequest(const data::L& DATA) {
   if (::XGetWindowAttributes(dpy.ptr, W, &wa) == 0 || wa.override_redirect)
     wm.maprequest(W, wa.width, wa.height);
   */
-  xlib::WinAttr wa { WIN };
-  if (wa.isvalid()) {
+  try {
+    xlib::WinAttr wa { WIN };
     const auto SIZE { wa.size() };
     const xlib::Win PARW { 
       xlib.create_window(WIN, std::get<0>(SIZE), std::get<1>(SIZE)) };
     input.select(PARW, xlib::PARMASK);
     xlib.reparent(WIN, PARW, 0, 0);
     xlib.mapwindow(PARW);
-    xlib.set_bdrwidth(PARW, BDRW_PX);
-    //xlib.set_bdrcolor(PARW, BDRCOL);
+    xlib.set_bdrwidth(PARW, wmconf::BDRW_PX);
     const Client C { 
-      .w = PARW
+      .win = PARW
     };
     
+    if (wk[1]->client[1] < wk[1]->C.cend())
+      unfocus(wk[1]->client[1]->win);
+
     wk[1]->client[0] = wk[1]->client[1];
     wk[1]->C.emplace_back(C);
     wk[1]->client[1] = wk[1]->C.end() - 1;
-    focus();
-  }
+    focus(wk[1]->client[1]->win);
+  } catch (...) { }
 }
 
 void some::Recv::configure(const data::L& DATA) {
@@ -192,6 +230,6 @@ void some::Recv::property(const data::L&) {
   std::cout << "EV: Prop Notify\n";
 }
 
-void some::Recv::clientmessage(const data::L&) {
+void some::Recv::clientmessage(const data::Msg& DATA) {
   std::cout << "EV: Client Message\n";
 }

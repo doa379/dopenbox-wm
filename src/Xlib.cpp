@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <unistd.h>
 #include <X11/Xutil.h>
 #include <Xlib.h>
 
@@ -383,7 +384,7 @@ some::Ev::clientmessage(const S& f, data::Msg& data) const noexcept {
   data[1] = xev.xclient.message_type;
   std::copy(xev.xclient.data.b, 
     // !!Warning flaw: This C union may not biject with C++ union!!
-    xev.xclient.data.b + sizeof xev.xclient.data, data.B);
+    xev.xclient.data.b + sizeof(data::Msg) - sizeof(data::L), data.B);
   return f;
 }
 
@@ -407,8 +408,17 @@ void some::Ev::init_keymap(const S& f) noexcept {
 some::Ev::S some::Ev::keymap(const S& f, data::Keymap& data) const noexcept {
   data[0] = xev.xkeymap.window;
   std::copy(xev.xkeymap.key_vector, 
-    xev.xkeymap.key_vector + sizeof data.KEYMAP_VECTOR, data.KEYMAP_VECTOR);
+    xev.xkeymap.key_vector + sizeof(data::Keymap) - sizeof(data::L),
+      data.KEYMAP_VECTOR);
   return f;
+}
+
+void some::Sys::spawn(const char CMD[]) const noexcept {
+  if (::fork() == 0) {
+    ::close(dpy.connection());
+    ::setsid();
+    ::system(CMD);
+  }
 }
 
 using Win = some::xlib::Win;
@@ -477,16 +487,25 @@ unsigned some::xlib::Input::modmask() const noexcept {
   return ~(numlockmask | LockMask);
 }
 
-void some::xlib::Input::grab_key(const Win WIN, const int MOD, const int KEY) 
-const noexcept {
-  ::XGrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, WIN, true, 
-    GrabModeAsync, GrabModeAsync);
+::KeyCode some::xlib::Input::keysym2keycode(const ::KeySym KSYM) {
+  return ::XKeysymToKeycode(dpy.ptr, KSYM);
+}
+
+::KeySym some::xlib::Input::keycode2keysym(const ::KeyCode KCODE) {
+  /* Depr. */
+  return ::XKeycodeToKeysym(dpy.ptr, KCODE, 0);
 }
 
 void 
-some::xlib::Input::ungrab_key(const Win WIN, const int MOD, const int KEY) 
+some::xlib::Input::grab_key(const Win WIN, const int MOD, const int KCODE) 
 const noexcept {
-  ::XUngrabKey(dpy.ptr, ::XKeysymToKeycode(dpy.ptr, KEY), MOD, WIN);
+  ::XGrabKey(dpy.ptr, KCODE, MOD, WIN, true, GrabModeAsync, GrabModeAsync);
+}
+
+void 
+some::xlib::Input::ungrab_key(const Win WIN, const int MOD, const int KCODE) 
+const noexcept {
+  ::XUngrabKey(dpy.ptr, KCODE, MOD, WIN);
 }
 
 void some::xlib::Input::ungrab_allkey(const Win WIN) const noexcept {
@@ -497,7 +516,7 @@ void some::xlib::Input::grab_btn(const Win WIN, const int MOD, const int BTN)
 const noexcept {
   static constexpr auto MASK { ButtonPressMask | ButtonReleaseMask };
   ::XGrabButton(dpy.ptr, BTN, MOD, WIN, false, MASK, GrabModeSync, 
-  GrabModeSync, None, None);
+    GrabModeSync, None, None);
 }
 
 void
@@ -513,6 +532,12 @@ void some::xlib::Input::ungrab_pointer() const noexcept {
 void some::xlib::Input::warp_pointer(const Win WIN, const int X, const int Y) 
 const noexcept {
   ::XWarpPointer(dpy.ptr, None, WIN, 0, 0, 0, 0, X, Y);
+}
+
+some::xlib::WinAttr::WinAttr(const Win WIN) {
+  if (const auto STATUS { ::XGetWindowAttributes(dpy.ptr, WIN, &wa) };
+      STATUS == BadDrawable || STATUS == BadWindow)
+    throw std::runtime_error("Failed to retrieve window attributes");
 }
 
 some::xlib::QueryTree::QueryTree(const Win WIN) {

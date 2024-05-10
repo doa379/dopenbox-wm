@@ -15,6 +15,7 @@ namespace some {
     static ::Display* ptr;
     static void init();
     static void deinit();
+    int connection() const noexcept { return ConnectionNumber(ptr); }
   };
   
   namespace data {
@@ -110,6 +111,13 @@ namespace some {
     ::XEvent xev;
     std::array<std::function<S(data::T&)>, LASTEvent> F;
   };
+
+  class Sys {
+    public:
+    void spawn(const char[]) const noexcept;
+    private:
+    Display dpy;
+  };
   
   namespace xlib {
     // Look to select masks
@@ -188,6 +196,8 @@ namespace some {
       void select(const Win, const long) const noexcept;
       void set_focus(const Win) const noexcept;
       unsigned modmask() const noexcept;
+      ::KeyCode keysym2keycode(const ::KeySym);
+      ::KeySym keycode2keysym(const ::KeyCode);
       void grab_key(const Win, const int, const int) const noexcept;
       void ungrab_key(const Win, const int, const int) const noexcept;
       void ungrab_allkey(const Win) const noexcept;
@@ -202,10 +212,7 @@ namespace some {
     class WinAttr {
       public:
       WinAttr() = delete;
-      WinAttr(const Win WIN) : 
-        status { ::XGetWindowAttributes(dpy.ptr, WIN, &wa) } { }
-      bool isvalid() const noexcept { 
-        return !(status == BadDrawable || status == BadWindow); }
+      WinAttr(const Win);
       bool override_redirect() const noexcept { return wa.override_redirect; }
       std::pair<int, int> size() const noexcept { 
         return { wa.width, wa.height }; }
@@ -213,7 +220,6 @@ namespace some {
       private:
       Display dpy;
       ::XWindowAttributes wa;
-      Status status;
     };
 
     class QueryTree {
