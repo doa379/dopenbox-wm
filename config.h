@@ -1,5 +1,6 @@
 #pragma once
 
+#include <variant>
 #include <X11/Xutil.h>
 #include <X11/XF86keysym.h>
 #include <palette.h>
@@ -94,14 +95,14 @@ Modifiers {
 */
 
 namespace wmconf {
-  static constexpr char WMNAME[] { "dopenboxwm" };
-  static constexpr char WMVER[] { "-0.0" };
-  static constexpr auto NWKS { 8 };
-  static constexpr auto SLOPPY_FOCUS { true };
-  static constexpr auto BDRW_PX { 2 };
-  static constexpr auto BDRCOLOR { Red };
+  static char constexpr WMNAME[] { "dopenboxwm" };
+  static auto constexpr NWKS { 8 };
+  static auto constexpr SLOPPY_FOCUS { true };
+  static auto constexpr BDRPX { 2 };
+  // Color Scheme: COLORS[] { BG, Selected BG, FG }
+  static std::size_t constexpr COLORS[] { Cyan10, Cyan70, Gray10 };
 
-  enum calls {
+  enum class Calls : std::size_t {
     // Declare pool of calls
     WK0,
     WK1,
@@ -132,14 +133,6 @@ namespace wmconf {
     NEXTCLI,
     SELTOGGLE,
     SELCLEAR,
-    MOVEUP,
-    MOVEDOWN,
-    MOVELEFT,
-    MOVERIGHT,
-    RESIZEVINC,
-    RESIZEVDEC,
-    RESIZEHDEC,
-    RESIZEHINC,
     QUIT,
     SELECT,
     RESIZE,
@@ -149,64 +142,53 @@ namespace wmconf {
   struct Input {
     int mod;
     int sym;
-    union {
-      enum calls call;
-      const char* cmd;
-    };
+    std::variant<Calls, char const*> var;
   };
 
-  static const Input KBD[] {
-    { Mod4Mask, XK_0, { WK0 } },
-    { Mod4Mask, XK_1, { WK1 } },
-    { Mod4Mask, XK_2, { WK2 } },
-    { Mod4Mask, XK_3, { WK3 } },
-    { Mod4Mask, XK_4, { WK4 } },
-    { Mod4Mask, XK_5, { WK5 } },
-    { Mod4Mask, XK_6, { WK6 } },
-    { Mod4Mask, XK_7, { WK7 } },
-    { Mod4Mask, XK_8, { WK8 } },
-    { Mod4Mask, XK_9, { WK9 } },
-    { Mod4Mask, XK_u, { UNMAPALL } },
-    { Mod4Mask, XK_v, { REMAPALL } },
-    { Mod4Mask, XK_Tab, { SWFOCUS } },
-    { Mod4Mask, XK_m, { TOGGLEMODE } },
-    { Mod4Mask, XK_o, { PREVCLI } },
-    { Mod4Mask, XK_p, { NEXTCLI } },
-    { Mod4Mask, XK_space, { SELTOGGLE } },
-    { Mod4Mask, XK_c, { SELCLEAR } },
-    { Mod4Mask | ShiftMask, XK_1, { MON1 } },
-    { Mod4Mask | ShiftMask, XK_2, { MON2 } },
-    { Mod4Mask | ShiftMask, XK_3, { MON3 } },
-    { Mod4Mask | ShiftMask, XK_4, { MON4 } },
-    { Mod4Mask | ShiftMask, XK_5, { MON5 } },
-    { Mod4Mask | ShiftMask, XK_6, { MON6 } },
-    { Mod4Mask | ShiftMask, XK_7, { MON7 } },
-    { Mod4Mask | ShiftMask, XK_8, { MON8 } },
-    { Mod4Mask | ShiftMask, XK_9, { MON9 } },
-    { Mod4Mask | ShiftMask, XK_0, { MON0 } },
-    { Mod4Mask | ShiftMask, XK_k, { KILL } },
-    { Mod4Mask | ShiftMask, XK_Up, { MOVEUP } },
-    { Mod4Mask | ShiftMask, XK_Down, { MOVEDOWN } },
-    { Mod4Mask | ShiftMask, XK_Left, { MOVELEFT } },
-    { Mod4Mask | ShiftMask, XK_Right, { MOVERIGHT } },
-    { Mod4Mask | ControlMask, XK_Up, { RESIZEVINC } },
-    { Mod4Mask | ControlMask, XK_Down, { RESIZEVDEC } },
-    { Mod4Mask | ControlMask, XK_Left, { RESIZEHDEC } },
-    { Mod4Mask | ControlMask, XK_Right, { RESIZEHINC } },
-    { Mod4Mask | ShiftMask | ControlMask, XK_q, { QUIT } },
+  static Input const KBD[] {
+    { Mod4Mask, XK_0, Calls::WK0 },
+    { Mod4Mask, XK_1, Calls::WK1 },
+    { Mod4Mask, XK_2, Calls::WK2 },
+    { Mod4Mask, XK_3, Calls::WK3 },
+    { Mod4Mask, XK_4, Calls::WK4 },
+    { Mod4Mask, XK_5, Calls::WK5 },
+    { Mod4Mask, XK_6, Calls::WK6 },
+    { Mod4Mask, XK_7, Calls::WK7 },
+    { Mod4Mask, XK_8, Calls::WK8 },
+    { Mod4Mask, XK_9, Calls::WK9 },
+    { Mod4Mask, XK_u, Calls::UNMAPALL },
+    { Mod4Mask, XK_v, Calls::REMAPALL },
+    { Mod4Mask, XK_Tab, Calls::SWFOCUS },
+    { Mod4Mask, XK_m, Calls::TOGGLEMODE },
+    { Mod4Mask, XK_o, Calls::PREVCLI },
+    { Mod4Mask, XK_p, Calls::NEXTCLI },
+    { Mod4Mask, XK_space, Calls::SELTOGGLE },
+    { Mod4Mask, XK_c, Calls::SELCLEAR },
+    { Mod4Mask | ShiftMask, XK_1, Calls::MON1 },
+    { Mod4Mask | ShiftMask, XK_2, Calls::MON2 },
+    { Mod4Mask | ShiftMask, XK_3, Calls::MON3 },
+    { Mod4Mask | ShiftMask, XK_4, Calls::MON4 },
+    { Mod4Mask | ShiftMask, XK_5, Calls::MON5 },
+    { Mod4Mask | ShiftMask, XK_6, Calls::MON6 },
+    { Mod4Mask | ShiftMask, XK_7, Calls::MON7 },
+    { Mod4Mask | ShiftMask, XK_8, Calls::MON8 },
+    { Mod4Mask | ShiftMask, XK_9, Calls::MON9 },
+    { Mod4Mask | ShiftMask, XK_0, Calls::MON0 },
+    { Mod4Mask | ShiftMask, XK_k, Calls::KILL },
+    { Mod4Mask | ShiftMask | ControlMask, XK_q, Calls::QUIT },
     // Shell Bindings
-    { Mod4Mask, XK_n, { .cmd = "notify-send \"Test Key\"" } },
-    { Mod4Mask, XK_Escape, { .cmd = "dmenu_run" } },
-    { Mod4Mask, XK_l, { .cmd = "slock" } },
-    { Mod4Mask, XF86XK_Sleep, { .cmd = "slock & yyy M" } },
-    { Mod4Mask, XK_c, { .cmd = "xconsole" } },
-    { Mod4Mask, XK_d, { .cmd = "xclock" } },
-    { Mod4Mask, XK_Return, { .cmd = "xterm" } },
+    { Mod4Mask, XK_n, "notify-send \"Test Key\"" },
+    { Mod4Mask, XK_Escape, "dmenu_run" },
+    { Mod4Mask, XK_l, "slock" },
+    { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
+    { Mod4Mask, XK_c, "xconsole" },
+    { Mod4Mask, XK_d, "xclock" },
+    { Mod4Mask, XK_Return, "xterm" },
   };
 
-  static const Input BTN[] {
+  static Input const BTN[] {
     // Mouse Bindings
-    { 0, Button1, { SELECT } },
-    { Mod4Mask, Button3, { RESIZE } },
+    { 0, Button1, Calls::SELECT },
+    { Mod4Mask, Button3, Calls::RESIZE },
   };
 }

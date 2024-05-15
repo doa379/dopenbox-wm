@@ -8,8 +8,8 @@
 namespace some {
   struct Display {
     Display() = default;
-    Display(const Display&) = delete;
-    Display& operator=(const Display&) = delete;
+    Display(Display const&) = delete;
+    Display& operator=(Display const&) = delete;
     Display(Display&&) = delete;
     ~Display() = default;
     static ::Display* ptr;
@@ -21,8 +21,8 @@ namespace some {
   namespace data {
     struct L {
       long D[12];
-      long& operator[](const std::size_t I) noexcept { return D[I]; }
-      long operator[](const std::size_t I) const noexcept { return D[I]; }
+      long& operator[](std::size_t const I) noexcept { return D[I]; }
+      long operator[](std::size_t const I) const noexcept { return D[I]; }
     };
 
     struct Msg : public L {
@@ -41,82 +41,82 @@ namespace some {
   }
 
   class Ev {
-    using S = std::function<void(const data::T&)>;
+    using S = std::function<void(data::T const&)>;
     public:
     Ev();
     ~Ev() = default;
     bool next() noexcept;
     void sync() const noexcept;
     S call(data::T&) const noexcept;
-    void init_key(const S&) noexcept;
-    S key(const S&, data::L&) const noexcept;
-    void init_button(const S&) noexcept;
-    S button(const S&, data::L&) const noexcept;
-    void init_motion(const S&) noexcept;
-    S motion(const S&, data::L&) const noexcept;
-    void init_crossing(const S&) noexcept;
-    S crossing(const S&, data::L&) const noexcept;
-    void init_focuschange(const S&) noexcept;
-    S focuschange(const S&, data::L&) const noexcept;
-    void init_expose(const S&) noexcept;
-    S expose(const S&, data::L&) const noexcept;
-    void init_graphicsexpose(const S&) noexcept;
-    S graphicsexpose(const S&, data::L&) const noexcept;
-    void init_noexpose(const S&) noexcept;
-    S noexpose(const S&, data::L&) const noexcept;
-    void init_visibility(const S&) noexcept;
-    S visibility(const S&, data::L&) const noexcept;
-    void init_createwindow(const S&) noexcept;
-    S createwindow(const S&, data::L&) const noexcept;
-    void init_destroywindow(const S&) noexcept;
-    S destroywindow(const S&, data::L&) const noexcept;
-    void init_unmap(const S&) noexcept;
-    S unmap(const S&, data::L&) const noexcept;
-    void init_map(const S&) noexcept;
-    S map(const S&, data::L&) const noexcept;
-    void init_maprequest(const S&) noexcept;
-    S maprequest(const S&, data::L&) const noexcept;
-    void init_reparent(const S&) noexcept;
-    S reparent(const S&, data::L&) const noexcept;
-    void init_configure(const S&) noexcept;
-    S configure(const S&, data::L&) const noexcept;
-    void init_gravity(const S&) noexcept;
-    S gravity(const S&, data::L&) const noexcept;
-    void init_resizerequest(const S&) noexcept;
-    S resizerequest(const S&, data::L&) const noexcept;
-    void init_configurerequest(const S&) noexcept;
-    S configurerequest(const S&, data::L&) const noexcept;
-    void init_circulate(const S&) noexcept;
-    S circulate(const S&, data::L&) const noexcept;
-    void init_circulaterequest(const S&) noexcept;
-    S circulaterequest(const S&, data::L&) const noexcept;
-    void init_property(const S&) noexcept;
-    S property(const S&, data::L&) const noexcept;
-    void init_selectionclear(const S&) noexcept;
-    S selectionclear(const S&, data::L&) const noexcept;
-    void init_selectionrequest(const S&) noexcept;
-    S selectionrequest(const S&, data::L&) const noexcept;
-    void init_selection(const S&) noexcept;
-    S selection(const S&, data::L&) const noexcept;
-    void init_colormap(const S&) noexcept;
-    S colormap(const S&, data::L&) const noexcept;
-    void init_clientmessage(const S&) noexcept;
-    S clientmessage(const S&, data::Msg&) const noexcept;
-    void init_mapping(const S&) noexcept;
-    S mapping(const S&, data::L&) const noexcept;
-    void init_keymap(const S&) noexcept;
-    S keymap(const S&, data::Keymap&) const noexcept;
+    void init_key(S const&) noexcept;
+    S key(S const&, data::L&) const noexcept;
+    void init_button(S const&) noexcept;
+    S button(S const&, data::L&) const noexcept;
+    void init_motion(S const&) noexcept;
+    S motion(S const&, data::L&) const noexcept;
+    void init_crossing(S const&) noexcept;
+    S crossing(S const&, data::L&) const noexcept;
+    void init_focuschange(S const&) noexcept;
+    S focuschange(S const&, data::L&) const noexcept;
+    void init_expose(S const&) noexcept;
+    S expose(S const&, data::L&) const noexcept;
+    void init_graphicsexpose(S const&) noexcept;
+    S graphicsexpose(S const&, data::L&) const noexcept;
+    void init_noexpose(S const&) noexcept;
+    S noexpose(S const&, data::L&) const noexcept;
+    void init_visibility(S const&) noexcept;
+    S visibility(S const&, data::L&) const noexcept;
+    void init_createwindow(S const&) noexcept;
+    S createwindow(S const&, data::L&) const noexcept;
+    void init_destroywindow(S const&) noexcept;
+    S destroywindow(S const&, data::L&) const noexcept;
+    void init_unmap(S const&) noexcept;
+    S unmap(S const&, data::L&) const noexcept;
+    void init_map(S const&) noexcept;
+    S map(S const&, data::L&) const noexcept;
+    void init_maprequest(S const&) noexcept;
+    S maprequest(S const&, data::L&) const noexcept;
+    void init_reparent(S const&) noexcept;
+    S reparent(S const&, data::L&) const noexcept;
+    void init_configure(S const&) noexcept;
+    S configure(S const&, data::L&) const noexcept;
+    void init_gravity(S const&) noexcept;
+    S gravity(S const&, data::L&) const noexcept;
+    void init_resizerequest(S const&) noexcept;
+    S resizerequest(S const&, data::L&) const noexcept;
+    void init_configurerequest(S const&) noexcept;
+    S configurerequest(S const&, data::L&) const noexcept;
+    void init_circulate(S const&) noexcept;
+    S circulate(S const&, data::L&) const noexcept;
+    void init_circulaterequest(S const&) noexcept;
+    S circulaterequest(S const&, data::L&) const noexcept;
+    void init_property(S const&) noexcept;
+    S property(S const&, data::L&) const noexcept;
+    void init_selectionclear(S const&) noexcept;
+    S selectionclear(S const&, data::L&) const noexcept;
+    void init_selectionrequest(S const&) noexcept;
+    S selectionrequest(S const&, data::L&) const noexcept;
+    void init_selection(S const&) noexcept;
+    S selection(S const&, data::L&) const noexcept;
+    void init_colormap(S const&) noexcept;
+    S colormap(S const&, data::L&) const noexcept;
+    void init_clientmessage(S const&) noexcept;
+    S clientmessage(S const&, data::Msg&) const noexcept;
+    void init_mapping(S const&) noexcept;
+    S mapping(S const&, data::L&) const noexcept;
+    void init_keymap(S const&) noexcept;
+    S keymap(S const&, data::Keymap&) const noexcept;
     private:
-    Display dpy;
+    static const Display dpy;
     ::XEvent xev;
     std::array<std::function<S(data::T&)>, LASTEvent> F;
   };
 
   class Sys {
     public:
-    void spawn(const char[]) const noexcept;
+    void spawn(char const[]) const noexcept;
     private:
-    Display dpy;
+    static Display const dpy;
   };
   
   namespace xlib {
@@ -179,56 +179,57 @@ namespace some {
     class Xlib {
       public:
       Win root() const noexcept;
-      Win create_window(const Win, const int, const int) const noexcept;
-      void destroy_window(const Win) const noexcept;
-      void mapwindow(const Win) const noexcept;
-      void unmapwindow(const Win) const noexcept;
-      void set_bdrcolor(const Win, const std::size_t) const noexcept;
-      void set_bdrwidth(const Win, const int) const noexcept;
-      void movewindow(const Win, const int, const int) const noexcept;
-      void reparent(const Win, const Win, const int, const int) const noexcept;
+      Win create_win(Win const, int const, int const) const noexcept;
+      void destroy_win(Win const) const noexcept;
+      void map_win(Win const) const noexcept;
+      void unmap_win(Win const) const noexcept;
+      void set_winbg(Win const, std::size_t const) const noexcept;
+      void set_bdrcolor(Win const, std::size_t const) const noexcept;
+      void set_bdrwidth(Win const, int const) const noexcept;
+      void move_win(Win const, int const, int const) const noexcept;
+      void repar_win(Win const, Win const, int const, int const) const noexcept;
       private:
-      Display dpy;
+      static Display const dpy;
     };
 
     class Input {
       public:
-      void select(const Win, const long) const noexcept;
-      void set_focus(const Win) const noexcept;
+      void select(Win const, long const) const noexcept;
+      void set_focus(Win const) const noexcept;
       unsigned modmask() const noexcept;
-      ::KeyCode keysym2keycode(const ::KeySym);
-      ::KeySym keycode2keysym(const ::KeyCode);
-      void grab_key(const Win, const int, const int) const noexcept;
-      void ungrab_key(const Win, const int, const int) const noexcept;
-      void ungrab_allkey(const Win) const noexcept;
-      void grab_btn(const Win, const int, const int) const noexcept;
-      void ungrab_btn(const Win, const int, const int) const noexcept;
+      ::KeyCode keysym_keycode(::KeySym const) const noexcept;
+      ::KeySym keycode_keysym(::KeyCode const) const noexcept;
+      void grab_key(Win const, int const, int const) const noexcept;
+      void ungrab_key(Win const, int const, int const) const noexcept;
+      void ungrab_allkey(Win const) const noexcept;
+      void grab_btn(Win const, int const, int const) const noexcept;
+      void ungrab_btn(Win const, int const, int const) const noexcept;
       void ungrab_pointer() const noexcept;
-      void warp_pointer(const Win, const int, const int) const noexcept;
+      void warp_pointer(Win const, int const, int const) const noexcept;
       private:
-      Display dpy;
+      static Display const dpy;
     };
     
     class WinAttr {
       public:
       WinAttr() = delete;
-      WinAttr(const Win);
+      WinAttr(Win const);
       bool override_redirect() const noexcept { return wa.override_redirect; }
       std::pair<int, int> size() const noexcept { 
         return { wa.width, wa.height }; }
       std::pair<int, int> pos() const noexcept { return { wa.x, wa.y }; }
       private:
-      Display dpy;
+      static Display const dpy;
       ::XWindowAttributes wa;
     };
 
     class QueryTree {
       public:
-      QueryTree(const Win);
+      QueryTree(Win const);
       ~QueryTree();
       std::vector<Win> get() const noexcept;
       private:
-      Display dpy;
+      static Display const dpy;
       Win* wins { };
       unsigned n { };
     };
@@ -236,13 +237,13 @@ namespace some {
     class Xinerama {
       public:
       private:
-      Display dpy;
+      static Display const dpy;
     };
 
     class Draw {
       public:
       private:
-      Display dpy;
+      static Display const dpy;
     };
   }
 }
