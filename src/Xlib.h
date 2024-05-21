@@ -240,8 +240,12 @@ namespace some {
       static Display const dpy;
     };
 
+    using Font = ::XFontStruct;
+    using Canv = ::Drawable;
     class Draw {
       public:
+      Font* load_font(char const* FONT) const noexcept { 
+        return ::XLoadQueryFont(dpy.ptr, FONT); }
       private:
       static Display const dpy;
     };

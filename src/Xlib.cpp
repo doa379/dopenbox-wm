@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include <unistd.h>
 #include <X11/Xutil.h>
-#include <Xlib.h>
+#include "Xlib.h"
 
 ::Display* some::Display::ptr;
 bool some::xlib::DefaultXError::xerror;

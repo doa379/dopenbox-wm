@@ -1,7 +1,7 @@
 #include <iostream>
 #include <csignal>
-#include <wm.h>
-#include <Xlib.h>
+#include "wm.h"
+#include "Xlib.h"
 
 class Sig {
   public:

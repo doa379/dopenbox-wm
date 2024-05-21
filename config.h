@@ -3,7 +3,7 @@
 #include <variant>
 #include <X11/Xutil.h>
 #include <X11/XF86keysym.h>
-#include <palette.h>
+#include "src/palette.h"
 
 /*
 KeySym {
@@ -96,7 +96,8 @@ Modifiers {
 
 namespace wmconf {
   static char constexpr WMNAME[] { "dopenboxwm" };
-  static auto constexpr NWKS { 8 };
+  static char constexpr FONT[] { "9x15bold" };
+  static auto constexpr NWKS { 4 };
   static auto constexpr SLOPPY_FOCUS { true };
   static auto constexpr BDRPX { 2 };
   // Color Scheme: COLORS[] { BG, Selected BG, FG }
@@ -114,6 +115,8 @@ namespace wmconf {
     WK7,
     WK8,
     WK9,
+    LOADWK,
+    UNLOADWK,
     MON0,
     MON1,
     MON2,
@@ -125,7 +128,7 @@ namespace wmconf {
     MON8,
     MON9,
     UNMAPALL,
-    REMAPALL,
+    MAPALL,
     KILL,
     SWFOCUS,
     TOGGLEMODE,
@@ -156,8 +159,10 @@ namespace wmconf {
     { Mod4Mask, XK_7, Calls::WK7 },
     { Mod4Mask, XK_8, Calls::WK8 },
     { Mod4Mask, XK_9, Calls::WK9 },
+    { Mod4Mask, XK_w, Calls::LOADWK },
+    { Mod4Mask, XK_d, Calls::UNLOADWK },
     { Mod4Mask, XK_u, Calls::UNMAPALL },
-    { Mod4Mask, XK_v, Calls::REMAPALL },
+    { Mod4Mask, XK_v, Calls::MAPALL },
     { Mod4Mask, XK_Tab, Calls::SWFOCUS },
     { Mod4Mask, XK_m, Calls::TOGGLEMODE },
     { Mod4Mask, XK_o, Calls::PREVCLI },
@@ -182,7 +187,7 @@ namespace wmconf {
     { Mod4Mask, XK_l, "slock" },
     { Mod4Mask, XF86XK_Sleep, "slock & yyy M" },
     { Mod4Mask, XK_c, "xconsole" },
-    { Mod4Mask, XK_d, "xclock" },
+    { Mod4Mask, XK_t, "xclock" },
     { Mod4Mask, XK_Return, "xterm" },
   };
 

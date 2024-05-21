@@ -1,0 +1,48 @@
+.include "config.mk"
+
+FLAG=Release
+CFLAGS=$(REL_CFLAGS)
+LDFLAGS=$(REL_LDFLAGS)
+EXEC=$(REL)
+
+.if "$(DEBUG)" == "1"
+	FLAG=Debug
+  CFLAGS=$(DBG_CFLAGS)
+  LDFL=$(DBG_LDFLAGS)
+  EXEC=$(DBG)
+.endif
+
+OBJ=$(SRC:.cpp=.o)
+.SUFFIXES: .cpp .o
+.PATH: $(.CURDIR)
+.PATH.cpp: $(.CURDIR)/src
+.PATH.o: obj
+
+#MAKE_OBJDIR_CHECK_WRITABLE="no"
+#.OBJDIR: $(.CURDIR)
+.OBJDIR: obj
+MAKEOBJDIR=${.CURDIR}/obj
+${MAKEOBJDIR}
+
+.POSIX:
+
+all: init $(EXEC)
+
+init:
+	#@mkdir -p $(.CURDIR)/obj
+	${MAKEOBJDIR}
+	@echo Build $(FLAG)...
+
+.cpp.o:
+	@echo Build $(.TARGET)...
+	@$(CPPC) $(FLAGS) -c $(CFLAGS) $(INCS) $(.IMPSRC) -o $(.TARGET)
+
+$(EXEC): $(OBJ)
+	@echo Link $(OBJ)...
+	@$(CPPC) $(FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o ../$(.TARGET)
+	@echo $@
+
+clean:
+	rm -r $(.OBJDIR)
+
+.PHONY: all init

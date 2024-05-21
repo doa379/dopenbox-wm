@@ -1,10 +1,13 @@
 #include <iostream>
 #include <csignal>
 #include <utility>
-#include <wm.h>
-#include <../config.h>
+#include <algorithm>
+#include "wm.h"
+#include "../config.h"
 
-some::Draw::Draw() {
+some::Draw::Draw() : 
+  rootw { xlib.root() }, 
+  font { draw.load_font(wmconf::FONT) } {
 
 }
 
@@ -26,33 +29,35 @@ some::Wm::Wm() : rootw { xlib.root() } {
     input.grab_key(rootw, K.mod & MASK, KCODE);
   }
   
-  CALL[std::to_underlying(wmconf::Calls::WK0)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK1)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK2)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK3)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK4)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK5)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK6)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK7)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK8)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::WK9)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON0)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON1)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON2)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON3)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON4)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON5)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON6)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON7)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON8)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::MON9)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::UNMAPALL)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::REMAPALL)] = [] { };
-  CALL[std::to_underlying(wmconf::Calls::KILL)] = [&] { kill_client(); };
+  CALL[std::to_underlying(wmconf::Calls::WK0)] = [&] { sw_wk(0); };
+  CALL[std::to_underlying(wmconf::Calls::WK1)] = [&] { sw_wk(1); };
+  CALL[std::to_underlying(wmconf::Calls::WK2)] = [&] { sw_wk(2); };
+  CALL[std::to_underlying(wmconf::Calls::WK3)] = [&] { sw_wk(3); };
+  CALL[std::to_underlying(wmconf::Calls::WK4)] = [&] { sw_wk(4); };
+  CALL[std::to_underlying(wmconf::Calls::WK5)] = [&] { sw_wk(5); };
+  CALL[std::to_underlying(wmconf::Calls::WK6)] = [&] { sw_wk(6); };
+  CALL[std::to_underlying(wmconf::Calls::WK7)] = [&] { sw_wk(7); };
+  CALL[std::to_underlying(wmconf::Calls::WK8)] = [&] { sw_wk(8); };
+  CALL[std::to_underlying(wmconf::Calls::WK9)] = [&] { sw_wk(9); };
+  CALL[std::to_underlying(wmconf::Calls::LOADWK)] = [&] { load_wk(); };
+  CALL[std::to_underlying(wmconf::Calls::UNLOADWK)] = [&] { unload_wk(); };
+  CALL[std::to_underlying(wmconf::Calls::MON0)] = [&] { sw_mon(0); };
+  CALL[std::to_underlying(wmconf::Calls::MON1)] = [&] { sw_mon(1); };
+  CALL[std::to_underlying(wmconf::Calls::MON2)] = [&] { sw_mon(2); };
+  CALL[std::to_underlying(wmconf::Calls::MON3)] = [&] { sw_mon(3); };
+  CALL[std::to_underlying(wmconf::Calls::MON4)] = [&] { sw_mon(4); };
+  CALL[std::to_underlying(wmconf::Calls::MON5)] = [&] { sw_mon(5); };
+  CALL[std::to_underlying(wmconf::Calls::MON6)] = [&] { sw_mon(6); };
+  CALL[std::to_underlying(wmconf::Calls::MON7)] = [&] { sw_mon(7); };
+  CALL[std::to_underlying(wmconf::Calls::MON8)] = [&] { sw_mon(8); };
+  CALL[std::to_underlying(wmconf::Calls::MON9)] = [&] { sw_mon(9); };
+  CALL[std::to_underlying(wmconf::Calls::UNMAPALL)] = [&] { unmap_all(); };
+  CALL[std::to_underlying(wmconf::Calls::MAPALL)] = [&] { map_all(); };
   CALL[std::to_underlying(wmconf::Calls::SWFOCUS)] = [] { };
   CALL[std::to_underlying(wmconf::Calls::TOGGLEMODE)] = [] { };
   CALL[std::to_underlying(wmconf::Calls::PREVCLI)] = [&] { prev_client(); };
   CALL[std::to_underlying(wmconf::Calls::NEXTCLI)] = [&] { next_client(); };
+  CALL[std::to_underlying(wmconf::Calls::KILL)] = [&] { kill_client(); };
   CALL[std::to_underlying(wmconf::Calls::SELTOGGLE)] = [] { };
   CALL[std::to_underlying(wmconf::Calls::SELCLEAR)] = [] { };
   CALL[std::to_underlying(wmconf::Calls::QUIT)] = []{ std::raise(SIGINT); };
@@ -73,11 +78,67 @@ some::Wm::Wm() : rootw { xlib.root() } {
 }
 
 some::Wm::~Wm() {
+  for (auto const &WK : this->WK)
+    std::ranges::for_each(WK.C, 
+      [this](auto const& C) { xlib.map_win(C.parw); });
+    
   input.set_focus(rootw);
   std::cout << wmconf::WMNAME << " exit\n";
 }
 
-void some::Wm::unfocus(xlib::Win const WIN) const {
+void some::Wm::sw_wk(unsigned const N) noexcept {
+  if (N == currwk || N > WK.size() - 1)
+    return;
+
+  static auto& wk { this->WK[currwk] };
+  for (auto const& C : wk.C)
+    xlib.unmap_win(C.parw);
+
+  prevwk = currwk;
+  currwk = N;
+  wk = this->WK[currwk];
+  for (auto const& C : wk.C)
+    xlib.map_win(C.parw);
+}
+
+void some::Wm::sw_mon(unsigned const N) const noexcept {
+  if (N > 0)
+    return;
+
+}
+
+void some::Wm::unmap_all() const noexcept {
+  static auto const& WK { this->WK[currwk] };
+  for (auto const& C : WK.C)
+    xlib.unmap_win(C.parw);
+}
+
+void some::Wm::map_all() const noexcept {
+  static auto const& WK { this->WK[currwk] };
+  for (auto const& C : WK.C)
+    xlib.map_win(C.parw);
+}
+
+void some::Wm::load_wk() noexcept {
+  WK.emplace_back(Wk { });
+  // propagate prop change
+}
+
+void some::Wm::unload_wk() noexcept {
+  static auto const& WK { this->WK.cbegin() + currwk };
+  static auto next { 
+    std::next(this->WK.begin() + currwk) == this->WK.cend() ? 
+    this->WK.begin() + currwk - 1 :
+    this->WK.begin() + currwk + 1 };
+  
+  for (auto const& C : WK->C)
+    next->C.emplace_back(C);
+
+  this->WK.erase(WK);
+  // propagate prop change
+}
+
+void some::Wm::unfocus(xlib::Win const WIN) const noexcept {
   auto const MASK { input.modmask() };
   for (auto const& B : wmconf::BTN)
     input.ungrab_btn(WIN, B.mod & MASK, B.sym);
@@ -87,7 +148,7 @@ void some::Wm::unfocus(xlib::Win const WIN) const {
   xlib.set_bdrcolor(WIN, wmconf::COLORS[BG]);
 }
 
-void some::Wm::focus(xlib::Win const WIN) const {
+void some::Wm::focus(xlib::Win const WIN) const noexcept {
   input.set_focus(WIN);
   auto const MASK { input.modmask() };
   for (auto const& B : wmconf::BTN)
@@ -97,33 +158,33 @@ void some::Wm::focus(xlib::Win const WIN) const {
   xlib.set_bdrcolor(WIN, wmconf::COLORS[SEL]);
 }
 
-void some::Wm::prev_client() {
-  static auto& WK { this->WK[currwk] };
-  if (WK.C.size() < 2)
+void some::Wm::prev_client() noexcept {
+  static auto& wk { this->WK[currwk] };
+  if (wk.C.size() < 2)
     return;
 
-  unfocus(WK.C[WK.currc].parw);
-  WK.prevc = WK.currc;
-  if (WK.currc == 0)
-    WK.currc = WK.C.size() - 1;
+  unfocus(wk.C[wk.currc].parw);
+  wk.prevc = wk.currc;
+  if (wk.currc == 0)
+    wk.currc = wk.C.size() - 1;
   else
-    WK.currc--;
-  xlib.map_win(WK.C[WK.currc].parw);
-  focus(WK.C[WK.currc].parw);
+    wk.currc--;
+  xlib.map_win(wk.C[wk.currc].parw);
+  focus(wk.C[wk.currc].parw);
 }
 
-void some::Wm::next_client() {
-  static auto& WK { this->WK[currwk] };
-  if (WK.C.size() < 2)
+void some::Wm::next_client() noexcept {
+  static auto& wk { this->WK[currwk] };
+  if (wk.C.size() < 2)
     return;
 
-  unfocus(WK.C[WK.currc].parw);
-  WK.prevc = WK.currc;
-  WK.currc++;
-  if (WK.currc == WK.C.size())
-    WK.currc = 0;
-  xlib.map_win(WK.C[WK.currc].parw);
-  focus(WK.C[WK.currc].parw);
+  unfocus(wk.C[wk.currc].parw);
+  wk.prevc = wk.currc;
+  wk.currc++;
+  if (wk.currc == wk.C.size())
+    wk.currc = 0;
+  xlib.map_win(wk.C[wk.currc].parw);
+  focus(wk.C[wk.currc].parw);
 }
 
 void some::Wm::kill_client() {
@@ -179,23 +240,20 @@ void some::Recv::unmap(data::L const& DATA) {
   std::cout << "EV: Unmapnotify\n";
   auto const WIN { static_cast<xlib::Win>(DATA[1]) };
   //std::cout << "Unmap window " << WIN << "\n";
-  for (auto& wk : WK) {
-    auto const C {
-      std::ranges::find_if(wk.C, [WIN](auto const& C) { 
-        return C.win == WIN; })
-    };
-
-    if (C < wk.C.cend()) {
+  for (auto& wk : WK)
+    if (auto const C { std::ranges::find_if(wk.C, 
+      [WIN](auto const& C) { return C.win == WIN; })}; C < wk.C.cend()) {
       xlib.destroy_win(C->parw);
       if (wk.C.size() == 2)
         wk.currc = wk.prevc;
       else if (wk.C.size() > 2)
         wk.currc = std::distance(wk.C.begin(), C - 1);
-
+      
+      xlib.map_win(wk.C[wk.currc].parw);
+      focus(wk.C[wk.currc].parw);
       wk.C.erase(C);
       break;
     }
-  }
 }
 
 void some::Recv::map(data::L const& DATA) const {

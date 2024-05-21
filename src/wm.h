@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <tuple>
-#include <Xlib.h>
+#include "Xlib.h"
 
 namespace some {
   template<typename S, typename T>
@@ -31,7 +31,6 @@ namespace some {
     int ft;
   };
 
-  // Impl. un/loading wks at runtime
   struct Wk {
     std::vector<Client> C;
     std::size_t prevc { };
@@ -48,17 +47,27 @@ namespace some {
     Draw();
     ~Draw();
     private:
+    xlib::Xlib const xlib;
     xlib::Draw const draw;
+    xlib::Win const rootw;
+    xlib::Font* font;
+    xlib::Canv root_canv;
   };
 
   class Wm {
     public:
     Wm();
     ~Wm();
-    void unfocus(xlib::Win const) const;
-    void focus(xlib::Win const) const;
-    void prev_client();
-    void next_client();
+    void sw_wk(unsigned const) noexcept;
+    void sw_mon(unsigned const) const noexcept;
+    void unmap_all() const noexcept;
+    void map_all() const noexcept;
+    void load_wk() noexcept;
+    void unload_wk() noexcept;
+    void unfocus(xlib::Win const) const noexcept;
+    void focus(xlib::Win const) const noexcept;
+    void prev_client() noexcept;
+    void next_client() noexcept;
     void kill_client();
     protected:
     xlib::Xlib const xlib;
