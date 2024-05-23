@@ -1,0 +1,37 @@
+include config.mk
+
+OBJ=$(SRC:%.cpp=obj/%.o)
+
+TARGET=dummy
+FLAG=Release
+CFLAGS=${REL_CFLAGS}
+LFLAGS=${REL_LFLAGS}
+EXEC=${REL}
+
+all: init ${TARGET}
+
+debug: FLAG=Debug
+debug: CFLAGS=${DBG_CFLAGS}
+debug: LFLAGS=${DBG_LFLAGS}
+debug: EXEC=${DBG}
+debug: all
+
+init:
+	@echo Build $(FLAG)
+
+obj/%.o: src/%.cpp
+	@echo Build $@...
+	@${CPPC} ${FLAGS} ${CFLAGS} ${INCS} $< -c -o $@
+
+${OBJ}: config.h
+
+${TARGET}: ${OBJ}
+	@echo Link $?...
+	@${CPPC} ${FLAGS} ${LIBSPATH} ${LIBS} ${LFLAGS} $? -o ${EXEC}
+	@echo ${EXEC}
+
+clean:
+	@echo Cleaning...
+	rm -f ${OBJ} ${REL} ${DBG}
+
+.PHONY: all init clean

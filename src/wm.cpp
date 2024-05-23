@@ -2,20 +2,29 @@
 #include <csignal>
 #include <utility>
 #include <algorithm>
-#include "wm.h"
+
+#include "../inc/wm.h"
 #include "../config.h"
 
 some::Draw::Draw() : 
   rootw { xlib.root() }, 
-  font { draw.load_font(wmconf::FONT) } {
+  font { wmconf::FONT },
+  rootp { rootw, xlib.dpy_width(), xlib.dpy_height(),
+    xlib.depth() } {
 
+  xlib.set_winbg(rootw, Gray70);
 }
 
 some::Draw::~Draw() {
+  xlib.set_winbg(rootw, Black);
+}
+
+void some::Draw::panel() const noexcept {
 
 }
 
-some::Wm::Wm() : rootw { xlib.root() } {
+some::Wm::Wm() : rootw { xlib.root() }, 
+  font { wmconf::FONT} {
   xlib::DefaultXError error; 
   input.select(rootw, xlib::ROOTMASK);
   if (error.get())
@@ -273,10 +282,10 @@ void some::Recv::maprequest(data::L const& DATA) {
   try {
     xlib::WinAttr wa { WIN };
     Dim<int, int> size { wa.size() };
-    size.h() += VO;
+    size.h() += font.get_scent();
     xlib::Win const PARW { xlib.create_win(rootw, size.w(), size.h()) };
     input.select(PARW, xlib::PARMASK);
-    xlib.repar_win(WIN, PARW, 0, VO);
+    xlib.repar_win(WIN, PARW, 0, font.get_scent());
     xlib.set_bdrwidth(PARW, wmconf::BDRPX);
     xlib.map_win(PARW);
     xlib.set_bdrwidth(WIN, 0);
@@ -284,7 +293,8 @@ void some::Recv::maprequest(data::L const& DATA) {
     static auto& WK { this->WK[currwk] };
     Dim<int, int> pos { WK.C.size() ? 
       Dim<int, int> { 
-        WK.C[WK.currc].pos.x() + VO, WK.C[WK.currc].pos.y() + VO } : 
+        WK.C[WK.currc].pos.x() + font.get_scent(), 
+        WK.C[WK.currc].pos.y() + font.get_scent() } : 
       Dim<int, int> { }
     };
 
@@ -324,6 +334,7 @@ void some::Recv::configurerequest(data::L const&) const {
 
 void some::Recv::property(data::L const&) const {
   std::cout << "EV: Prop Notify\n";
+  draw.panel();
 }
 
 void some::Recv::clientmessage(data::Msg const& DATA) const {

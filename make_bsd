@@ -1,48 +1,48 @@
 .include "config.mk"
 
 FLAG=Release
-CFLAGS=$(REL_CFLAGS)
-LDFLAGS=$(REL_LDFLAGS)
-EXEC=$(REL)
+CFLAGS=${REL_CFLAGS}
+LFLAGS=${REL_LFLAGS}
+EXEC=${.CURDIR}/${REL}
 
 .if "$(DEBUG)" == "1"
-	FLAG=Debug
-  CFLAGS=$(DBG_CFLAGS)
-  LDFL=$(DBG_LDFLAGS)
-  EXEC=$(DBG)
+FLAG=Debug
+CFLAGS=${DBG_CFLAGS}
+LFLAGS=${DBG_LFLAGS}
+EXEC=${.CURDIR}/${DBG}
 .endif
 
-OBJ=$(SRC:.cpp=.o)
-.SUFFIXES: .cpp .o
-.PATH: $(.CURDIR)
-.PATH.cpp: $(.CURDIR)/src
-.PATH.o: obj
+OBJ=${SRC:.cpp=.o}
 
-#MAKE_OBJDIR_CHECK_WRITABLE="no"
-#.OBJDIR: $(.CURDIR)
-.OBJDIR: obj
-MAKEOBJDIR=${.CURDIR}/obj
-${MAKEOBJDIR}
+.SUFFIXES: .cpp .h .o
+# These paths must pre-exist
+.PATH.cpp: ${.CURDIR}/src
+.PATH.h: ${.CURDIR}/inc
+.PATH.o: ${.CURDIR}/obj
+.OBJDIR: ${.CURDIR}/obj
 
 .POSIX:
 
-all: init $(EXEC)
+all: init ${EXEC}
 
 init:
-	#@mkdir -p $(.CURDIR)/obj
-	${MAKEOBJDIR}
-	@echo Build $(FLAG)...
+	@echo Build ${FLAG}
 
 .cpp.o:
-	@echo Build $(.TARGET)...
-	@$(CPPC) $(FLAGS) -c $(CFLAGS) $(INCS) $(.IMPSRC) -o $(.TARGET)
+	@echo Build ${.TARGET}...
+	@${CPPC} ${FLAGS} ${CFLAGS} ${INCS} ${.IMPSRC} -c -o ${.TARGET}
 
-$(EXEC): $(OBJ)
-	@echo Link $(OBJ)...
-	@$(CPPC) $(FLAGS) $(LIBSPATH) $(LIBS) $(LDFLAGS) $(OBJ) -o ../$(.TARGET)
+${OBJ}: config.h
+
+${EXEC}: ${OBJ}
+	@echo Link ${OBJ}...
+	@${CPPC} ${FLAGS} ${LIBSPATH} ${LIBS} ${LFLAGS} ${OBJ} -o ${.TARGET}
 	@echo $@
 
 clean:
-	rm -r $(.OBJDIR)
+	@echo Cleaning...
+	rm -f ${OBJ}
+	rm -f ${.CURDIR}/${REL}
+	rm -f ${.CURDIR}/${DBG}
 
-.PHONY: all init
+.PHONY: all init clean

@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <variant>
+#include <cwchar>
 
 namespace some {
   struct Display {
@@ -179,6 +180,9 @@ namespace some {
     class Xlib {
       public:
       Win root() const noexcept;
+      int dpy_width() const noexcept;
+      int dpy_height() const noexcept;
+      int depth() const noexcept;
       Win create_win(Win const, int const, int const) const noexcept;
       void destroy_win(Win const) const noexcept;
       void map_win(Win const) const noexcept;
@@ -240,14 +244,36 @@ namespace some {
       static Display const dpy;
     };
 
-    using Font = ::XFontStruct;
-    using Canv = ::Drawable;
-    class Draw {
-      public:
-      Font* load_font(char const* FONT) const noexcept { 
-        return ::XLoadQueryFont(dpy.ptr, FONT); }
-      private:
-      static Display const dpy;
-    };
+    namespace draw {
+      class Font {
+        public:
+        Font() = delete;
+        Font(char const []);
+        ~Font();
+        int get_scent() const noexcept;
+        int get_ascent() const noexcept;
+        int get_descent() const noexcept;
+        int text_width(char const []) const noexcept;
+        int text_width16(wchar_t const []) const noexcept;
+        private:
+        static Display const dpy;
+        ::XFontStruct* fn;
+        int scent;
+
+      };
+
+      class Pixmap {
+        public:
+        Pixmap() = delete;
+        Pixmap(Win const, int const, int const, int const) noexcept;
+        ~Pixmap();
+        void fill(Win const, ::GC const, std::size_t, 
+        int const, int const, int const, int const) 
+        const noexcept;
+        private:
+        static Display const dpy;
+        ::Drawable drawable;
+      };
+    }
   }
 }

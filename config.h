@@ -3,7 +3,8 @@
 #include <variant>
 #include <X11/Xutil.h>
 #include <X11/XF86keysym.h>
-#include "src/palette.h"
+
+#include "inc/palette.h"
 
 /*
 KeySym {

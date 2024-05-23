@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <tuple>
+
 #include "Xlib.h"
 
 namespace some {
@@ -46,12 +47,12 @@ namespace some {
     public:
     Draw();
     ~Draw();
+    void panel() const noexcept;
     private:
     xlib::Xlib const xlib;
-    xlib::Draw const draw;
     xlib::Win const rootw;
-    xlib::Font* font;
-    xlib::Canv root_canv;
+    xlib::draw::Font const font;
+    xlib::draw::Pixmap const rootp;
   };
 
   class Wm {
@@ -73,6 +74,7 @@ namespace some {
     xlib::Xlib const xlib;
     xlib::Win const rootw;
     xlib::Input const input;
+    xlib::draw::Font const font;
     std::unordered_map<int, int> KCODE_KSYM;
     std::array<std::function<void()>, 128> CALL;
     std::vector<Wk> WK;
@@ -80,12 +82,11 @@ namespace some {
     std::size_t currwk { };
     std::vector<Mon> MON;
     std::size_t mon { };
+    Draw const draw;
     //::GC wkgc;
     //::GC statusgc;
-    static auto constexpr VO { 14 };
     private:
     enum colors { BG, SEL, FG };
-    Draw draw;
   };
   
   struct Recv : private Wm {

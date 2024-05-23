@@ -1,7 +1,9 @@
-#include <stdexcept>
-#include <unistd.h>
 #include <X11/Xutil.h>
-#include "Xlib.h"
+#include <unistd.h>
+#include <stdexcept>
+#include <cstring>
+
+#include "../inc/Xlib.h"
 
 ::Display* some::Display::ptr;
 bool some::xlib::DefaultXError::xerror;
@@ -427,6 +429,18 @@ Win some::xlib::Xlib::root() const noexcept {
   return ::XRootWindow(dpy.ptr, DefaultScreen(dpy.ptr));
 }
 
+int some::xlib::Xlib::dpy_width() const noexcept {
+  return DisplayWidth(dpy.ptr, DefaultScreen(dpy.ptr));
+};
+
+int some::xlib::Xlib::dpy_height() const noexcept {
+  return DisplayHeight(dpy.ptr, DefaultScreen(dpy.ptr));
+};
+
+int some::xlib::Xlib::depth() const noexcept {
+  return DefaultDepth(dpy.ptr, DefaultScreen(dpy.ptr));
+};
+
 Win 
 some::xlib::Xlib::create_win(Win const PARW, int const W, int const H) 
 const noexcept {
@@ -564,4 +578,60 @@ std::vector<Win> some::xlib::QueryTree::get() const noexcept {
     WINS.emplace_back(wins[i]);
 
   return WINS;
+}
+
+some::xlib::draw::Font::Font(char const FONT[]) :
+  fn { ::XLoadQueryFont(dpy.ptr, FONT) } {
+  if (!fn)
+    throw std::runtime_error("No font found");
+
+  scent = fn->ascent + fn->descent;
+}
+
+some::xlib::draw::Font::~Font() {
+  ::XFreeFont(dpy.ptr, fn);
+}
+
+int some::xlib::draw::Font::get_scent() const noexcept {
+  return scent;
+}
+
+int some::xlib::draw::Font::get_ascent() const noexcept {
+  return fn->ascent;
+}
+
+int some::xlib::draw::Font::get_descent() const noexcept {
+  return fn->descent;
+}
+
+int
+some::xlib::draw::Font::text_width(char const S[]) const 
+noexcept {
+  return ::XTextWidth(fn, S, ::strlen(S));
+}
+
+int
+some::xlib::draw::Font::text_width16(wchar_t const S[]) 
+const noexcept {
+  // Not impl
+  //return ::XTextWidth16(fn, S, ::wcslen(S));
+  return 0;
+}
+
+some::xlib::draw::Pixmap::Pixmap(Win const WIN,
+int const W, int const H, int const D) noexcept :
+  drawable { ::XCreatePixmap(dpy.ptr, WIN, W, H, D) } {
+
+}
+
+some::xlib::draw::Pixmap::~Pixmap() {
+  ::XFreePixmap(dpy.ptr, drawable);
+}
+
+void
+some::xlib::draw::Pixmap::fill(Win const WIN, 
+::GC const GC, std::size_t COL, int const X, int const Y, 
+int const W, int const H) const noexcept {
+  ::XSetForeground(dpy.ptr, GC, COL);
+  ::XFillRectangle(dpy.ptr, WIN, GC, X, Y, W, H);
 }

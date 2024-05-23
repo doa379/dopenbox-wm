@@ -1,23 +1,24 @@
 #include <iostream>
 #include <csignal>
-#include "wm.h"
-#include "Xlib.h"
+
+#include "../inc/wm.h"
+#include "../inc/Xlib.h"
 
 class Sig {
   public:
   Sig();
-  Sig(const Sig&) = delete;
+  Sig(Sig const&) = delete;
   ~Sig();
   bool none() const noexcept { return status == 0; }
   private:
-  static volatile sig_atomic_t status;
+  static sig_atomic_t volatile status;
   static void handler(int) {
     status = 1;
     std::cout << "\nSig.\n";
   }
 };
 
-volatile sig_atomic_t Sig::status;
+sig_atomic_t volatile Sig::status;
 
 Sig::Sig() {
   if (std::signal(SIGINT, handler) == SIG_ERR)
@@ -28,7 +29,7 @@ Sig::~Sig() {
 
 };
 
-int main(const int ARGC, const char* ARGV[]) {
+int main(int const ARGC, char const* ARGV[]) {
   try {
     Sig sig;
     some::Display dpy;
@@ -36,34 +37,34 @@ int main(const int ARGC, const char* ARGV[]) {
     
     some::Recv wm;
     some::Ev ev;
-    ev.init_key([&wm](const some::data::T& DATA) { 
+    ev.init_key([&wm](some::data::T const& DATA) { 
       wm.key(std::get<some::data::L>(DATA)); });
-    ev.init_button([&wm](const some::data::T& DATA) { 
+    ev.init_button([&wm](some::data::T const& DATA) { 
       wm.button(std::get<some::data::L>(DATA)); });
-    ev.init_motion([&wm](const some::data::T& DATA) { 
+    ev.init_motion([&wm](some::data::T const& DATA) { 
       wm.motion(std::get<some::data::L>(DATA)); });
-    ev.init_crossing([&wm](const some::data::T& DATA) { 
+    ev.init_crossing([&wm](some::data::T const& DATA) { 
       wm.crossing(std::get<some::data::L>(DATA)); });
-    ev.init_expose([&wm](const some::data::T& DATA) { 
+    ev.init_expose([&wm](some::data::T const& DATA) { 
       wm.expose(std::get<some::data::L>(DATA)); });
-    ev.init_unmap([&wm](const some::data::T& DATA) { 
+    ev.init_unmap([&wm](some::data::T const& DATA) { 
       wm.unmap(std::get<some::data::L>(DATA)); });
-    ev.init_map([&wm](const some::data::T& DATA) { 
+    ev.init_map([&wm](some::data::T const& DATA) { 
       wm.map(std::get<some::data::L>(DATA)); });
-    ev.init_maprequest([&wm](const some::data::T& DATA) { 
+    ev.init_maprequest([&wm](some::data::T const& DATA) { 
       wm.maprequest(std::get<some::data::L>(DATA)); });
-    ev.init_configure([&wm](const some::data::T& DATA) { 
+    ev.init_configure([&wm](some::data::T const& DATA) { 
       wm.configure(std::get<some::data::L>(DATA)); });
-    ev.init_configurerequest([&wm](const some::data::T& DATA) { 
+    ev.init_configurerequest([&wm](some::data::T const& DATA) { 
       wm.configurerequest(std::get<some::data::L>(DATA)); });
-    ev.init_property([&wm](const some::data::T& DATA) { 
+    ev.init_property([&wm](some::data::T const& DATA) { 
       wm.property(std::get<some::data::L>(DATA)); });
-    ev.init_clientmessage([&wm](const some::data::T& DATA) { 
+    ev.init_clientmessage([&wm](some::data::T const& DATA) { 
       wm.clientmessage(std::get<some::data::Msg>(DATA)); });
     while (sig.none()) {
       if (ev.next()) {
         static some::data::T data_var;
-        const auto CALL { ev.call(data_var) };
+        auto const CALL { ev.call(data_var) };
         CALL(data_var);
       }
 
@@ -71,7 +72,7 @@ int main(const int ARGC, const char* ARGV[]) {
     }
 
     dpy.deinit();
-  } catch (const std::exception& E) {
+  } catch (std::exception const& E) {
     std::cerr << E.what() << "\n";
     return -1;
   }

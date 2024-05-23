@@ -18,8 +18,8 @@ FLAGS=-std=c++23 -Wall -fPIE -fPIC -pedantic
 
 REL_CFLAGS=-O3
 DBG_CFLAGS=-O1 -g -fno-omit-frame-pointer
-REL_LDFLAGS=-s
-DBG_LDFLAGS=
+REL_LFLAGS=-s
+DBG_LFLAGS=
 REL=dopenboxwm.bin
 DBG=dopenboxwm~dbg.bin
 
