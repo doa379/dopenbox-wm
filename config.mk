@@ -14,7 +14,7 @@ LIBSPATH= -L . -Wl,-R . '-Wl,-R$$ORIGIN' \
 LIBS=-l X11 -l Xinerama -l dbus-1
 
 CPPC=clang++
-FLAGS=-std=c++23 -Wall -fPIE -fPIC -pedantic
+FLAGS=-std=c++20 -Wall -fPIE -fPIC -pedantic
 
 REL_CFLAGS=-O3
 DBG_CFLAGS=-O1 -g -fno-omit-frame-pointer

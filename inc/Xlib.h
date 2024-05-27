@@ -1,10 +1,10 @@
 #pragma once
 
 #include <X11/Xlib.h>
+#include <X11/extensions/Xinerama.h>
 #include <array>
 #include <functional>
 #include <variant>
-#include <cwchar>
 
 namespace some {
   struct Display {
@@ -15,15 +15,17 @@ namespace some {
     ~Display() = default;
     static ::Display* ptr;
     static void init();
-    static void deinit();
-    int connection() const noexcept { return ConnectionNumber(ptr); }
+    static void deinit() noexcept;
+    int connection() const noexcept;
   };
   
   namespace data {
     struct L {
       long D[12];
-      long& operator[](std::size_t const I) noexcept { return D[I]; }
-      long operator[](std::size_t const I) const noexcept { return D[I]; }
+      long& operator[](std::size_t const I) noexcept {
+        return D[I]; }
+      long operator[](std::size_t const I) const noexcept {
+        return D[I]; }
     };
 
     struct Msg : public L {
@@ -115,7 +117,7 @@ namespace some {
 
   class Sys {
     public:
-    void spawn(char const[]) const noexcept;
+    void spawn(char const []) const noexcept;
     private:
     static Display const dpy;
   };
@@ -135,45 +137,19 @@ namespace some {
     };
     
     static constexpr auto PARMASK {
-      SubstructureRedirectMask | SubstructureNotifyMask
+      SubstructureRedirectMask |
+      SubstructureNotifyMask
     };
     
-    struct Atom {
-      ::Atom WM_PROTOCOLS;
-      ::Atom WM_NAME;
-      ::Atom WM_DELETE_WINDOW;
-      ::Atom WM_STATE;
-      ::Atom WM_TAKE_FOCUS;
-      ::Atom WM_ICON_NAME;
-      ::Atom NET_SUPPORTED;
-      ::Atom NET_WM_STATE;
-      ::Atom NET_WM_NAME;
-      ::Atom NET_WM_WINDOW_OPACITY;
-      ::Atom NET_ACTIVE_WINDOW;
-      ::Atom NET_WM_STATE_FULLSCREEN;
-      ::Atom NET_WM_WINDOW_TYPE;
-      ::Atom NET_WM_WINDOW_TYPE_DIALOG;
-      ::Atom NET_CLIENT_LIST;
-      ::Atom NET_NUMBER_OF_DESKTOPS;
-      ::Atom NET_WM_DESKTOP;
-      ::Atom NET_CURRENT_DESKTOP;
-      ::Atom NET_SHOWING_DESKTOP;
-      ::Atom NET_WM_ICON;
-      ::Atom NET_WM_ICON_NAME;
-    };
-      
     class DefaultXError {
       public:
-      DefaultXError() { ::XSetErrorHandler(handler); }
+      DefaultXError() noexcept;
       ~DefaultXError() = default;
-      bool get() { return xerror; }
+      bool get() const noexcept;
       private:
       static bool xerror;
-      static int handler(::Display*, ::XErrorEvent* xev) {
-        xerror = (xev->error_code == BadAccess ||
-          xev->error_code == BadWindow);
-        return 0;
-      };
+      static int handler(::Display*, ::XErrorEvent*) 
+      noexcept;
     };
 
     using Win = ::Window;
@@ -183,15 +159,22 @@ namespace some {
       int dpy_width() const noexcept;
       int dpy_height() const noexcept;
       int depth() const noexcept;
-      Win create_win(Win const, int const, int const) const noexcept;
+      Win create_win(Win const, int const, int const)
+      const noexcept;
       void destroy_win(Win const) const noexcept;
       void map_win(Win const) const noexcept;
       void unmap_win(Win const) const noexcept;
-      void set_winbg(Win const, std::size_t const) const noexcept;
-      void set_bdrcolor(Win const, std::size_t const) const noexcept;
-      void set_bdrwidth(Win const, int const) const noexcept;
-      void move_win(Win const, int const, int const) const noexcept;
-      void repar_win(Win const, Win const, int const, int const) const noexcept;
+      void set_winbg(Win const, std::size_t const)
+      const noexcept;
+      void set_bdrcolor(Win const, std::size_t const) 
+      const noexcept;
+      void set_bdrwidth(Win const, int const)
+      const noexcept;
+      void move_win(Win const, int const, int const)
+      const noexcept;
+      void repar_win(Win const, Win const, int const, int const) 
+      const noexcept;
+      ::GC default_gc() const noexcept;
       private:
       static Display const dpy;
     };
@@ -201,15 +184,22 @@ namespace some {
       void select(Win const, long const) const noexcept;
       void set_focus(Win const) const noexcept;
       unsigned modmask() const noexcept;
-      ::KeyCode keysym_keycode(::KeySym const) const noexcept;
-      ::KeySym keycode_keysym(::KeyCode const) const noexcept;
-      void grab_key(Win const, int const, int const) const noexcept;
-      void ungrab_key(Win const, int const, int const) const noexcept;
+      ::KeyCode keysym_keycode(::KeySym const)
+      const noexcept;
+      ::KeySym keycode_keysym(::KeyCode const)
+      const noexcept;
+      void grab_key(Win const, int const, int const)
+      const noexcept;
+      void ungrab_key(Win const, int const, int const)
+      const noexcept;
       void ungrab_allkey(Win const) const noexcept;
-      void grab_btn(Win const, int const, int const) const noexcept;
-      void ungrab_btn(Win const, int const, int const) const noexcept;
+      void grab_btn(Win const, int const, int const)
+      const noexcept;
+      void ungrab_btn(Win const, int const, int const)
+      const noexcept;
       void ungrab_pointer() const noexcept;
-      void warp_pointer(Win const, int const, int const) const noexcept;
+      void warp_pointer(Win const, int const, int const)
+      const noexcept;
       private:
       static Display const dpy;
     };
@@ -218,10 +208,9 @@ namespace some {
       public:
       WinAttr() = delete;
       WinAttr(Win const);
-      bool override_redirect() const noexcept { return wa.override_redirect; }
-      std::pair<int, int> size() const noexcept { 
-        return { wa.width, wa.height }; }
-      std::pair<int, int> pos() const noexcept { return { wa.x, wa.y }; }
+      bool override_redirect() const noexcept;
+      std::pair<int, int> size() const noexcept;
+      std::pair<int, int> pos() const noexcept;
       private:
       static Display const dpy;
       ::XWindowAttributes wa;
@@ -240,8 +229,45 @@ namespace some {
 
     class Xinerama {
       public:
+      Xinerama();
+      ~Xinerama();
+      int number() const noexcept;
+      // { pos, size }
+      std::pair<std::pair<int, int>, std::pair<int, int>>
+      query(std::size_t const) const noexcept;
       private:
       static Display const dpy;
+      ::XineramaScreenInfo* screeninfo;
+      int n;
+    };
+    
+    class Prop {
+      public:
+      Prop() noexcept;
+      void change_state(Win const) const noexcept;
+      private:
+      static Display const dpy;
+      ::Atom wm_protocols;
+      ::Atom wm_name;
+      ::Atom wm_delete_window;
+      ::Atom wm_state;
+      ::Atom wm_take_focus;
+      ::Atom wm_icon_name;
+      ::Atom net_supported;
+      ::Atom net_wm_state;
+      ::Atom net_wm_name;
+      ::Atom net_wm_window_opacity;
+      ::Atom net_active_window;
+      ::Atom net_wm_state_fullscreen;
+      ::Atom net_wm_window_type;
+      ::Atom net_wm_window_type_dialog;
+      ::Atom net_client_list;
+      ::Atom net_number_of_desktops;
+      ::Atom net_wm_desktop;
+      ::Atom net_current_desktop;
+      ::Atom net_showing_desktop;
+      ::Atom net_wm_icon;
+      ::Atom net_wm_icon_name;
     };
 
     namespace draw {
@@ -262,14 +288,29 @@ namespace some {
 
       };
 
+      class Gc {
+        public:
+        Gc() = delete;
+        Gc(Win const) noexcept;
+        ~Gc();
+        ::GC get() const noexcept;
+        private:
+        static Display const dpy;
+        ::GC gc;
+      };
+
       class Pixmap {
         public:
         Pixmap() = delete;
-        Pixmap(Win const, int const, int const, int const) noexcept;
+        Pixmap(Win const, int const, int const, int const)
+        noexcept;
         ~Pixmap();
         void fill(Win const, ::GC const, std::size_t, 
         int const, int const, int const, int const) 
         const noexcept;
+        void draw_string(char const [], 
+        Win const, ::GC const, std::size_t const,
+        int const, int const) const noexcept;
         private:
         static Display const dpy;
         ::Drawable drawable;

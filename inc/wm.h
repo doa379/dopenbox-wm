@@ -4,13 +4,16 @@
 #include <tuple>
 
 #include "Xlib.h"
+#include "palette.h"
 
 namespace some {
   template<typename S, typename T>
   struct Dim : private std::pair<S, T> {
     Dim() : std::pair<S, T> { } { }
-    Dim(S const& s, T const& t) : std::pair<S, T> { s, t } { }
-    Dim(std::pair<S, T> const& p) : std::pair<S, T> { p } { }
+    Dim(S const& s, T const& t) : 
+      std::pair<S, T> { s, t } { }
+    Dim(std::pair<S, T> const& p) :
+      std::pair<S, T> { p } { }
     S& x() noexcept { return this->first; }
     S x() const noexcept { return this->first; }
     S& w() noexcept { return this->first; }
@@ -24,12 +27,10 @@ namespace some {
   struct Client {
     xlib::Win win;
     xlib::Win parw;
-    //::GC gc;
     Dim<int, int> pos;
     Dim<int, int> size;
     unsigned mode;
-    int sel;
-    int ft;
+    bool sel { };
   };
 
   struct Wk {
@@ -41,18 +42,6 @@ namespace some {
   struct Mon {
     Dim<int, int> pos;
     Dim<int, int> size;
-  };
-
-  class Draw {
-    public:
-    Draw();
-    ~Draw();
-    void panel() const noexcept;
-    private:
-    xlib::Xlib const xlib;
-    xlib::Win const rootw;
-    xlib::draw::Font const font;
-    xlib::draw::Pixmap const rootp;
   };
 
   class Wm {
@@ -70,9 +59,13 @@ namespace some {
     void prev_client() noexcept;
     void next_client() noexcept;
     void kill_client();
+    void seltoggle() noexcept;
+    void selclear() noexcept;
+    void refresh_panel() const noexcept;
+    void change_root_state() const noexcept;
     protected:
     xlib::Xlib const xlib;
-    xlib::Win const rootw;
+    xlib::Win const rootwin;
     xlib::Input const input;
     xlib::draw::Font const font;
     std::unordered_map<int, int> KCODE_KSYM;
@@ -82,25 +75,25 @@ namespace some {
     std::size_t currwk { };
     std::vector<Mon> MON;
     std::size_t mon { };
-    Draw const draw;
-    //::GC wkgc;
-    //::GC statusgc;
     private:
     enum colors { BG, SEL, FG };
+    static auto constexpr ROOTBG { Gray70 };
+    xlib::Prop const atom;
+    xlib::draw::Pixmap const rootpix;
   };
   
   struct Recv : private Wm {
-    void key(data::L const&);
-    void button(data::L const&) const;
-    void motion(data::L const&) const;
-    void crossing(data::L const&) const;
-    void expose(data::L const&) const;
-    void unmap(data::L const&);
-    void map(data::L const&) const;
-    void maprequest(data::L const&);
-    void configure(data::L const&) const;
-    void configurerequest(data::L const&) const;
-    void property(data::L const&) const;
-    void clientmessage(data::Msg const&) const;
+    void key(data::L const&) noexcept;
+    void button(data::L const&) const noexcept;
+    void motion(data::L const&) const noexcept;
+    void crossing(data::L const&) const noexcept;
+    void expose(data::L const&) const noexcept;
+    void unmap(data::L const&) noexcept;
+    void map(data::L const&) const noexcept;
+    void maprequest(data::L const&) noexcept;
+    void configure(data::L const&) const noexcept;
+    void configurerequest(data::L const&) const noexcept;
+    void property(data::L const&) const noexcept;
+    void clientmessage(data::Msg const&) const noexcept;
   };
 }

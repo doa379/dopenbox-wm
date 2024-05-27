@@ -102,7 +102,8 @@ namespace wmconf {
   static auto constexpr SLOPPY_FOCUS { true };
   static auto constexpr BDRPX { 2 };
   // Color Scheme: COLORS[] { BG, Selected BG, FG }
-  static std::size_t constexpr COLORS[] { Cyan10, Cyan70, Gray10 };
+  static std::size_t constexpr COLORS[] { 
+    Cyan10, Cyan50, Gray10 };
 
   enum class Calls : std::size_t {
     // Declare pool of calls
@@ -130,15 +131,14 @@ namespace wmconf {
     MON9,
     UNMAPALL,
     MAPALL,
-    KILL,
     SWFOCUS,
     TOGGLEMODE,
     PREVCLI,
     NEXTCLI,
+    KILL,
     SELTOGGLE,
     SELCLEAR,
     QUIT,
-    SELECT,
     RESIZE,
     STATE,
   };
@@ -194,7 +194,6 @@ namespace wmconf {
 
   static Input const BTN[] {
     // Mouse Bindings
-    { 0, Button1, Calls::SELECT },
     { Mod4Mask, Button3, Calls::RESIZE },
   };
 }
