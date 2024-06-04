@@ -1,8 +1,9 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <unistd.h>
-#include <stdexcept>
 #include <cstring>
+#include <stdexcept>
+#include <utility>
 
 #include "../inc/Xlib.h"
 
@@ -30,7 +31,7 @@ const noexcept {
 
 some::Ev::Ev() {
   for (auto& f : F)
-    f = [](data::T&) { return [](data::T const&) { }; };
+    f = { [] { }, [](Data const&) { } };
 }
 
 bool
@@ -45,53 +46,57 @@ const noexcept {
   ::XSync(dpy.ptr, false);
 }
 
-some::Ev::S
-some::Ev::call(data::T& data_var) 
+void
+some::Ev::call() 
 const noexcept {
-  return F[xev.type](data_var);
+  auto const ts { F[xev.type] };
+  std::get<T>(ts)();
+  std::get<S>(ts)(data);
 }
 
 void
 some::Ev::init_key(S const& f)
 noexcept {
-  F[KeyPress] = [&, f](data::T& data) { 
-    return key(f, std::get<data::L>(data)); };
+  F[KeyPress] = { [this] { key(); }, f };
+
 }
 
-some::Ev::S
-some::Ev::key(S const& f, data::L& data) 
-const noexcept {
+void
+some::Ev::key() 
+noexcept {
   data[0] = xev.xkey.state;
   data[1] = xev.xkey.keycode;
-  return f;
+  /*
+  std::memcpy(data.buffer, 
+    &xev.xkey + sizeof(::XAnyEvent) - sizeof(::Window),
+    sizeof xev.xkey - sizeof(::XAnyEvent) + 
+      sizeof(::Window));
+  */
 }
 
 void
 some::Ev::init_button(S const& f)
 noexcept {
-  F[ButtonPress] = [&, f](data::T& data) { 
-    return button(f, std::get<data::L>(data)); };
+  F[ButtonPress] =  { [this] { button(); }, f };
 }
 
-some::Ev::S
-some::Ev::button(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::button()
+noexcept {
   data[0] = xev.xbutton.window;
   data[1] = xev.xbutton.state;
   data[2] = xev.xbutton.button;
-  return f;
 }
 
 void
 some::Ev::init_motion(S const& f)
 noexcept {
-  F[MotionNotify] = [&, f](data::T& data) { 
-    return motion(f, std::get<data::L>(data)); };
+  F[MotionNotify] = { [this] { motion(); }, f };
 }
 
-some::Ev::S
-some::Ev::motion(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::motion()
+noexcept {
   data[0] = xev.xmotion.window;
   data[1] = xev.xmotion.root;
   data[2] = xev.xmotion.subwindow;
@@ -103,63 +108,57 @@ const noexcept {
   data[8] = xev.xmotion.state;
   data[9] = xev.xmotion.is_hint;
   data[10] = xev.xmotion.same_screen;
-  return f;
 }
 
 void
 some::Ev::init_crossing(S const& f)
 noexcept {
-  F[EnterNotify] = [&, f](data::T& data) { 
-    return crossing(f, std::get<data::L>(data)); };
+  F[EnterNotify] = { [this] { crossing(); }, f };
 }
 
-some::Ev::S
-some::Ev::crossing(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::crossing()
+noexcept {
   data[0] = xev.xcrossing.window;
-  return f;
 }
 
 void
 some::Ev::init_focuschange(S const& f)
 noexcept {
-  F[FocusIn] = F[FocusOut] = [&, f](data::T& data) { 
-    return focuschange(f, std::get<data::L>(data)); };
+  F[FocusIn] = F[FocusOut] = { 
+    [this] { focuschange(); }, f
+  };
 }
 
-some::Ev::S
-some::Ev::focuschange(S const& f, data::L& data) 
-const noexcept {
+void
+some::Ev::focuschange() 
+noexcept {
   data[0] = xev.xfocus.window;
   data[1] = xev.xfocus.mode;
   data[2] = xev.xfocus.detail;
-  return f;
 }
 
 void
 some::Ev::init_expose(S const& f)
 noexcept {
-  F[Expose] = [&, f](data::T& data) { 
-    return expose(f, std::get<data::L>(data)); };
+  F[Expose] = { [this] { expose(); }, f };
 }
 
-some::Ev::S
-some::Ev::expose(S const& f, data::L& data) 
-const noexcept {
+void
+some::Ev::expose() 
+noexcept {
   data[0] = xev.xexpose.window;
-  return f;
 }
 
 void
 some::Ev::init_graphicsexpose(S const& f)
 noexcept {
-  F[GraphicsExpose] = [&, f](data::T& data) { 
-    return graphicsexpose(f, std::get<data::L>(data)); };
+  F[GraphicsExpose] = { [this] { graphicsexpose(); }, f };
 }
 
-some::Ev::S
-some::Ev::graphicsexpose(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::graphicsexpose()
+noexcept {
   data[0] = xev.xgraphicsexpose.drawable;
   data[1] = xev.xgraphicsexpose.x;
   data[2] = xev.xgraphicsexpose.y;
@@ -168,49 +167,43 @@ const noexcept {
   data[5] = xev.xgraphicsexpose.count;
   data[6] = xev.xgraphicsexpose.major_code;
   data[7] = xev.xgraphicsexpose.minor_code;
-  return f;
 }
 
 void
 some::Ev::init_noexpose(S const& f) 
 noexcept {
-  F[NoExpose] = [&, f](data::T& data) { 
-    return noexpose(f, std::get<data::L>(data)); };
+  F[NoExpose] = { [this] { noexpose(); }, f };
 }
 
-some::Ev::S
-some::Ev::noexpose(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::noexpose()
+noexcept {
   data[0] = xev.xnoexpose.drawable;
   data[1] = xev.xnoexpose.major_code;
   data[2] = xev.xnoexpose.minor_code;
-  return f;
 }
 
 void
 some::Ev::init_visibility(S const& f)
 noexcept {
-  F[VisibilityNotify] = [&, f](data::T& data) { 
-    return visibility(f, std::get<data::L>(data)); };
+  F[VisibilityNotify] = { [this] { visibility(); }, f };
 }
 
-some::Ev::S
-some::Ev::visibility(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::visibility()
+noexcept {
   data[0] = xev.xvisibility.window;
-  return f;
 }
 
 void
 some::Ev::init_createwindow(S const& f)
 noexcept {
-  F[CreateNotify] = [&, f](data::T& data) { 
-    return createwindow(f, std::get<data::L>(data)); };
+  F[CreateNotify] = { [this] { createwindow(); }, f };
 }
 
-some::Ev::S
-some::Ev::createwindow(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::createwindow()
+noexcept {
   data[0] = xev.xcreatewindow.parent;
   data[1] = xev.xcreatewindow.window;
   data[2] = xev.xcreatewindow.x;
@@ -219,100 +212,88 @@ const noexcept {
   data[5] = xev.xcreatewindow.height;
   data[6] = xev.xcreatewindow.border_width;
   data[7] = xev.xcreatewindow.override_redirect;
-  return f;
 }
 
 void
 some::Ev::init_destroywindow(S const& f)
 noexcept {
-  F[DestroyNotify] = [&, f](data::T& data) { 
-    return destroywindow(f, std::get<data::L>(data)); };
+  F[DestroyNotify] = { [this] { destroywindow(); }, f };
 }
 
-some::Ev::S
-some::Ev::destroywindow(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::destroywindow()
+noexcept {
   data[0] = xev.xdestroywindow.event;
   data[1] = xev.xdestroywindow.window;
-  return f;
 }
 
 void
 some::Ev::init_unmap(S const& f)
 noexcept {
-  F[UnmapNotify] = [&, f](data::T& data) { 
-    return unmap(f, std::get<data::L>(data)); };
+  F[UnmapNotify] = { [this] { unmap(); }, f };
 }
 
-some::Ev::S
-some::Ev::unmap(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::unmap()
+noexcept {
   data[0] = xev.xunmap.event;
   data[1] = xev.xunmap.window;
   data[2] = xev.xunmap.from_configure;
-  return f;
 }
 
 void
 some::Ev::init_map(S const& f)
 noexcept {
-  F[MapNotify] = [&, f](data::T& data) { 
-    return map(f, std::get<data::L>(data)); };
+  F[MapNotify] = { [this] { map(); }, f };
 }
 
-some::Ev::S
-some::Ev::map(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::map()
+noexcept {
   data[0] = xev.xmap.event;
   data[1] = xev.xmap.window;
   data[2] = xev.xmap.override_redirect;
-  return f;
 }
 
 void
 some::Ev::init_maprequest(S const& f)
 noexcept {
-  F[MapRequest] = [&, f](data::T& data) { 
-    return maprequest(f, std::get<data::L>(data)); };
+  F[MapRequest] = { [this] { maprequest(); }, f };
 }
 
-some::Ev::S
-some::Ev::maprequest(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::maprequest()
+noexcept {
   data[0] = xev.xmaprequest.parent;
   data[1] = xev.xmaprequest.window;
-  return f;
 }
 
 void
 some::Ev::init_reparent(S const& f)
 noexcept {
-  F[ReparentNotify] = [&, f](data::T& data) { 
-    return reparent(f, std::get<data::L>(data)); };
+  F[ReparentNotify] = { [this] { reparent(); }, f };
 }
 
-some::Ev::S
-some::Ev::reparent(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::reparent()
+noexcept {
   data[0] = xev.xreparent.event;
   data[1] = xev.xreparent.window;
   data[2] = xev.xreparent.parent;
   data[3] = xev.xreparent.x;
   data[4] = xev.xreparent.y;
   data[5] = xev.xreparent.override_redirect;
-  return f;
 }
 
 void
 some::Ev::init_configure(S const& f)
 noexcept {
-  F[ConfigureNotify] = [&, f](data::T& data) { 
-    return configure(f, std::get<data::L>(data)); };
+  F[ConfigureNotify] = { [this] { configure(); }, f };
 }
 
-some::Ev::S
-some::Ev::configure(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::configure()
+noexcept {
   data[0] = xev.xconfigure.event;
   data[1] = xev.xconfigure.window;
   data[2] = xev.xconfigure.x;
@@ -322,50 +303,46 @@ const noexcept {
   data[6] = xev.xconfigure.border_width;
   data[7] = xev.xconfigure.above;
   data[8] = xev.xconfigure.override_redirect;
-  return f;
 }
 
 void
 some::Ev::init_gravity(S const& f) noexcept {
-  F[GravityNotify] = [&, f](data::T& data) { 
-    return gravity(f, std::get<data::L>(data)); };
+  F[GravityNotify] = { [this] { gravity(); }, f };
 }
 
-some::Ev::S
-some::Ev::gravity(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::gravity()
+noexcept {
   data[0] = xev.xgravity.event;
   data[1] = xev.xgravity.window;
   data[2] = xev.xgravity.x;
   data[3] = xev.xgravity.y;
-  return f;
 }
 
 void
 some::Ev::init_resizerequest(S const& f)
 noexcept {
-  F[ResizeRequest] = [&, f](data::T& data) { 
-    return resizerequest(f, std::get<data::L>(data)); };
+  F[ResizeRequest] = { [this] { resizerequest(); }, f };
 }
 
-some::Ev::S
-some::Ev::resizerequest(S const& f, data::L& data) 
-const noexcept {
+void
+some::Ev::resizerequest() 
+noexcept {
   data[0] = xev.xresizerequest.window;
   data[1] = xev.xresizerequest.width;
   data[2] = xev.xresizerequest.height;
-  return f;
 }
 
 void
 some::Ev::init_configurerequest(S const& f) 
 noexcept {
-  F[ConfigureRequest] = [&, f](data::T& data) { 
-    return configurerequest(f, std::get<data::L>(data)); };
+  F[ConfigureRequest] = { 
+    [this] { configurerequest(); }, f
+  };
 }
 
-some::Ev::S
-some::Ev::configurerequest(S const& f, data::L& data) 
+void
+some::Ev::configurerequest() 
 const noexcept {
   ::XConfigureRequestEvent const& conf { 
     xev.xconfigurerequest };
@@ -373,176 +350,157 @@ const noexcept {
     conf.x, conf.y, conf.width, conf.height,
     conf.border_width, conf.above, conf.detail };
   ::XConfigureWindow(dpy.ptr, conf.window, conf.value_mask, &wc);
-  return f;
 }
 
 void
 some::Ev::init_circulate(S const& f)
 noexcept {
-  F[CirculateNotify] = [&, f](data::T& data) { 
-    return circulate(f, std::get<data::L>(data)); };
+  F[CirculateNotify] = { [this] { circulate(); }, f };
 }
 
-some::Ev::S
-some::Ev::circulate(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::circulate()
+noexcept {
   data[0] = xev.xcirculate.event;
   data[1] = xev.xcirculate.window;
   data[2] = xev.xcirculate.place;
-  return f;
 }
 
 void
 some::Ev::init_circulaterequest(S const& f)
 noexcept {
-  F[CirculateNotify] = [&, f](data::T& data) { 
-    return circulaterequest(f, std::get<data::L>(data)); };
+  F[CirculateNotify] = { 
+    [this] { circulaterequest(); }, f
+  };
 }
 
-some::Ev::S
-some::Ev::circulaterequest(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::circulaterequest()
+noexcept {
   data[0] = xev.xcirculaterequest.parent;
   data[1] = xev.xcirculaterequest.window;
   data[2] = xev.xcirculaterequest.place;
-  return f;
 }
 
 void
 some::Ev::init_property(S const& f)
 noexcept {
-  F[PropertyNotify] = [&, f](data::T& data) { 
-    return property(f, std::get<data::L>(data)); };
+  F[PropertyNotify] = { [this] { property(); }, f };
 }
 
-some::Ev::S
-some::Ev::property(S const& f, data::L& data) 
-const noexcept {
+void
+some::Ev::property() 
+noexcept {
   data[0] = xev.xproperty.window;
-  return f;
 }
 
 void
 some::Ev::init_selectionclear(S const& f)
 noexcept {
-  F[SelectionClear] = [&, f](data::T& data) { 
-    return selectionclear(f, std::get<data::L>(data)); };
+  F[SelectionClear] = { [this] { selectionclear(); }, f };
 }
 
-some::Ev::S
-some::Ev::selectionclear(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::selectionclear()
+noexcept {
   data[0] = xev.xselectionclear.window;
   data[1] = xev.xselectionclear.selection;
   data[2] = xev.xselectionclear.time;
-  return f;
 }
 
 void
 some::Ev::init_selectionrequest(S const& f)
 noexcept {
-  F[SelectionRequest] = [&, f](data::T& data) { 
-    return selectionrequest(f, std::get<data::L>(data)); };
+  F[SelectionRequest] = {
+    [this] { selectionrequest(); }, f
+  };
 }
 
-some::Ev::S
-some::Ev::selectionrequest(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::selectionrequest()
+noexcept {
   data[0] = xev.xselectionrequest.owner;
   data[1] = xev.xselectionrequest.requestor;
   data[2] = xev.xselectionrequest.selection;
   data[3] = xev.xselectionrequest.target;
   data[4] = xev.xselectionrequest.property;
   data[5] = xev.xselectionrequest.time;
-  return f;
 }
 
 void
 some::Ev::init_selection(S const& f)
 noexcept {
-  F[SelectionNotify] = [&, f](data::T& data) { 
-    return selection(f, std::get<data::L>(data)); };
+  F[SelectionNotify] = { [this] { selection(); }, f };
 }
 
-some::Ev::S
-some::Ev::selection(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::selection()
+noexcept {
   data[0] = xev.xselection.requestor;
   data[1] = xev.xselection.selection;
   data[2] = xev.xselection.target;
   data[3] = xev.xselection.property;
   data[4] = xev.xselection.time;
-  return f;
 }
 
 void
 some::Ev::init_colormap(S const& f)
 noexcept {
-  F[ColormapNotify] = [&, f](data::T& data) { 
-    return colormap(f, std::get<data::L>(data)); };
+  F[ColormapNotify] = { [this] { colormap(); }, f };
 }
 
-some::Ev::S
-some::Ev::colormap(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::colormap()
+noexcept {
   data[0] = xev.xcolormap.window;
   data[1] = xev.xcolormap.colormap;
   data[2] = *((bool*) &xev.xcolormap + 
     sizeof(XColormapEvent) - sizeof(int));
+  //data[2] = xev.xcolormap.new;
   data[3] = xev.xcolormap.state;
-  return f;
 }
 
 void
 some::Ev::init_clientmessage(S const& f)
 noexcept {
-  F[ClientMessage] = [&, f](data::T& data) { 
-    return clientmessage(f, std::get<data::Msg>(data)); };
+  F[ClientMessage] = { [this] { clientmessage(); }, f };
 }
 
-some::Ev::S
-some::Ev::clientmessage(S const& f, data::Msg& data) 
-const noexcept {
+void
+some::Ev::clientmessage() 
+noexcept {
   data[0] = xev.xclient.window;
   data[1] = xev.xclient.message_type;
-  std::copy(xev.xclient.data.b, 
-    // !!Warning flaw: This C union may not biject with C++ union!!
-    xev.xclient.data.b + sizeof(data::Msg) - 
-      sizeof(data::L), data.B);
-  return f;
+  std::memcpy(&data.msg, &xev.xclient.data, 
+    sizeof data.msg);
 }
 
 void 
 some::Ev::init_mapping(S const& f)
 noexcept {
-  F[MappingNotify] = [&, f](data::T& data) { 
-    return mapping(f, std::get<data::L>(data)); };
+  F[MappingNotify] = { [this] { mapping(); }, f };
 }
 
-some::Ev::S
-some::Ev::mapping(S const& f, data::L& data)
-const noexcept {
+void
+some::Ev::mapping()
+noexcept {
   data[0] = xev.xmapping.request;
   data[1] = xev.xmapping.first_keycode;
   data[2] = xev.xmapping.count;
-  return f;
 }
 
 void
 some::Ev::init_keymap(S const& f)
 noexcept {
-  F[KeymapNotify] = [&, f](data::T& data) { 
-    return keymap(f, std::get<data::Keymap>(data)); };
+  F[KeymapNotify] = { [this] { keymap(); }, f };
 }
 
-some::Ev::S
-some::Ev::keymap(S const& f, data::Keymap& data)
-const noexcept {
+void
+some::Ev::keymap()
+noexcept {
   data[0] = xev.xkeymap.window;
-  std::copy(xev.xkeymap.key_vector, 
-    xev.xkeymap.key_vector + sizeof(data::Keymap) - sizeof(data::L),
-      data.KEYMAP_VECTOR);
-  return f;
+  std::memcpy(data.KEYMAP_VECTOR, xev.xkeymap.key_vector,
+    sizeof data.KEYMAP_VECTOR);
 }
 
 void
@@ -627,6 +585,12 @@ const noexcept {
   ::XUnmapWindow(dpy.ptr, win);
 }
 
+void
+some::xlib::Xlib::iconify_win(Win const win)
+const noexcept {
+  ::XIconifyWindow(dpy.ptr, win, DefaultScreen(dpy.ptr));
+}
+
 void 
 some::xlib::Xlib::set_winbg(Win const win, 
 std::size_t const col) 
@@ -700,13 +664,6 @@ const noexcept {
 some::xlib::Input::keysym_keycode(::KeySym const ksym) 
 const noexcept {
   return ::XKeysymToKeycode(dpy.ptr, ksym);
-}
-
-::KeySym
-some::xlib::Input::keycode_keysym(::KeyCode const kcode)
-const noexcept {
-  /* Depr. */
-  return ::XKeycodeToKeysym(dpy.ptr, kcode, 0);
 }
 
 void 
@@ -830,51 +787,51 @@ const noexcept {
 }
 
 some::xlib::Prop::Prop() noexcept :
-  wm_protocols { 
-    ::XInternAtom(dpy.ptr, "WM_PROTOCOLS", false) },
-  wm_name { ::XInternAtom(dpy.ptr, "WM_NAME", false) },
-  wm_delete_window { 
-    ::XInternAtom(dpy.ptr, "WM_DELETE_WINDOW", false) },
-  wm_state { ::XInternAtom(dpy.ptr, "WM_STATE", false) },
-  wm_take_focus { 
-    ::XInternAtom(dpy.ptr, "WM_TAKE_FOCUS", false) },
-  wm_icon_name {
-    ::XInternAtom(dpy.ptr, "WM_ICON_NAME", false) },
-  net_supported { 
-    ::XInternAtom(dpy.ptr, "_NET_SUPPORTED", false) },
-  net_wm_state { 
-    ::XInternAtom(dpy.ptr, "_NET_WM_STATE", false) },
-  net_wm_name { 
-    ::XInternAtom(dpy.ptr, "_NET_WM_NAME", false) },
-  net_wm_window_opacity {
-    ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_OPACITY", 
-      false) },
-  net_active_window { 
-    ::XInternAtom(dpy.ptr, "_NET_ACTIVE_WINDOW", false) },
-  net_wm_state_fullscreen {
-    ::XInternAtom(dpy.ptr, "_NET_WM_STATE_FULLSCREEN", 
-      false) },
-  net_wm_window_type { 
-    ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_TYPE", false) },
-  net_wm_window_type_dialog {
-    ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_TYPE_DIALOG", 
-      false) },
-  net_client_list { 
-    ::XInternAtom(dpy.ptr, "_NET_CLIENT_LIST", false) },
-  net_number_of_desktops {
-    ::XInternAtom(dpy.ptr, "_NET_NUMBER_OF_DESKTOPS",
-      false) },
-  net_wm_desktop {
-    ::XInternAtom(dpy.ptr, "_NET_WM_DESKTOP", false) },
-  net_current_desktop {
-    ::XInternAtom(dpy.ptr, "_NET_CURRENT_DESKTOP", 
-      false) },
-  net_showing_desktop {
-    ::XInternAtom(dpy.ptr, "_NET_SHOWING_DESKTOP", 
-      false) },
-  net_wm_icon { 
-    ::XInternAtom(dpy.ptr, "_NET_WM_ICON", false) },
-  net_wm_icon_name {
+wm_protocols { 
+  ::XInternAtom(dpy.ptr, "WM_PROTOCOLS", false) },
+wm_name { ::XInternAtom(dpy.ptr, "WM_NAME", false) },
+wm_delete_window { 
+  ::XInternAtom(dpy.ptr, "WM_DELETE_WINDOW", false) },
+wm_state { ::XInternAtom(dpy.ptr, "WM_STATE", false) },
+wm_take_focus { 
+  ::XInternAtom(dpy.ptr, "WM_TAKE_FOCUS", false) },
+wm_icon_name {
+  ::XInternAtom(dpy.ptr, "WM_ICON_NAME", false) },
+net_supported { 
+  ::XInternAtom(dpy.ptr, "_NET_SUPPORTED", false) },
+net_wm_state { 
+  ::XInternAtom(dpy.ptr, "_NET_WM_STATE", false) },
+net_wm_name { 
+  ::XInternAtom(dpy.ptr, "_NET_WM_NAME", false) },
+net_wm_window_opacity {
+  ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_OPACITY", 
+    false) },
+net_active_window { 
+  ::XInternAtom(dpy.ptr, "_NET_ACTIVE_WINDOW", false) },
+net_wm_state_fullscreen {
+  ::XInternAtom(dpy.ptr, "_NET_WM_STATE_FULLSCREEN", 
+    false) },
+net_wm_window_type { 
+  ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_TYPE", false) },
+net_wm_window_type_dialog {
+  ::XInternAtom(dpy.ptr, "_NET_WM_WINDOW_TYPE_DIALOG", 
+    false) },
+net_client_list { 
+  ::XInternAtom(dpy.ptr, "_NET_CLIENT_LIST", false) },
+net_number_of_desktops {
+  ::XInternAtom(dpy.ptr, "_NET_NUMBER_OF_DESKTOPS",
+    false) },
+net_wm_desktop {
+  ::XInternAtom(dpy.ptr, "_NET_WM_DESKTOP", false) },
+net_current_desktop {
+  ::XInternAtom(dpy.ptr, "_NET_CURRENT_DESKTOP", 
+    false) },
+net_showing_desktop {
+  ::XInternAtom(dpy.ptr, "_NET_SHOWING_DESKTOP", 
+    false) },
+net_wm_icon { 
+  ::XInternAtom(dpy.ptr, "_NET_WM_ICON", false) },
+net_wm_icon_name {
     ::XInternAtom(dpy.ptr, "_NET_WM_ICON_NAME", false) }
 { }
 
@@ -917,28 +874,43 @@ const noexcept {
 }
 
 int
-some::xlib::draw::Font::text_width(char const S[])
+some::xlib::draw::Font::text_width(char const S[], 
+std::size_t const len)
 const noexcept {
-  return ::XTextWidth(fn, S, ::strlen(S));
+  return ::XTextWidth(fn, S, len);
 }
 
 int
-some::xlib::draw::Font::text_width16(wchar_t const S[]) 
+some::xlib::draw::Font::text_width16(wchar_t const S[],
+std::size_t const len)
 const noexcept {
-  // Not impl
-  //return ::XTextWidth16(fn, S, ::wcslen(S));
-  return 0;
+  ::XChar2b const s { static_cast<unsigned char>(S[0]), 
+    static_cast<unsigned char>(S[1]) };
+  return ::XTextWidth16(fn, &s, len);
 }
 
 some::xlib::draw::Gc::Gc(Win const win)
 noexcept :
-  gc { ::XCreateGC(dpy.ptr, win, 0, NULL) } {
+gc { ::XCreateGC(dpy.ptr, win, 0, NULL) } {
   ::XSetLineAttributes(dpy.ptr, gc, 1, LineSolid, CapButt,
     JoinMiter);
 }
 
+some::xlib::draw::Gc::Gc(Gc&& gc)
+noexcept :
+gc { std::exchange(gc.gc, nullptr) }
+{ }
+
+some::xlib::draw::Gc&
+some::xlib::draw::Gc::operator=(Gc&& gc)
+noexcept {
+  this->gc = gc.gc;
+  return *this;
+}
+
 some::xlib::draw::Gc::~Gc() {
-  ::XFreeGC(dpy.ptr, gc);
+  if (gc)
+    ::XFreeGC(dpy.ptr, gc);
 }
 
 ::GC
@@ -947,31 +919,117 @@ const noexcept {
   return gc;
 }
 
-some::xlib::draw::Pixmap::Pixmap(Win const win,
-int const w, int const h, int const d) 
-noexcept :
-  drawable { ::XCreatePixmap(dpy.ptr, win, w, h, d) } {
-
-}
-
-some::xlib::draw::Pixmap::~Pixmap() {
-  ::XFreePixmap(dpy.ptr, drawable);
+void
+some::xlib::draw::Gc::set_fg(std::size_t const col)
+const noexcept {
+  ::XSetForeground(dpy.ptr, gc, col);
 }
 
 void
-some::xlib::draw::Pixmap::fill(Win const win, 
-::GC const gc, std::size_t col, int const x, int const y, 
-int const w, int const h)
+some::xlib::draw::Gc::set_bg(std::size_t const col)
 const noexcept {
-  ::XSetForeground(dpy.ptr, gc, col);
+  ::XSetBackground(dpy.ptr, gc, col);
+}
+///////////////////////////////////////////////////////////
+some::xlib::draw::Draw::Draw(Win const win, int const w, 
+int const h, int const d) 
+noexcept :
+win { win },
+drawable { ::XCreatePixmap(dpy.ptr, win, w, h, d) }
+{ }
+
+some::xlib::draw::Draw::Draw(Draw&& draw)
+noexcept :
+win { draw.win },
+drawable { std::exchange(draw.drawable, 0L) }
+{ }
+
+some::xlib::draw::Draw&
+some::xlib::draw::Draw::operator=(Draw&& draw)
+noexcept {
+  win = draw.win;
+  drawable = draw.drawable;
+  return *this;
+}
+
+some::xlib::draw::Draw::~Draw() {
+  if (drawable)
+    ::XFreePixmap(dpy.ptr, drawable);
+}
+
+void
+some::xlib::draw::Draw::fill(::GC const gc, int const x, 
+int const y, int const w, int const h)
+const noexcept {
+  // set color and other props on the gc first
   ::XFillRectangle(dpy.ptr, win, gc, x, y, w, h);
 }
 
 void
-some::xlib::draw::Pixmap::draw_string(char const S[], 
-Win const win, ::GC const gc, std::size_t const col,
+some::xlib::draw::Draw::string(char const S[], 
+std::size_t const len, ::GC const gc, int const x, 
+int const y)
+const noexcept {
+  // set color and other props on the gc first
+  ::XDrawString(dpy.ptr, win, gc, x, y, S, len);
+}
+
+void
+some::xlib::draw::Draw::stipple(::GC const gc, 
+unsigned const d, unsigned const dia, int const w, 
+int const h) const noexcept {
+  for (int i { }; i < w; i += d)
+    for (int j { }; j < h; j += d) {
+      ::XFillArc(dpy.ptr, drawable, gc, 
+        i, j, dia, dia, 0, 360 * 64);
+    }
+      
+  ::XCopyArea(dpy.ptr, drawable, win, gc, 0, 0, w, h, 0, 0);
+}
+
+void
+some::xlib::draw::Draw::set_clip(::GC const gc, 
 int const x, int const y)
 const noexcept {
-  ::XSetForeground(dpy.ptr, gc, col);
-  ::XDrawString(dpy.ptr, win, gc, x, y, S, strlen(S));
+  ::XSetClipMask(dpy.ptr, gc, drawable);
+  ::XSetClipOrigin(dpy.ptr, gc, x, y);
+}
+
+void
+some::xlib::draw::Draw::copy_plane(::GC const gc, 
+Win const win, int const x0, int const y0, int const w, 
+int const h, int const x1, int const y1)
+const noexcept {
+  ::XCopyPlane(dpy.ptr, drawable, win, gc, x0, y0, w, h, x1, y1, 1);
+
+}
+///////////////////////////////////////////////////////////
+some::xlib::draw::Pixmap::Pixmap(Win const win, 
+char const BITS[], unsigned const w, unsigned const h) 
+noexcept :
+win { win },
+pixmap { 
+  ::XCreateBitmapFromData(dpy.ptr, win, BITS, w, h) }
+{ }
+
+some::xlib::draw::Pixmap::~Pixmap() {
+  ::XFreePixmap(dpy.ptr, pixmap);
+}
+
+void
+some::xlib::draw::Pixmap::copy_plane(::GC const gc, 
+int const x0, int const y0, int const w, int const h, 
+int const x , int const y)
+const noexcept {
+  ::XCopyPlane(dpy.ptr, pixmap, win, gc, x0, y0, w, h, x, y, 1);
+}
+///////////////////////////////////////////////////////////
+some::xlib::Hints::Hints() :
+  win_hints { ::XAllocWMHints() } {
+  if (win_hints == nullptr)
+    throw std::runtime_error("Failed to alloc hints");
+}
+
+some::xlib::Hints::~Hints() {
+  ::XFree(win_hints);
 }

@@ -27,7 +27,7 @@ Sig::Sig() {
 
 Sig::~Sig() {
 
-};
+}
 
 int
 main(int const argc, char const* ARGV[]) {
@@ -38,36 +38,34 @@ main(int const argc, char const* ARGV[]) {
     
     some::Recv wm;
     some::Ev ev;
-    ev.init_key([&wm](some::data::T const& data) { 
-      wm.key(std::get<some::data::L>(data)); });
-    ev.init_button([&wm](some::data::T const& data) { 
-      wm.button(std::get<some::data::L>(data)); });
-    ev.init_motion([&wm](some::data::T const& data) { 
-      wm.motion(std::get<some::data::L>(data)); });
-    ev.init_crossing([&wm](some::data::T const& data) { 
-      wm.crossing(std::get<some::data::L>(data)); });
-    ev.init_expose([&wm](some::data::T const& data) { 
-      wm.expose(std::get<some::data::L>(data)); });
-    ev.init_unmap([&wm](some::data::T const& data) { 
-      wm.unmap(std::get<some::data::L>(data)); });
-    ev.init_map([&wm](some::data::T const& data) { 
-      wm.map(std::get<some::data::L>(data)); });
-    ev.init_maprequest([&wm](some::data::T const& data) { 
-      wm.maprequest(std::get<some::data::L>(data)); });
-    ev.init_configure([&wm](some::data::T const& data) { 
-      wm.configure(std::get<some::data::L>(data)); });
-    ev.init_configurerequest([&wm](some::data::T const& data) { 
-      wm.configurerequest(std::get<some::data::L>(data)); });
-    ev.init_property([&wm](some::data::T const& data) { 
-      wm.property(std::get<some::data::L>(data)); });
-    ev.init_clientmessage([&wm](some::data::T const& data) { 
-      wm.clientmessage(std::get<some::data::Msg>(data)); });
+    ev.init_key([&wm](some::Data const& data) { 
+      wm.key(data); });
+    ev.init_button([&wm](some::Data const& data) { 
+      wm.button(data); });
+    ev.init_motion([&wm](some::Data const& data) { 
+      wm.motion(data); });
+    ev.init_crossing([&wm](some::Data const& data) { 
+      wm.crossing(data); });
+    ev.init_expose([&wm](some::Data const& data) { 
+      wm.expose(data); });
+    ev.init_unmap([&wm](some::Data const& data) { 
+      wm.unmap(data); });
+    ev.init_map([&wm](some::Data const& data) { 
+      wm.map(data); });
+    ev.init_maprequest([&wm](some::Data const& data) { 
+      wm.maprequest(data); });
+    ev.init_configure([&wm](some::Data const& data) { 
+      wm.configure(data); });
+    ev.init_configurerequest([&wm](some::Data const& data) { 
+      wm.configurerequest(data); });
+    ev.init_property([&wm](some::Data const& data) { 
+      wm.property(data); });
+    ev.init_clientmessage([&wm](some::Data const& data) { 
+      wm.clientmessage(data); });
+
     while (sig.none()) {
-      if (ev.next()) {
-        static some::data::T data_var;
-        auto const call { ev.call(data_var) };
-        call(data_var);
-      }
+      if (ev.next())
+        ev.call();
 
       ev.sync();
     }

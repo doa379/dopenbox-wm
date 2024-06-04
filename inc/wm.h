@@ -25,11 +25,21 @@ namespace some {
   };
 
   struct Client {
+    Client() = delete;
+    Client(xlib::Win const, xlib::Win const, 
+    Dim<int, int> const&, Dim<int, int> const&, 
+    int const) noexcept;
+    Client(Client const&) = delete;
+    Client(Client&&) noexcept;
+    Client& operator=(Client&&) noexcept;
     xlib::Win win;
     xlib::Win parw;
+    xlib::draw::Gc gc;
+    xlib::draw::Draw draw;
     Dim<int, int> pos;
     Dim<int, int> size;
     unsigned mode;
+    // Remove selection from Client
     bool sel { };
   };
 
@@ -54,16 +64,18 @@ namespace some {
     void map_all() const noexcept;
     void load_wk() noexcept;
     void unload_wk() noexcept;
-    void unfocus(xlib::Win const) const noexcept;
-    void focus(xlib::Win const) const noexcept;
+    void unfocus(Client const&) const noexcept;
+    void focus(Client const&) const noexcept;
     void prev_client() noexcept;
     void next_client() noexcept;
     void kill_client();
     void seltoggle() noexcept;
     void selclear() noexcept;
+    void refresh_root() const noexcept;
     void refresh_panel() const noexcept;
     void change_root_state() const noexcept;
     protected:
+    enum colors { BG, SEL, FG };
     xlib::Xlib const xlib;
     xlib::Win const rootwin;
     xlib::Input const input;
@@ -76,24 +88,25 @@ namespace some {
     std::vector<Mon> MON;
     std::size_t mon { };
     private:
-    enum colors { BG, SEL, FG };
     static auto constexpr ROOTBG { Gray70 };
     xlib::Prop const atom;
-    xlib::draw::Pixmap const rootpix;
+    xlib::draw::Draw const root;
+    xlib::draw::Gc rootgc;
+    std::vector<std::reference_wrapper<Client>> SELC;
   };
   
   struct Recv : private Wm {
-    void key(data::L const&) noexcept;
-    void button(data::L const&) const noexcept;
-    void motion(data::L const&) const noexcept;
-    void crossing(data::L const&) const noexcept;
-    void expose(data::L const&) const noexcept;
-    void unmap(data::L const&) noexcept;
-    void map(data::L const&) const noexcept;
-    void maprequest(data::L const&) noexcept;
-    void configure(data::L const&) const noexcept;
-    void configurerequest(data::L const&) const noexcept;
-    void property(data::L const&) const noexcept;
-    void clientmessage(data::Msg const&) const noexcept;
+    void key(Data const&) noexcept;
+    void button(Data const&) const noexcept;
+    void motion(Data const&) const noexcept;
+    void crossing(Data const&) const noexcept;
+    void expose(Data const&) const noexcept;
+    void unmap(Data const&) noexcept;
+    void map(Data const&) const noexcept;
+    void maprequest(Data const&) noexcept;
+    void configure(Data const&) const noexcept;
+    void configurerequest(Data const&) const noexcept;
+    void property(Data const&) const noexcept;
+    void clientmessage(Data const&) const noexcept;
   };
 }

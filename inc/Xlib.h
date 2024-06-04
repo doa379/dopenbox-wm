@@ -1,10 +1,10 @@
 #pragma once
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/extensions/Xinerama.h>
 #include <array>
 #include <functional>
-#include <variant>
 
 namespace some {
   struct Display {
@@ -19,100 +19,94 @@ namespace some {
     int connection() const noexcept;
   };
   
-  namespace data {
-    struct L {
-      long D[12];
-      long& operator[](std::size_t const I) noexcept {
-        return D[I]; }
-      long operator[](std::size_t const I) const noexcept {
-        return D[I]; }
-    };
+  struct Data {
+    long D[16];
+    long& operator[](std::size_t const I) noexcept {
+      return D[I]; }
+    long operator[](std::size_t const I) const noexcept {
+      return D[I]; }
+    union {
+      char B[20];
+      short S[10];
+      long L[5];
+    } msg;
 
-    struct Msg : public L {
-      union {
-        char B[20];
-        short S[10];
-        long L[5];
-      };
-    };
-    
-    struct Keymap : public L {
-      char KEYMAP_VECTOR[32];
-    };
-
-    using T = std::variant<L, Msg, Keymap>;
-  }
+    char KEYMAP_VECTOR[32];
+  };
 
   class Ev {
-    using S = std::function<void(data::T const&)>;
+    using T = std::function<void()>;
+    using S = std::function<void(Data const&)>;
+    using TS = std::pair<T, S>;
     public:
     Ev();
     ~Ev() = default;
     bool next() noexcept;
     void sync() const noexcept;
-    S call(data::T&) const noexcept;
+    void call() const noexcept;
     void init_key(S const&) noexcept;
-    S key(S const&, data::L&) const noexcept;
+    void key() noexcept;
     void init_button(S const&) noexcept;
-    S button(S const&, data::L&) const noexcept;
+    void button() noexcept;
     void init_motion(S const&) noexcept;
-    S motion(S const&, data::L&) const noexcept;
+    void motion() noexcept;
     void init_crossing(S const&) noexcept;
-    S crossing(S const&, data::L&) const noexcept;
+    void crossing() noexcept;
     void init_focuschange(S const&) noexcept;
-    S focuschange(S const&, data::L&) const noexcept;
+    void focuschange() noexcept;
     void init_expose(S const&) noexcept;
-    S expose(S const&, data::L&) const noexcept;
+    void expose() noexcept;
     void init_graphicsexpose(S const&) noexcept;
-    S graphicsexpose(S const&, data::L&) const noexcept;
+    void graphicsexpose() noexcept;
     void init_noexpose(S const&) noexcept;
-    S noexpose(S const&, data::L&) const noexcept;
+    void noexpose() noexcept;
     void init_visibility(S const&) noexcept;
-    S visibility(S const&, data::L&) const noexcept;
+    void visibility() noexcept;
     void init_createwindow(S const&) noexcept;
-    S createwindow(S const&, data::L&) const noexcept;
+    void createwindow() noexcept;
     void init_destroywindow(S const&) noexcept;
-    S destroywindow(S const&, data::L&) const noexcept;
+    void destroywindow() noexcept;
     void init_unmap(S const&) noexcept;
-    S unmap(S const&, data::L&) const noexcept;
+    void unmap() noexcept;
     void init_map(S const&) noexcept;
-    S map(S const&, data::L&) const noexcept;
+    void map() noexcept;
     void init_maprequest(S const&) noexcept;
-    S maprequest(S const&, data::L&) const noexcept;
+    void maprequest() noexcept;
     void init_reparent(S const&) noexcept;
-    S reparent(S const&, data::L&) const noexcept;
+    void reparent() noexcept;
     void init_configure(S const&) noexcept;
-    S configure(S const&, data::L&) const noexcept;
+    void configure() noexcept;
     void init_gravity(S const&) noexcept;
-    S gravity(S const&, data::L&) const noexcept;
+    void gravity() noexcept;
     void init_resizerequest(S const&) noexcept;
-    S resizerequest(S const&, data::L&) const noexcept;
+    void resizerequest() noexcept;
     void init_configurerequest(S const&) noexcept;
-    S configurerequest(S const&, data::L&) const noexcept;
+    void configurerequest() const noexcept;
     void init_circulate(S const&) noexcept;
-    S circulate(S const&, data::L&) const noexcept;
+    void circulate() noexcept;
     void init_circulaterequest(S const&) noexcept;
-    S circulaterequest(S const&, data::L&) const noexcept;
+    void circulaterequest() noexcept;
     void init_property(S const&) noexcept;
-    S property(S const&, data::L&) const noexcept;
+    void property() noexcept;
     void init_selectionclear(S const&) noexcept;
-    S selectionclear(S const&, data::L&) const noexcept;
+    void selectionclear() noexcept;
     void init_selectionrequest(S const&) noexcept;
-    S selectionrequest(S const&, data::L&) const noexcept;
+    void selectionrequest() noexcept;
     void init_selection(S const&) noexcept;
-    S selection(S const&, data::L&) const noexcept;
+    void selection() noexcept;
     void init_colormap(S const&) noexcept;
-    S colormap(S const&, data::L&) const noexcept;
+    void colormap() noexcept;
     void init_clientmessage(S const&) noexcept;
-    S clientmessage(S const&, data::Msg&) const noexcept;
+    void clientmessage() noexcept;
     void init_mapping(S const&) noexcept;
-    S mapping(S const&, data::L&) const noexcept;
+    void mapping() noexcept;
     void init_keymap(S const&) noexcept;
-    S keymap(S const&, data::Keymap&) const noexcept;
+    void keymap() noexcept;
     private:
     static const Display dpy;
     ::XEvent xev;
-    std::array<std::function<S(data::T&)>, LASTEvent> F;
+    Data data;
+    std::array<TS, LASTEvent> F;
   };
 
   class Sys {
@@ -123,7 +117,6 @@ namespace some {
   };
   
   namespace xlib {
-    // Look to select masks
     static constexpr auto ROOTMASK { 
       SubstructureRedirectMask | 
       SubstructureNotifyMask | 
@@ -138,7 +131,8 @@ namespace some {
     
     static constexpr auto PARMASK {
       SubstructureRedirectMask |
-      SubstructureNotifyMask
+      SubstructureNotifyMask |
+      ExposureMask
     };
     
     class DefaultXError {
@@ -164,6 +158,7 @@ namespace some {
       void destroy_win(Win const) const noexcept;
       void map_win(Win const) const noexcept;
       void unmap_win(Win const) const noexcept;
+      void iconify_win(Win const) const noexcept;
       void set_winbg(Win const, std::size_t const)
       const noexcept;
       void set_bdrcolor(Win const, std::size_t const) 
@@ -172,8 +167,8 @@ namespace some {
       const noexcept;
       void move_win(Win const, int const, int const)
       const noexcept;
-      void repar_win(Win const, Win const, int const, int const) 
-      const noexcept;
+      void repar_win(Win const, Win const, int const,
+      int const) const noexcept;
       ::GC default_gc() const noexcept;
       private:
       static Display const dpy;
@@ -185,8 +180,6 @@ namespace some {
       void set_focus(Win const) const noexcept;
       unsigned modmask() const noexcept;
       ::KeyCode keysym_keycode(::KeySym const)
-      const noexcept;
-      ::KeySym keycode_keysym(::KeyCode const)
       const noexcept;
       void grab_key(Win const, int const, int const)
       const noexcept;
@@ -279,8 +272,10 @@ namespace some {
         int get_scent() const noexcept;
         int get_ascent() const noexcept;
         int get_descent() const noexcept;
-        int text_width(char const []) const noexcept;
-        int text_width16(wchar_t const []) const noexcept;
+        int text_width(char const [], std::size_t const)
+        const noexcept;
+        int text_width16(wchar_t const [],
+        std::size_t const) const noexcept;
         private:
         static Display const dpy;
         ::XFontStruct* fn;
@@ -292,29 +287,70 @@ namespace some {
         public:
         Gc() = delete;
         Gc(Win const) noexcept;
+        Gc(Gc const&) = delete;
+        Gc(Gc&&) noexcept;
+        Gc& operator=(Gc&&) noexcept;
         ~Gc();
         ::GC get() const noexcept;
+        void set_fg(std::size_t const) const noexcept;
+        void set_bg(std::size_t const) const noexcept;
         private:
         static Display const dpy;
         ::GC gc;
       };
 
+      class Draw {
+        public:
+        Draw() = delete;
+        Draw(Win const, int const, int const, int const)
+        noexcept;
+        Draw(Draw const&) = delete;
+        Draw(Draw&&) noexcept;
+        Draw& operator=(Draw&&) noexcept;
+        ~Draw();
+        void fill(::GC const, int const, int const, 
+        int const, int const) const noexcept;
+        void string(char const [], std::size_t const, 
+        ::GC const, int const, int const) const noexcept;
+        void stipple(::GC const, unsigned const, 
+        unsigned const, int const, int const) 
+        const noexcept;
+        void set_clip(::GC const, int const, int const)
+        const noexcept;
+        void copy_plane(::GC const, Win const, int const, 
+        int const, int const, int const, int const, 
+        int const) const noexcept;
+        private:
+        static Display const dpy;
+        ::Window win;
+        ::Drawable drawable;
+      };
+
       class Pixmap {
         public:
         Pixmap() = delete;
-        Pixmap(Win const, int const, int const, int const)
-        noexcept;
+        Pixmap(Win const, char const [], unsigned const,
+        unsigned const) noexcept;
         ~Pixmap();
-        void fill(Win const, ::GC const, std::size_t, 
+        
+        void copy_plane(::GC const, int const, int const, 
         int const, int const, int const, int const) 
         const noexcept;
-        void draw_string(char const [], 
-        Win const, ::GC const, std::size_t const,
-        int const, int const) const noexcept;
+        
         private:
         static Display const dpy;
-        ::Drawable drawable;
+        ::Window const win;
+        ::Pixmap pixmap;
       };
     }
+      
+    class Hints {
+      public:
+      Hints();
+      ~Hints();
+      private:
+      static Display const dpy;
+      ::XWMHints* win_hints;
+    };
   }
 }
