@@ -32,16 +32,29 @@ Sig::~Sig() {
 int
 main(int const argc, char const* ARGV[]) {
   try {
-    Sig sig;
-    some::Display dpy;
+    some::Display const dpy;
     dpy.init();
-    
-    some::Recv wm;
+    Sig const sig;
     some::Ev ev;
+    some::xlib::DefaultXError const error; 
+    {
+      some::xlib::Input const input;
+      some::xlib::Xlib const xlib;
+      input.select(xlib.root_win(), 
+        some::xlib::mask::SUBSTRUCTREDIR);
+      ev.sync();
+      if (error.get())
+        throw std::runtime_error(
+          "Initialization error (another wm running?)");
+    }
+
+    some::Recv wm;
     ev.init_key([&wm](some::Data const& data) { 
       wm.key(data); });
-    ev.init_button([&wm](some::Data const& data) { 
-      wm.button(data); });
+    ev.init_button_press([&wm](some::Data const& data) { 
+      wm.button_press(data); });
+    //ev.init_button_release([&wm](some::Data const& data) { 
+      //wm.button_release(data); });
     ev.init_motion([&wm](some::Data const& data) { 
       wm.motion(data); });
     ev.init_crossing([&wm](some::Data const& data) { 
@@ -70,6 +83,7 @@ main(int const argc, char const* ARGV[]) {
       ev.sync();
     }
 
+    wm.exit();
     dpy.deinit();
   } catch (std::exception const& ex) {
     std::cerr << ex.what() << "\n";

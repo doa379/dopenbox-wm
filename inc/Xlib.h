@@ -2,17 +2,14 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/cursorfont.h>
 #include <X11/extensions/Xinerama.h>
 #include <array>
 #include <functional>
+#include <optional>
 
 namespace some {
   struct Display {
-    Display() = default;
-    Display(Display const&) = delete;
-    Display& operator=(Display const&) = delete;
-    Display(Display&&) = delete;
-    ~Display() = default;
     static ::Display* ptr;
     static void init();
     static void deinit() noexcept;
@@ -21,10 +18,10 @@ namespace some {
   
   struct Data {
     long D[16];
-    long& operator[](std::size_t const I) noexcept {
-      return D[I]; }
-    long operator[](std::size_t const I) const noexcept {
-      return D[I]; }
+    long& operator[](std::size_t const i) noexcept {
+      return D[i]; }
+    long operator[](std::size_t const i) const noexcept {
+      return D[i]; }
     union {
       char B[20];
       short S[10];
@@ -42,11 +39,13 @@ namespace some {
     Ev();
     ~Ev() = default;
     bool next() noexcept;
+    void mask_event(int const) noexcept;
     void sync() const noexcept;
     void call() const noexcept;
     void init_key(S const&) noexcept;
     void key() noexcept;
-    void init_button(S const&) noexcept;
+    void init_button_press(S const&) noexcept;
+    void init_button_release(S const&) noexcept;
     void button() noexcept;
     void init_motion(S const&) noexcept;
     void motion() noexcept;
@@ -103,7 +102,7 @@ namespace some {
     void init_keymap(S const&) noexcept;
     void keymap() noexcept;
     private:
-    static const Display dpy;
+    static Display const dpy;
     ::XEvent xev;
     Data data;
     std::array<TS, LASTEvent> F;
@@ -117,23 +116,24 @@ namespace some {
   };
   
   namespace xlib {
-    static constexpr auto ROOTMASK { 
-      SubstructureRedirectMask | 
-      SubstructureNotifyMask | 
-      ButtonPressMask |
-      PointerMotionMask |
-      EnterWindowMask |
-      LeaveWindowMask |
-      StructureNotifyMask |
-      PropertyChangeMask |
-      ExposureMask
-    };
-    
-    static constexpr auto PARMASK {
-      SubstructureRedirectMask |
-      SubstructureNotifyMask |
-      ExposureMask
-    };
+    namespace mask {
+      static auto constexpr SUBSTRUCTREDIR {
+        SubstructureRedirectMask };
+      static auto constexpr SUBSTRUCTNOTIF {
+        SubstructureNotifyMask };
+      static auto constexpr BTNPRESS { ButtonPressMask };
+      static auto constexpr BTNRELEASE { 
+        ButtonReleaseMask };
+      static auto constexpr PTRMOTION { 
+        PointerMotionMask };
+      static auto constexpr ENTERWIN { EnterWindowMask };
+      static auto constexpr LEAVEWIN { LeaveWindowMask };
+      static auto constexpr STRUCTNOTIF {
+        StructureNotifyMask };
+      static auto constexpr PROPCHANGE {
+        PropertyChangeMask };
+      static auto constexpr EXPO { ExposureMask };
+    }
     
     class DefaultXError {
       public:
@@ -149,7 +149,7 @@ namespace some {
     using Win = ::Window;
     class Xlib {
       public:
-      Win root() const noexcept;
+      Win root_win() const noexcept;
       int dpy_width() const noexcept;
       int dpy_height() const noexcept;
       int depth() const noexcept;
@@ -191,6 +191,8 @@ namespace some {
       void ungrab_btn(Win const, int const, int const)
       const noexcept;
       void ungrab_pointer() const noexcept;
+      void grab_pointer(Win const, int const, int const)
+      const noexcept;
       void warp_pointer(Win const, int const, int const)
       const noexcept;
       private:
@@ -237,30 +239,43 @@ namespace some {
     class Prop {
       public:
       Prop() noexcept;
+      ~Prop();
       void change_state(Win const) const noexcept;
+      std::optional<std::string> get_name(Win const) 
+      noexcept;
+      std::optional<std::string> get_icon(Win const) 
+      noexcept;
       private:
       static Display const dpy;
-      ::Atom wm_protocols;
-      ::Atom wm_name;
-      ::Atom wm_delete_window;
-      ::Atom wm_state;
-      ::Atom wm_take_focus;
-      ::Atom wm_icon_name;
-      ::Atom net_supported;
-      ::Atom net_wm_state;
-      ::Atom net_wm_name;
-      ::Atom net_wm_window_opacity;
-      ::Atom net_active_window;
-      ::Atom net_wm_state_fullscreen;
-      ::Atom net_wm_window_type;
-      ::Atom net_wm_window_type_dialog;
-      ::Atom net_client_list;
-      ::Atom net_number_of_desktops;
-      ::Atom net_wm_desktop;
-      ::Atom net_current_desktop;
-      ::Atom net_showing_desktop;
-      ::Atom net_wm_icon;
-      ::Atom net_wm_icon_name;
+      static auto constexpr LEN { 64 };
+      //std::array<char, LEN> VAL;
+      //unsigned char VAL[LEN];
+      unsigned char* data;
+      ::Atom const wm_protocols;
+      ::Atom const wm_name;
+      ::Atom const wm_delete_window;
+      ::Atom const wm_state;
+      ::Atom const wm_take_focus;
+      ::Atom const wm_icon_name;
+      ::Atom const net_supported;
+      ::Atom const net_wm_state;
+      ::Atom const net_wm_name;
+      ::Atom const net_wm_window_opacity;
+      ::Atom const net_active_window;
+      ::Atom const net_wm_state_fullscreen;
+      ::Atom const net_wm_window_type;
+      ::Atom const net_wm_window_type_dialog;
+      ::Atom const net_client_list;
+      ::Atom const net_number_of_desktops;
+      ::Atom const net_wm_desktop;
+      ::Atom const net_current_desktop;
+      ::Atom const net_showing_desktop;
+      ::Atom const net_wm_icon;
+      ::Atom const net_wm_icon_name;
+      ::Atom actual_type;
+      int actual_format;
+      unsigned long nitems;
+      unsigned long bytes_after;
     };
 
     namespace draw {
@@ -341,6 +356,23 @@ namespace some {
         static Display const dpy;
         ::Window const win;
         ::Pixmap pixmap;
+      };
+
+      class Cursor {
+        static auto constexpr PTR_SYM { XC_left_ptr };
+        static auto constexpr MOVE_SYM { XC_fleur };
+        static auto constexpr RESIZE_SYM { XC_sizing };
+        public:
+        Cursor() noexcept;
+        ~Cursor();
+        ::Cursor get_ptr() const noexcept;
+        ::Cursor get_move() const noexcept;
+        ::Cursor get_resize() const noexcept;
+        private:
+        static Display const dpy;
+        ::Cursor ptr;
+        ::Cursor move;
+        ::Cursor resize;
       };
     }
       

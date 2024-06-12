@@ -32,7 +32,7 @@ init:
 	@echo Build ${.TARGET}...
 	@${CPPC} ${FLAGS} ${CFLAGS} ${INCS} ${.IMPSRC} -c -o ${.TARGET}
 
-${OBJ}: config.h
+${OBJ}: ${HDR_CONFIG} ${HDR_SRC}
 
 ${EXEC}: ${OBJ}
 	@echo Link ${OBJ}...

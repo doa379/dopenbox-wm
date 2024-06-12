@@ -23,4 +23,6 @@ DBG_LFLAGS=
 REL=dopenboxwm.bin
 DBG=dopenboxwm~dbg.bin
 
+HDR_CONFIG=config.h
+HDR_SRC=Xlib.h wm.h
 SRC=main.cpp Xlib.cpp wm.cpp

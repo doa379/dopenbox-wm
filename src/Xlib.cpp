@@ -41,6 +41,12 @@ noexcept {
 }
 
 void
+some::Ev::mask_event(int const mask)
+noexcept {
+  ::XMaskEvent(dpy.ptr, mask, &xev);
+}
+
+void
 some::Ev::sync()
 const noexcept {
   ::XSync(dpy.ptr, false);
@@ -66,26 +72,34 @@ some::Ev::key()
 noexcept {
   data[0] = xev.xkey.state;
   data[1] = xev.xkey.keycode;
-  /*
-  std::memcpy(data.buffer, 
-    &xev.xkey + sizeof(::XAnyEvent) - sizeof(::Window),
-    sizeof xev.xkey - sizeof(::XAnyEvent) + 
-      sizeof(::Window));
-  */
 }
 
 void
-some::Ev::init_button(S const& f)
+some::Ev::init_button_press(S const& f)
 noexcept {
-  F[ButtonPress] =  { [this] { button(); }, f };
+  F[ButtonPress] = { [this] { button(); }, f };
+}
+
+void
+some::Ev::init_button_release(S const& f)
+noexcept {
+  F[ButtonRelease] = { [this] { button(); }, f };
 }
 
 void
 some::Ev::button()
 noexcept {
   data[0] = xev.xbutton.window;
-  data[1] = xev.xbutton.state;
-  data[2] = xev.xbutton.button;
+  data[1] = xev.xbutton.root;
+  data[2] = xev.xbutton.subwindow;
+  data[3] = xev.xbutton.time;
+  data[4] = xev.xbutton.x;
+  data[5] = xev.xbutton.y;
+  data[6] = xev.xbutton.x_root;
+  data[7] = xev.xbutton.y_root;
+  data[8] = xev.xbutton.state;
+  data[9] = xev.xbutton.button;
+  data[10] = xev.xbutton.same_screen;
 }
 
 void
@@ -530,13 +544,13 @@ some::xlib::DefaultXError::handler(::Display*,
 noexcept {
   xerror = (xev->error_code == BadAccess ||
     xev->error_code == BadWindow);
-  return 0;
+  return -1;
 };
 
 using Win = some::xlib::Win;
 
 Win
-some::xlib::Xlib::root()
+some::xlib::Xlib::root_win()
 const noexcept {
   return ::XRootWindow(dpy.ptr, DefaultScreen(dpy.ptr));
 }
@@ -711,6 +725,14 @@ const noexcept {
 }
 
 void
+some::xlib::Input::grab_pointer(Win const win, 
+int const mask, int const cursor) 
+const noexcept {
+  ::XGrabPointer(dpy.ptr, win, false, mask, GrabModeAsync,
+    GrabModeAsync, None, cursor, CurrentTime);
+}
+
+void
 some::xlib::Input::warp_pointer(Win const win, int const x,
 int const y) 
 const noexcept {
@@ -787,6 +809,7 @@ const noexcept {
 }
 
 some::xlib::Prop::Prop() noexcept :
+data { new unsigned char { LEN } },
 wm_protocols { 
   ::XInternAtom(dpy.ptr, "WM_PROTOCOLS", false) },
 wm_name { ::XInternAtom(dpy.ptr, "WM_NAME", false) },
@@ -835,12 +858,56 @@ net_wm_icon_name {
     ::XInternAtom(dpy.ptr, "_NET_WM_ICON_NAME", false) }
 { }
 
+some::xlib::Prop::~Prop() {
+  delete data;
+}
+
 void
 some::xlib::Prop::change_state(Win const win) 
 const noexcept {
   ::XChangeProperty(dpy.ptr, win, wm_state, 
     XA_WINDOW, 
     32, PropModeReplace, (unsigned char*) &win, 1);
+}
+
+std::optional<std::string>
+some::xlib::Prop::get_name(Win const win)
+noexcept {
+  auto ret {
+    ::XGetWindowProperty(dpy.ptr, win, net_wm_name, 0, LEN,
+      false, AnyPropertyType, &actual_type, &actual_format,
+      &nitems, &bytes_after, 
+      &data) == Success && data
+  };
+
+  if (!ret)
+    ret = ::XGetWindowProperty(dpy.ptr, win, wm_name, 0, 
+      LEN, false, AnyPropertyType, &actual_type, 
+      &actual_format, &nitems, &bytes_after, &data) == 
+      Success && data;
+
+  return ret ? std::optional<std::string> { 
+    reinterpret_cast<char*>(data) } : std::nullopt;
+}
+
+std::optional<std::string>
+some::xlib::Prop::get_icon(Win const win)
+noexcept {
+  auto ret {
+    ::XGetWindowProperty(dpy.ptr, win, net_wm_icon_name, 0,
+      LEN, false, AnyPropertyType, &actual_type, 
+      &actual_format, &nitems, &bytes_after, 
+      &data) == Success && data
+  };
+  
+  if (!ret)
+    ret = ::XGetWindowProperty(dpy.ptr, win, wm_icon_name,
+      0, LEN, false, AnyPropertyType, &actual_type, 
+      &actual_format, &nitems, &bytes_after, &data) == 
+      Success && data;
+
+  return ret ? std::optional<std::string> { 
+    reinterpret_cast<char*>(data) } : std::nullopt;
 }
 
 some::xlib::draw::Font::Font(char const FONT[]) :
@@ -981,7 +1048,7 @@ int const h) const noexcept {
   for (int i { }; i < w; i += d)
     for (int j { }; j < h; j += d) {
       ::XFillArc(dpy.ptr, drawable, gc, 
-        i, j, dia, dia, 0, 360 * 64);
+        i, j, dia, dia, 0, 64 * 360);
     }
       
   ::XCopyArea(dpy.ptr, drawable, win, gc, 0, 0, w, h, 0, 0);
@@ -1019,9 +1086,40 @@ some::xlib::draw::Pixmap::~Pixmap() {
 void
 some::xlib::draw::Pixmap::copy_plane(::GC const gc, 
 int const x0, int const y0, int const w, int const h, 
-int const x , int const y)
+int const x1 , int const y1)
 const noexcept {
-  ::XCopyPlane(dpy.ptr, pixmap, win, gc, x0, y0, w, h, x, y, 1);
+  ::XCopyPlane(dpy.ptr, pixmap, win, gc, x0, y0, w, h, x1, y1, 1);
+}
+///////////////////////////////////////////////////////////
+some::xlib::draw::Cursor::Cursor()
+noexcept :
+ptr { ::XCreateFontCursor(dpy.ptr, PTR_SYM) },
+move { ::XCreateFontCursor(dpy.ptr, MOVE_SYM) },
+resize { ::XCreateFontCursor(dpy.ptr, RESIZE_SYM) }
+{ }
+
+some::xlib::draw::Cursor::~Cursor() {
+  ::XFreeCursor(dpy.ptr, resize);
+  ::XFreeCursor(dpy.ptr, move);
+  ::XFreeCursor(dpy.ptr, ptr);
+}
+
+::Cursor
+some::xlib::draw::Cursor::get_ptr() 
+const noexcept {
+  return ptr;
+}
+
+::Cursor
+some::xlib::draw::Cursor::get_move() 
+const noexcept {
+  return move;
+}
+
+::Cursor
+some::xlib::draw::Cursor::get_resize() 
+const noexcept {
+  return resize;
 }
 ///////////////////////////////////////////////////////////
 some::xlib::Hints::Hints() :

@@ -1,6 +1,7 @@
 include config.mk
 
 OBJ=$(SRC:%.cpp=obj/%.o)
+HDR=${HDR_SRC:%.h=inc/%.h}
 
 TARGET=dummy
 FLAG=Release
@@ -23,7 +24,7 @@ obj/%.o: src/%.cpp
 	@echo Build $@...
 	@${CPPC} ${FLAGS} ${CFLAGS} ${INCS} $< -c -o $@
 
-${OBJ}: config.h
+${OBJ}: ${HDR_CONFIG} ${HDR}
 
 ${TARGET}: ${OBJ}
 	@echo Link $?...

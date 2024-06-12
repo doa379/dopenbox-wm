@@ -8,17 +8,25 @@
 //#include "/tmp/xbmp.xbm"
 #include "../config.h"
 
+some::Root::Root(some::xlib::Win const win, int const w,
+int const h, int const d) :
+win { win },
+gc { win },
+draw { win, w, h, d }
+{ }
+
 some::Client::Client(some::xlib::Win const win, 
-some::xlib::Win const parw, 
-Dim<int, int> const& pos, Dim<int, int> const& size, 
-int const depth) 
+some::xlib::Win const parw, Dim<int, int> const& pos, 
+Dim<int, int> const& size, int const th, 
+int const d)
 noexcept :
 win { win },
 parw { parw },
 gc { parw },
-draw { parw, size.w(), size.h(), depth },
+draw { parw, size.w(), th, d },
 pos { pos },
-size { size }
+size { size },
+th { th }
 { }
 
 some::Client::Client(Client&& client)
@@ -43,23 +51,33 @@ noexcept {
   return *this;
 }
 
-some::Wm::Wm() : rootwin { xlib.root() }, 
-font { wmconf::FONT},
-root { rootwin, xlib.dpy_width(), xlib.dpy_height(),
+some::Wm::Wm() : 
+root { xlib.root_win(),
+  xlib.dpy_width(), 
+  xlib.dpy_height(),
   xlib.depth() },
-rootgc { rootwin } {
+font { wmconf::FONT } {
 
-  xlib::DefaultXError error; 
-  input.select(rootwin, xlib::ROOTMASK);
-  if (error.get())
-    throw std::runtime_error("Initialization error (another wm running?)");
+  static auto constexpr MASK {
+    xlib::mask::SUBSTRUCTREDIR | 
+    xlib::mask::SUBSTRUCTNOTIF | 
+    xlib::mask::BTNPRESS |
+    xlib::mask::BTNRELEASE |
+    xlib::mask::PTRMOTION |
+    xlib::mask::ENTERWIN |
+    xlib::mask::LEAVEWIN |
+    xlib::mask::STRUCTNOTIF |
+    xlib::mask::PROPCHANGE |
+    xlib::mask::EXPO
+  };
 
-  input.ungrab_allkey(rootwin);
+  input.select(root.win, MASK);
+  input.ungrab_allkey(root.win);
   auto const mask { input.modmask() };
   for (auto const& k : wmconf::KBD) {
     auto const kcode { input.keysym_keycode(k.sym) };
     KCODE_KSYM[kcode] = k.sym;
-    input.grab_key(rootwin, k.mod & mask, kcode);
+    input.grab_key(root.win, k.mod & mask, kcode);
   }
 
   CALL[static_cast<std::size_t>(wmconf::Calls::WK0)] =
@@ -122,9 +140,9 @@ rootgc { rootwin } {
   CALL[static_cast<std::size_t>(wmconf::Calls::KILL)] =
     [this] { kill_client(); };
   CALL[static_cast<std::size_t>(wmconf::Calls::SELTOGGLE)] =
-    [this] { seltoggle(); };
+    [this] { toggle_sel(); };
   CALL[static_cast<std::size_t>(wmconf::Calls::SELCLEAR)] =
-    [this] { selclear(); };
+    [this] { clear_sel(); };
   CALL[static_cast<std::size_t>(wmconf::Calls::QUIT)] =
     []{ std::raise(SIGINT); };
   CALL[static_cast<std::size_t>(wmconf::Calls::RESIZE)] =
@@ -135,7 +153,7 @@ rootgc { rootwin } {
   for (auto i { 0 }; i < wmconf::NWKS; i++)
     WK.emplace_back(Wk { });
 
-  some::xlib::QueryTree query { rootwin };
+  some::xlib::QueryTree query { root.win };
   auto const wins { query.get() };
   for (auto const win : wins)
     ;
@@ -154,15 +172,15 @@ rootgc { rootwin } {
       { xlib.dpy_width(), xlib.dpy_height() } });
   }
 
-  xlib.set_winbg(rootwin, ROOTBG);
+  xlib.set_winbg(root.win, ROOTBG);
   ///////////////////////////////////////////////////
   /*
   std::vector<char> A;
   for (auto a : xbmp_bits)
     A.emplace_back(static_cast<char>(a));
   auto const kill { 
-    rootpix.create_bitmap(rootwin, A.data(), 100, 100) };
-  rootpix.copy_plane(kill, rootwin, xlib.default_gc(),
+    rootpix.create_bitmap(root.win, A.data(), 100, 100) };
+  rootpix.copy_plane(kill, root.win, xlib.default_gc(),
     0, 0, 100, 100, 0, 0);
   */
   ///////////////////////////////////////////////////
@@ -172,17 +190,22 @@ rootgc { rootwin } {
 }
 
 some::Wm::~Wm() {
+  // Destr. must also act static because of Display
+  // Leave it empty
+}
+
+void
+some::Wm::exit() const noexcept {
+  xlib.set_winbg(root.win, Black);
   for (auto const &wk : WK)
     std::ranges::for_each(wk.C, 
-      [this](auto const& c) { xlib.map_win(c.parw); });
+      [this](auto const& c) { 
+        xlib.repar_win(c.win, root.win, 0, 0);
+        xlib.destroy_win(c.parw);
+        xlib.map_win(c.win);
+      });
     
-  input.set_focus(rootwin);
-  //xlib.set_winbg(rootwin, Black);
-  rootgc.set_fg(Black);
-  for (auto const& mon : MON)
-    root.fill(rootgc.get(), mon.pos.x(), mon.pos.y(),
-      mon.size.w(), mon.size.h());
-    
+  input.set_focus(root.win);
   std::cout << wmconf::WMNAME << " exit\n";
 }
 
@@ -219,14 +242,14 @@ const noexcept {
 
 void
 some::Wm::map_all()
-const noexcept {
+noexcept {
   auto const& wk { WK[currwk] };
   for (auto const& c : wk.C)
     xlib.map_win(c.parw);
 
   if (wk.C.size()) {
-    focus(wk.C[wk.currc]);
     xlib.map_win(wk.C[wk.currc].parw);
+    focus(wk.C[wk.currc]);
   }
 }
 
@@ -266,20 +289,32 @@ const noexcept {
 
 void
 some::Wm::focus(Client const& c)
-const noexcept {
+noexcept {
   input.set_focus(c.parw);
   auto const mask { input.modmask() };
   for (auto const& b : wmconf::BTN)
     input.grab_btn(c.parw, b.mod & mask, b.sym);
-  
+ 
   xlib.set_winbg(c.parw, wmconf::COLORS[SEL]);
+  // Offset to ui class
+  auto const name { prop.get_name(c.win) };
+  if (name.has_value()) {
+    c.gc.set_fg(wmconf::COLORS[FG]);
+    c.draw.string(name.value().data(), 
+      name.value().length(), c.gc.get(), 4, 
+        font.get_ascent());
+  }
+
   c.gc.set_fg(wmconf::COLORS[BG]);
-  int const w { c.size.w() - 20 };
+  int const w0 { font.text_width(name.value().data(),
+    name.value().length()) };
+  int const w1 { c.size.w() - 20 };
   int const h { font.get_scent() };
-  for (int i { }; i < w; i += 3)
+  for (int i { w0 }; i < w1; i += 3)
     for (int j { }; j < h; j += 3) {
       c.draw.fill(c.gc.get(), i, j, 2, 2);
     }
+  
 }
 
 void
@@ -318,7 +353,7 @@ some::Wm::kill_client() {
 }
 
 void
-some::Wm::seltoggle()
+some::Wm::toggle_sel()
 noexcept {
   auto& wk { WK[currwk] };
   auto& c { wk.C[wk.currc] };
@@ -328,7 +363,7 @@ noexcept {
 }
 
 void
-some::Wm::selclear()
+some::Wm::clear_sel()
 noexcept {
   auto& wk { WK[currwk] };
   for (auto& c : wk.C) {
@@ -340,9 +375,9 @@ noexcept {
 void
 some::Wm::refresh_root()
 const noexcept {
-  rootgc.set_fg(ROOTBG);
-  root.stipple(rootgc.get(), 32, 8, xlib.dpy_width(), 
-    xlib.dpy_height());
+  root.gc.set_fg(ROOTBG);
+  root.draw.stipple(root.gc.get(), 32, 8, 
+    xlib.dpy_width(), xlib.dpy_height());
 }
 
 void
@@ -352,24 +387,24 @@ const noexcept {
   auto const& mon { MON[0] };
   auto const monw { mon.size.w() };
   auto const monh { mon.size.h() };
-  rootgc.set_fg(wmconf::COLORS[BG]);
-  root.fill(rootgc.get(), 0, monh - font.get_scent(), 
-    monw, font.get_scent());
+  root.gc.set_fg(wmconf::COLORS[BG]);
+  root.draw.fill(root.gc.get(), 0, 
+    monh - font.get_scent(), monw, font.get_scent());
   unsigned o { };
   static auto constexpr BOX { 20 };
   static auto constexpr BOXBDR { 2 };
   for (std::size_t i { }; auto const& wk : WK) {
-    rootgc.set_fg(wmconf::COLORS[FG]);
-    root.fill(rootgc.get(), o, monh - font.get_scent(), 
-      BOX, font.get_scent());
-    rootgc.set_fg(i == currwk ? wmconf::COLORS[SEL] : 
+    root.gc.set_fg(wmconf::COLORS[FG]);
+    root.draw.fill(root.gc.get(), o, 
+      monh - font.get_scent(), BOX, font.get_scent());
+    root.gc.set_fg(i == currwk ? wmconf::COLORS[SEL] : 
       wmconf::COLORS[BG]);
-    root.fill(rootgc.get(), o + BOXBDR, 
-      monh - font.get_scent() + BOXBDR, 
-      BOX - 2 * BOXBDR, font.get_scent() - 2 * BOXBDR);
+    root.draw.fill(root.gc.get(), o + BOXBDR, 
+      monh - font.get_scent() + BOXBDR, BOX - 2 * BOXBDR,
+      font.get_scent() - 2 * BOXBDR);
     if (wk.C.size()) {
-      rootgc.set_fg(wmconf::COLORS[FG]);
-      root.string("#", 1, rootgc.get(), o + 4, 
+      root.gc.set_fg(wmconf::COLORS[FG]);
+      root.draw.string("#", 1, root.gc.get(), o + 4, 
         monh - font.get_descent());
     }
 
@@ -378,17 +413,32 @@ const noexcept {
   }
 
   auto const rpad { 
-    font.text_width(wmconf::WMNAME, strlen(wmconf::WMNAME)) };
-  rootgc.set_fg(ROOTBG);
-  root.fill(rootgc.get(), monw - rpad, 
+    font.text_width(wmconf::WMNAME, strlen(wmconf::WMNAME))
+  };
+  root.gc.set_fg(ROOTBG);
+  root.draw.fill(root.gc.get(), monw - rpad, 
     monh - font.get_scent(), rpad, font.get_scent());
-  rootgc.set_fg(wmconf::COLORS[FG]);
-  root.string(wmconf::WMNAME, strlen(wmconf::WMNAME), 
-    rootgc.get(), monw - rpad, monh - font.get_descent());
+  root.gc.set_fg(wmconf::COLORS[FG]);
+  root.draw.string(wmconf::WMNAME, strlen(wmconf::WMNAME), 
+    root.gc.get(), monw - rpad, monh - font.get_descent());
 }
 
 void some::Wm::change_root_state() const noexcept {
-  atom.change_state(rootwin);
+  prop.change_state(root.win);
+}
+
+void some::Wm::change_wins_state() noexcept {
+  auto& wk { WK[currwk] };
+  for (auto const& c : wk.C) {
+    auto const name { prop.get_name(c.win) };
+    // Offset to ui class
+    if (name.has_value()) {
+      c.gc.set_fg(wmconf::COLORS[FG]);
+      c.draw.string(name.value().data(), 
+        name.value().length(), c.gc.get(), 4, 
+          font.get_ascent());
+    }
+  }
 }
 
 void
@@ -417,30 +467,118 @@ noexcept {
 }
 
 void
-some::Recv::button(Data const& data)
-const noexcept {
-  std::cout << "EV: Btn Press\n";
+some::Recv::button_press(Data const& data)
+noexcept {
   auto const mask { input.modmask() };
   auto const win { static_cast<xlib::Win>(data[0]) };
-  auto const kmod { static_cast<int>(data[1]) & mask };
-  auto const kcode { static_cast<int>(data[2]) };
-  input.ungrab_pointer();
+  auto const x { static_cast<int>(data[4]) };
+  auto const y { static_cast<int>(data[5]) };
+  auto const x_root { static_cast<int>(data[6]) };
+  auto const y_root { static_cast<int>(data[7]) };
+  auto const kmod { static_cast<int>(data[8]) & mask };
+  auto const btn { static_cast<int>(data[9]) };
+  if (win == root.win) {
+    std::cout << "EV: Btn Press root window\n";
+
+  } else if (auto const c { 
+    std::ranges::find_if(WK[currwk].C,
+      [win](auto const& c) { return c.parw == win; }) }; 
+        c < WK[currwk].C.cend()) {
+
+    std::cout << "EV: Btn Press client window " << 
+      c->parw << "\n";
+    if (x < 20 && y < c->th) {
+      btn1_ispressed = true;
+      auto const cursor { this->cursor.get_move() };
+      auto constexpr MASK {
+        xlib::mask::BTNPRESS |
+        xlib::mask::BTNRELEASE |
+        xlib::mask::PTRMOTION
+      };
+
+      input.grab_pointer(win, MASK, cursor);
+      std::cout << "Button on client " << x << " " 
+        << y << "\n";
+      move_origin = Dim<int, int> { x_root, y_root };
+
+      
+      Ev ev;
+      ev.init_button_release([this](Data const& data) { 
+        button_release(data); });
+      ev.init_motion([this](Data const& data) { 
+        motion(data); });
+      ev.sync();
+      while (btn1_ispressed) {
+        ev.mask_event(//xlib::mask::BTNPRESS |
+          xlib::mask::BTNRELEASE |
+          xlib::mask::PTRMOTION |
+          xlib::mask::EXPO |
+          xlib::mask::SUBSTRUCTREDIR);
+
+        std::cout << "EV: Btn Press client window\n";
+        ev.call();
+        ev.sync();
+      }
+
+      
+    }
+  }
+
   change_root_state();
+}
+
+void
+some::Recv::button_release(Data const& data)
+noexcept {
+  std::cout << "EV: Btn Release\n";
+  auto const btn { static_cast<int>(data[9]) };
+  //if (btn == Button1)
+  btn1_ispressed = false;
+  input.ungrab_pointer();
 }
 
 void
 some::Recv::motion(Data const& data)
 const noexcept {
   auto const win { static_cast<xlib::Win>(data[0]) };
-  if (win == rootwin) {
+  auto const x { static_cast<int>(data[4]) };
+  auto const y { static_cast<int>(data[5]) };
+  auto const x_root { static_cast<int>(data[6]) };
+  auto const y_root { static_cast<int>(data[7]) };
+  if (win == root.win) {
+    std::cout << "EV: Motion on root window\n";
 
+  } else if (auto const c { 
+    std::ranges::find_if(WK[currwk].C,
+      [win](auto const& c) { return c.parw == win; }) }; 
+        c < WK[currwk].C.cend()) {
+      
+      if (btn1_ispressed) {
+        xlib.move_win(c->parw, x_root - move_origin.x(), 
+          y_root - move_origin.y());
+      }
+      
   }
 }
 
 void
-some::Recv::crossing(Data const&)
-const noexcept {
+some::Recv::crossing(Data const& data)
+noexcept {
   std::cout << "EV: Enter Notify\n";
+  auto const win { static_cast<xlib::Win>(data[0]) };
+  auto& wk { WK[currwk] };
+  if (wk.C.size() < 2)
+    return;
+  else if (auto const c { std::ranges::find_if(wk.C,
+      [win](auto const& c) { return c.parw == win; }) }; 
+        c < wk.C.cend()) {
+    unfocus(wk.C[wk.currc]);
+    wk.prevc = wk.currc;
+    wk.currc = std::distance(wk.C.begin(), c);
+    xlib.map_win(c->parw);
+    focus(wk.C[wk.currc]);
+  }
+
   change_root_state();
 }
 
@@ -461,7 +599,7 @@ noexcept{
       [win](auto const& c) { return c.win == win; })};
         c < wk.C.cend()) {
       xlib.destroy_win(c->parw);
-      wk.currc = wk.C.size() > 2 ? 
+      wk.currc = wk.C.size() > 1 ? 
         std::distance(wk.C.begin(), c - 1) : wk.prevc;
       
       xlib.map_win(wk.C[wk.currc].parw);
@@ -490,14 +628,22 @@ noexcept {
 
   try {
     xlib::WinAttr wa { win };
-    if (parw != rootwin && wa.override_redirect())
+    if (parw != root.win && wa.override_redirect())
       throw std::runtime_error("No");
 
     Dim<int, int> size { wa.size() };
     size.h() += font.get_scent();
     xlib::Win const parw { 
-      xlib.create_win(rootwin, size.w(), size.h()) };
-    input.select(parw, xlib::PARMASK);
+      xlib.create_win(root.win, size.w(), size.h()) };
+    static auto constexpr MASK { 
+      xlib::mask::SUBSTRUCTREDIR | 
+      xlib::mask::SUBSTRUCTNOTIF |
+      xlib::mask::BTNPRESS |
+      xlib::mask::BTNRELEASE |
+      xlib::mask::ENTERWIN
+    };
+
+    input.select(parw, MASK);
     xlib.repar_win(win, parw, 0, font.get_scent());
     xlib.set_bdrwidth(parw, wmconf::BDRPX);
     xlib.set_bdrcolor(parw, wmconf::COLORS[BG]);
@@ -507,13 +653,14 @@ noexcept {
     auto& wk { WK[currwk] };
     Dim<int, int> pos { wk.C.size() ? 
       Dim<int, int> { 
-        wk.C[wk.currc].pos.x() + font.get_scent(), 
-        wk.C[wk.currc].pos.y() + font.get_scent() } : 
+        wk.C[wk.currc].pos.x() + CASC_OSET, 
+        wk.C[wk.currc].pos.y() + CASC_OSET } : 
       Dim<int, int> { }
     };
 
     xlib.move_win(parw, pos.x(), pos.y());
-    Client c { win, parw, pos, size, xlib.depth() };
+    Client c { win, parw, pos, size, font.get_scent(), 
+      xlib.depth() };
     focus(c);
     wk.C.push_back(std::move(c));
     
@@ -533,7 +680,7 @@ some::Recv::configure(Data const& data)
 const noexcept {
   std::cout << "EV: Configure Notify\n";
   auto const win { static_cast<xlib::Win>(data[1]) }; 
-  if (win == rootwin) {
+  if (win == root.win) {
     Dim<int, int> const pos { data[2], data[3] };
     Dim<int, int> const size { data[4], data[5] };
   }
@@ -550,12 +697,14 @@ const noexcept {
 
 void
 some::Recv::property(Data const& data)
-const noexcept {
+noexcept {
   std::cout << "EV: Prop Notify\n";
-  if (auto const win { data[0] }; win == rootwin) {
+  if (auto const win { data[0] }; win == root.win) {
     refresh_root();
     refresh_panel();
   }
+    
+  change_wins_state();
 }
 
 void
@@ -563,4 +712,10 @@ some::Recv::clientmessage(Data const& data)
 const noexcept {
   std::cout << "EV: Client Message\n";
   change_root_state();
+}
+
+void
+some::Recv::exit() 
+const noexcept {
+  Wm::exit();
 }
