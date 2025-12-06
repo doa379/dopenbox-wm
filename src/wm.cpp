@@ -1,178 +1,646 @@
 #include <iostream>
-#include <csignal>
+#include <utility>
 #include <algorithm>
-#include <cwchar>
-#include <cstring>
+#include <fstream>
 
-#include "../inc/wm.h"
-//#include "/tmp/xbmp.xbm"
-#include "../config.h"
+#include "wm.h"
 
-some::Root::Root(some::xlib::Win const win, int const w,
-int const h, int const d) :
-win { win },
-gc { win },
-draw { win, w, h, d }
-{ }
+class Log {
+  public:
+  Log() { fs.open("/tmp/dopenboxwm.log",
+    std::fstream::app); }
+  ~Log() { }
+  template<typename T>
+  Log& operator<<(T const& t) {
+    fs << t;
+    std::cerr << t;
+    return *this;
+  }
 
-some::Client::Client(some::xlib::Win const win, 
-some::xlib::Win const parw, Dim<int, int> const& pos, 
-Dim<int, int> const& size, int const th, 
-int const d)
+  private:
+  std::fstream fs;
+};
+
+std::unordered_map<unsigned, unsigned>
+  some::Kbd::kcode_ksym;
+std::vector<std::pair<unsigned, unsigned>>
+  some::Kbd::KMOD_KSYM;
+std::map<std::pair<unsigned, unsigned>, 
+  std::function<void()>> some::Kbd::call;
+std::map<std::pair<unsigned, unsigned>, 
+  std::string_view> some::Kbd::shell;
+unsigned some::Kbd::numlockmask;
+///////////////////////////////////////////////////////////
+std::vector<std::pair<unsigned, unsigned>> 
+  some::Btn::KMOD_BTN;
+std::map<std::pair<unsigned, unsigned>, 
+  std::function<void()>> some::Btn::btn;
+///////////////////////////////////////////////////////////
+std::pair<int, int>
+some::Arrange::cascade(::Window const win, int const x,
+  int const y) 
+const noexcept {
+  //Calc. and apply next pos to win
+  std::pair<int, int> const next { 
+    x + ui.cascoset, y + ui.cascoset };
+  //win.move(win, next.x(), next.y());
+  return next;
+}
+
+void
+some::Arrange::center(::Window const win,
+  int const x, int const y, int const w, int const h) 
+const noexcept {
+  std::pair<int, int> next { };
+  //win.move(win, next.x(), next.y());
+}
+///////////////////////////////////////////////////////////
+some::Kbd::Kbd() noexcept {
+
+}
+
+some::Kbd::~Kbd() {
+  ::XSetInputFocus(dpy.ptr, dpy.root, RevertToPointerRoot, 
+    CurrentTime);
+}
+
+void
+some::Kbd::init(unsigned const kmod, unsigned const ksym,
+  std::function<void()> const& f)
+noexcept {
+  call[{ kmod, ksym }] = f;
+  KMOD_KSYM.emplace_back(kmod, ksym);
+}
+
+void
+some::Kbd::init(unsigned const kmod, unsigned const ksym,
+  char const* cmd)
+noexcept {
+  shell[{ kmod, ksym }] = cmd;
+  KMOD_KSYM.emplace_back(kmod, ksym);
+}
+
+void
+some::Kbd::grab_keys() {
+  xlib::KeyMod keymod;
+  numlockmask = keymod.numlock_mask();
+  std::array<unsigned, 4> const MOD { 
+    0, LockMask, numlockmask, numlockmask | LockMask
+  };
+
+  kcode_ksym.clear();
+  xlib::KeySym keysym;
+  auto const KSYM { keysym.get_ksyms() };
+  for (auto const ksym : KSYM) {
+    auto const kcode { ::XKeysymToKeycode(dpy.ptr, ksym) };
+    kcode_ksym[kcode] = ksym;
+  }
+
+  ::XUngrabKey(dpy.ptr, AnyKey, AnyModifier, dpy.root);
+  for (auto const mod : MOD)
+    for (auto const& k : KMOD_KSYM) {
+      auto const kmod { std::get<0>(k) };
+      auto const kcode {
+        ::XKeysymToKeycode(dpy.ptr, std::get<1>(k))
+      };
+
+      ::XGrabKey(dpy.ptr, kcode, kmod | mod, dpy.root, 
+        true, GrabModeAsync, GrabModeAsync);
+    }
+}
+
+unsigned
+some::Kbd::kmod(unsigned const kstate) {
+  static auto constexpr MASK { 
+    ShiftMask | 
+    ControlMask | 
+    Mod1Mask |
+    Mod2Mask |
+    Mod3Mask |
+    Mod4Mask |
+    Mod5Mask
+  };
+
+  return kstate & ~(numlockmask | LockMask) & MASK;
+}
+
+void
+some::Btn::init(unsigned const kmod,
+  unsigned const sym, std::function<void()> const& f)
+noexcept {
+  btn[{ kmod, sym }] = f;
+  KMOD_BTN.emplace_back(kmod, sym);
+}
+///////////////////////////////////////////////////////////
+some::Wg::Wg(::Window const parw, int const w, int const h, int const d)
 noexcept :
-win { win },
-parw { parw },
-gc { parw },
-draw { parw, size.w(), th, d },
-pos { pos },
-size { size },
-th { th }
-{ }
+  win { ::XCreateSimpleWindow(dpy.ptr, parw, 0, 0, w, h, 
+    0, 0, 0) },
+  gc { win },
+  draw { win, w, h, d },
+  w { w }, 
+  h { h }
+{
+  static auto constexpr MASK {
+    SubstructureRedirectMask |
+    SubstructureNotifyMask |
+    ButtonPressMask |
+    ButtonReleaseMask |
+    PointerMotionMask |
+    EnterWindowMask |
+    LeaveWindowMask |
+    PropertyChangeMask |
+    ExposureMask
+  };
+  
+  ::XSelectInput(dpy.ptr, win, MASK);
+}
 
-some::Client::Client(Client&& client)
+some::Wg::Wg(Wg&& wg)
 noexcept :
-win { client.win },
-parw { client.parw },
-gc { std::move(client.gc) },
-draw { std::move(client.draw) },
-pos { client.pos },
-size { client.size }
-{ }
+  win { std::exchange(wg.win, 0) },
+  gc { std::move(wg.gc) },
+  draw { std::move(wg.draw) },
+  w { wg.w },
+  h { wg.h }
+{
 
-some::Client&
-some::Client::operator=(Client&& client)
-noexcept { 
-  win = client.win;
-  parw = client.parw;
-  gc = std::move(client.gc);
-  draw = std::move(client.draw);
-  pos = std::move(client.pos);
-  size = std::move(client.size);
+}
+
+some::Wg&
+some::Wg::operator=(Wg&& wg)
+noexcept {
+  win = std::exchange(wg.win, 0);
+  gc = std::move(wg.gc);
+  draw = std::move(wg.draw);
+  w = wg.w;
+  h = wg.h;
   return *this;
 }
 
-some::Wm::Wm() : 
-root { xlib.root_win(),
-  xlib.dpy_width(), 
-  xlib.dpy_height(),
-  xlib.depth() },
-font { wmconf::FONT } {
+some::Wg::~Wg() {
+  if (win) {
+    Log() << "Destroy widget " << win << "\n";
+    ::XDestroyWindow(dpy.ptr, win);
+  }
+}
+///////////////////////////////////////////////////////////
+some::Client::Client(::Window const win, int const x, 
+  int const y, int const w, int const h) 
+noexcept :
+  win { win },
+  par { dpy.root, w, h + ui.clen, dpy.depth },
+  btn0 { par.win, ui.clen, ui.clen, dpy.depth },
+  btn1 { par.win, ui.clen, ui.clen, dpy.depth },
+  btn2 { par.win, ui.clen, ui.clen, dpy.depth },
+  icon { dpy.root, ui.icow, ui.clen, dpy.depth },
+  x { x },
+  y { y },
+  w { w }, 
+  h { h + ui.clen }
+{
+  ::XReparentWindow(dpy.ptr, win, par.win, 0, ui.clen);
+  ::XSetWindowBorderWidth(dpy.ptr, par.win, ui.bdrw);
+  ::XSetWindowBorderWidth(dpy.ptr, win, 0);
+  ::XMapRaised(dpy.ptr, par.win);
+  ::XMapRaised(dpy.ptr, win);
+  ::XMapRaised(dpy.ptr, btn0.win);
+  ::XMapRaised(dpy.ptr, btn1.win);
+  ::XMapRaised(dpy.ptr, btn2.win);
+  ::XSetWindowBorderWidth(dpy.ptr, icon.win, 0);
+}
 
+some::Client::Client(Client&& client) 
+noexcept :
+  win { std::exchange(client.win, 0) },
+  par { std::move(client.par) },
+  btn0 { std::move(client.btn0) },
+  btn1 { std::move(client.btn1) },
+  btn2 { std::move(client.btn2) },
+  icon { std::move(client.icon) },
+  x { client.x },
+  y { client.y },
+  w { client.w },
+  h { client.h },
+  mode { client.mode },
+  sel { client.sel }
+{
+
+}
+
+some::Client& 
+some::Client::operator=(some::Client&& client)
+noexcept { 
+  win = std::exchange(client.win, 0);
+  par = std::move(client.par);
+  btn0 = std::move(client.btn0);
+  btn1 = std::move(client.btn1);
+  btn2 = std::move(client.btn2);
+  icon = std::move(client.icon);
+  x = client.x;
+  y = client.y;
+  w = client.w;
+  h = client.h;
+  mode = client.mode;
+  sel = client.sel;
+  return *this;
+}
+
+some::Client::~Client() {
+  if (win) {
+    ::XReparentWindow(dpy.ptr, win, dpy.root, x, y);
+    ::XUngrabButton(dpy.ptr, AnyButton, AnyModifier, win);
+    ::XMapRaised(dpy.ptr, win);
+    Log() << "Reparented " << win << " to root\n";
+  }
+}
+
+void
+some::Client::map()
+const noexcept {
+  ::XMapRaised(dpy.ptr, par.win);
+}
+
+void
+some::Client::unmap()
+const noexcept {
+  ::XUnmapWindow(dpy.ptr, par.win);
+}
+
+void
+some::Client::set_bg(std::size_t const col)
+const noexcept {
+  ::XSetWindowBackground(dpy.ptr, par.win, col);
+  ::XClearWindow(dpy.ptr, par.win);
+  ::XSetWindowBackground(dpy.ptr, icon.win, col);
+  ::XClearWindow(dpy.ptr, icon.win);
+}
+
+void
+some::Client::set_bdrcolor(std::size_t const col)
+const noexcept {
+  ::XSetWindowBorder(dpy.ptr, par.win, col);
+}
+
+void
+some::Client::grab_btns()
+const noexcept {
+  xlib::KeyMod keymod;
+  auto const numlockmask { keymod.numlock_mask() };
+  std::array<unsigned, 4> const MOD { 
+    0, LockMask, numlockmask, numlockmask | LockMask
+  };
+ 	
+  ::XUngrabButton(dpy.ptr, AnyButton, AnyModifier, 
+    par.win);
   static auto constexpr MASK {
-    xlib::mask::SUBSTRUCTREDIR | 
-    xlib::mask::SUBSTRUCTNOTIF | 
-    xlib::mask::BTNPRESS |
-    xlib::mask::BTNRELEASE |
-    xlib::mask::PTRMOTION |
-    xlib::mask::ENTERWIN |
-    xlib::mask::LEAVEWIN |
-    xlib::mask::STRUCTNOTIF |
-    xlib::mask::PROPCHANGE |
-    xlib::mask::EXPO
+    ButtonPressMask | ButtonReleaseMask
   };
 
-  input.select(root.win, MASK);
-  input.ungrab_allkey(root.win);
-  auto const mask { input.modmask() };
-  for (auto const& k : wmconf::KBD) {
-    auto const kcode { input.keysym_keycode(k.sym) };
-    KCODE_KSYM[kcode] = k.sym;
-    input.grab_key(root.win, k.mod & mask, kcode);
+  for (auto const& b : btn.KMOD_BTN)
+    for (auto mod : MOD)
+      ::XGrabButton(dpy.ptr, std::get<1>(b), 
+        std::get<0>(b) | mod, par.win, false, MASK,
+            GrabModeSync, GrabModeSync, None, None);
+}
+
+void
+some::Client::grab_any_btn()
+const noexcept {
+  static auto constexpr MASK {
+    ButtonPressMask | ButtonReleaseMask
+  };
+ 	
+  ::XGrabButton(dpy.ptr, AnyButton, AnyModifier, par.win, 
+    false, MASK, GrabModeSync, GrabModeSync, None, None);
+}
+
+void
+some::Client::set_focus()
+const noexcept {
+  ::XSetInputFocus(dpy.ptr, par.win, RevertToPointerRoot, 
+    CurrentTime);
+}
+
+void
+some::Client::toggle_sel(std::size_t const selcol, 
+  std::size_t const col)
+noexcept {
+  sel = !sel;
+  ::XSetWindowBorder(dpy.ptr, par.win, sel ? selcol : col);
+}
+
+void
+some::Client::clear_sel(std::size_t const col)
+noexcept {
+  sel = false;
+  ::XSetWindowBorder(dpy.ptr, par.win, col);
+}
+
+void
+some::Client::refresh()
+const noexcept {
+  ::XSetWindowBorder(dpy.ptr, par.win,
+    sel ? ui.COLORS[ui.SEL] : ui.COLORS[ui.BG]);
+
+  int w0 { };
+  if (auto const name { prop.get_name(win) };
+    name.has_value()) {
+    par.gc.set_fg(ui.COLORS[ui.FG]);
+    par.draw.string(name.value().data(), 
+      name.value().length(), par.gc.get(), 4, 
+        font.get_ascent());
+    w0 = font.text_width(name.value().data(), 
+      name.value().length());
+  }
+  
+  if (auto const icon { prop.get_icon(win) };
+    icon.has_value()) {
+    this->icon.gc.set_fg(ui.COLORS[ui.FG]);
+    this->icon.gc.set_bg(ui.COLORS[ui.BG]);
+    this->icon.draw.string(icon.value().data(), 
+      ui.icostrlen, this->icon.gc.get(), 4, 
+        font.get_ascent());
   }
 
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK0)] =
-    [] { };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK1)] =
-    // wk enum begin
-    [this] { sw_wk(1); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK2)] =
-    [this] { sw_wk(2); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK3)] =
-    [this] { sw_wk(3); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK4)] =
-    [this] { sw_wk(4); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK5)] =
-    [this] { sw_wk(5); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK6)] =
-    [this] { sw_wk(6); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK7)] =
-    [this] { sw_wk(7); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK8)] =
-    [this] { sw_wk(8); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::WK9)] =
-    [this] { sw_wk(9); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::LOADWK)] =
-    [this] { load_wk(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::UNLOADWK)] =
-    [this] { unload_wk(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON0)] =
-    [this] { sw_mon(0); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON1)] =
-    [this] { sw_mon(1); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON2)] =
-    [this] { sw_mon(2); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON3)] =
-    [this] { sw_mon(3); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON4)] =
-    [this] { sw_mon(4); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON5)] =
-    [this] { sw_mon(5); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON6)] =
-    [this] { sw_mon(6); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON7)] =
-    [this] { sw_mon(7); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON8)] =
-    [this] { sw_mon(8); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MON9)] =
-    [this] { sw_mon(9); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::UNMAPALL)] =
-    [this] { unmap_all(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::MAPALL)] =
-    [this] { map_all(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::SWFOCUS)] =
-    [] { };
-  CALL[static_cast<std::size_t>(wmconf::Calls::TOGGLEMODE)] =
-    [] { };
-  CALL[static_cast<std::size_t>(wmconf::Calls::PREVCLI)] =
-    [this] { prev_client(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::NEXTCLI)] =
-    [this] { next_client(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::KILL)] =
-    [this] { kill_client(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::SELTOGGLE)] =
-    [this] { toggle_sel(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::SELCLEAR)] =
-    [this] { clear_sel(); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::QUIT)] =
-    []{ std::raise(SIGINT); };
-  CALL[static_cast<std::size_t>(wmconf::Calls::RESIZE)] =
-    [] { };
-  CALL[static_cast<std::size_t>(wmconf::Calls::STATE)] =
-    [] { };
+  int const w1 { w - 20 };
+  int const h { ui.clen };
+  par.gc.set_fg(ui.COLORS[ui.BG]);
+  for (int i { w0 }; i < w1; i += 3)
+    for (int j { }; j < h; j += 3)
+      par.draw.fill(par.gc.get(), i, j, 2, 2);
+}
 
-  for (auto i { 0 }; i < wmconf::NWKS; i++)
-    WK.emplace_back(Wk { });
+bool
+some::Client::move(int const x, int const y)
+noexcept {
+  return y > ui.bdrw && y < ui.clen;
+}
 
-  some::xlib::QueryTree query { root.win };
+void
+some::Client::move(int const x, int const y, 
+  int const x_root, int const y_root)
+noexcept {
+  static auto constexpr MASK {
+    ButtonPressMask |
+    ButtonReleaseMask |
+    PointerMotionMask
+  };
+
+  auto const cursor { this->cursor.move };
+  ::XGrabPointer(dpy.ptr, dpy.root, false, MASK, 
+    GrabModeAsync, GrabModeAsync, None, cursor, 
+    CurrentTime);
+  int const x0 { this->x };
+  int const y0 { this->y };
+  auto const on_motion {
+    [&](::XMotionEvent const& xmotion) {
+      auto const x { xmotion.x };
+      auto const y { xmotion.y };
+      auto const next_x { x0 + x - x_root };
+      auto const next_y { y0 + y - y_root };
+      ::XMoveWindow(dpy.ptr, par.win, next_x, next_y);
+      this->x = next_x;
+      this->y = next_y;
+    }
+  };
+  
+  Ev ev;
+  for (auto gen { ev.seq() };;) {
+    /*
+    ev.mask_event(ButtonPressMask |
+      ButtonReleaseMask |
+      PointerMotionMask |
+      ExposureMask |
+      SubstructureRedirectMask);
+    */
+    Log() << "EV: Event on client window\n";
+    if (auto const xev { gen.next() };
+      xev.type == ButtonRelease)
+      break;
+    else if (xev.type == MotionNotify)
+      on_motion(xev.xmotion);
+
+    //::XSync(dpy.ptr, false);
+  }
+
+  ::XUngrabPointer(dpy.ptr, CurrentTime);
+}
+
+bool
+some::Client::resize(int const x, int const y)
+noexcept {
+  static auto constexpr MASK {
+    ButtonPressMask |
+    ButtonReleaseMask |
+    PointerMotionMask
+  };
+
+  if (x > w - ui.bdrw && x < w + ui.bdrw &&
+    y > h - ui.bdrw && y < h + ui.bdrw)
+    // Bottom Right
+    return ::XGrabPointer(dpy.ptr, par.win, false, MASK, 
+      GrabModeAsync, GrabModeAsync, None, cursor.resize, 
+      CurrentTime) == GrabSuccess;
+  else if (x > -ui.bdrw && x < ui.bdrw)
+    // Left
+    return ::XGrabPointer(dpy.ptr, par.win, false, MASK, 
+      GrabModeAsync, GrabModeAsync, None, cursor.h, 
+      CurrentTime) == GrabSuccess;
+  else if (x > w - ui.bdrw && x < w + ui.bdrw)
+    // Right
+    return ::XGrabPointer(dpy.ptr, par.win, false, MASK, 
+      GrabModeAsync, GrabModeAsync, None, cursor.h, 
+      CurrentTime) == GrabSuccess;
+  else if (y > -ui.bdrw && y < ui.bdrw)
+    // Top
+    return ::XGrabPointer(dpy.ptr, par.win, false, MASK, 
+      GrabModeAsync, GrabModeAsync, None, cursor.v, 
+      CurrentTime) == GrabSuccess;
+  else if (y > h - ui.bdrw && y < h + ui.bdrw)
+    // Bottom
+    return ::XGrabPointer(dpy.ptr, par.win, false, MASK, 
+      GrabModeAsync, GrabModeAsync, None, cursor.v, 
+      CurrentTime) == GrabSuccess;
+  
+  ::XUngrabPointer(dpy.ptr, CurrentTime);
+  return false;
+}
+
+void
+some::Client::resize(int const x, int const y, 
+  int const x_root, int const y_root)
+noexcept {
+  //int const w0 { this->w };
+  //int const h0 { this->h };
+  auto const on_motion {
+    [&](::XMotionEvent const& xmotion) {
+      auto const x { xmotion.x };
+      auto const y { xmotion.y };
+      //auto const next_w { w0 + x - x_root };
+      auto const next_w { x - this->x };
+      //auto const next_h { h0 + y - y_root };
+      auto const next_h { y - this->y };
+      //::XResizeWindow(dpy.ptr, par.win, next_w, next_h);
+      w = par.w = std::max(next_w, 1);
+      h = std::max(next_h, 1);
+      ::XWindowChanges wc;
+      wc.width = w;
+      wc.height = h - ui.clen;
+      ::XConfigureWindow(dpy.ptr, win, CWWidth | CWHeight,
+        &wc);
+      ::XWindowChanges par_wc { wc };
+      par_wc.height += ui.clen;
+      ::XConfigureWindow(dpy.ptr, par.win, 
+          CWWidth | CWHeight, &par_wc);
+    }
+  };
+  
+  Ev ev;
+  for (auto gen { ev.seq() };;) {
+    /*
+    ev.mask_event(ButtonReleaseMask |
+      PointerMotionMask |
+      ExposureMask |
+      SubstructureRedirectMask);
+    */
+  
+    Log() << "EV: Btn Press client window\n";
+    if (auto const xev { gen.next() }; 
+      xev.type == ButtonRelease)
+      break;
+    else if (xev.type == MotionNotify)
+      on_motion(xev.xmotion);
+
+    //::XSync(dpy.ptr, false);
+  }
+  
+  ::XUngrabPointer(dpy.ptr, CurrentTime);
+}
+///////////////////////////////////////////////////////////
+/*
+some::Root::Wk::Wk(int const w, int const h) 
+noexcept :
+wg {
+  ::XCreateSimpleWindow(dpy.ptr, dpy.root, 0, 0, 
+    w, h, 0, 0, 0), 
+    w, h, dpy.depth
+} {
+  ::XSelectInput(dpy.ptr, wg.win, ButtonPressMask);
+  ::XSetWindowBorderWidth(dpy.ptr, wg.win, 0);
+  ::XMapRaised(dpy.ptr, wg.win);
+}
+*/
+some::Root::Wk::Wk()
+noexcept {
+  C.reserve(100);
+}
+
+some::Root::Wk::Wk(Wk&& wk)
+noexcept :
+  C { std::move(wk.C) },
+  wg { std::move(wk.wg) } {
+
+}
+
+some::Root::Wk&
+some::Root::Wk::operator=(some::Root::Wk&& wk)
+noexcept {
+  C = std::move(wk.C);
+  wg = std::move(wk.wg);
+  return *this;
+}
+
+void
+some::Root::Wk::init_wg(int const w, int const h) 
+noexcept {
+  wg = { dpy.root, w, h, dpy.depth };
+  //::XSelectInput(dpy.ptr, wg.win, ButtonPressMask);
+  ::XSetWindowBorderWidth(dpy.ptr, wg.win, 0);
+  ::XMapRaised(dpy.ptr, wg.win);
+}
+///////////////////////////////////////////////////////////
+some::Root::Root(char const NAME[]) noexcept :
+wmname { NAME } {
+  wk.reserve(10);
+  mon.reserve(5);
+  static auto constexpr MASK {
+    SubstructureRedirectMask |
+    SubstructureNotifyMask |
+    ButtonPressMask |
+    ButtonReleaseMask |
+    PointerMotionMask |
+    EnterWindowMask |
+    LeaveWindowMask |
+    StructureNotifyMask |
+    PropertyChangeMask |
+    ExposureMask
+  };
+
+  ::XSelectInput(dpy.ptr, dpy.root, MASK);
+  ::remove("/tmp/dopenboxwm.log");
+}
+
+some::Root::~Root() {
+
+}
+
+void
+some::Root::init_wks(unsigned const n)
+noexcept {
+  if (n == 0)
+    wk.emplace_back();
+  else {
+    for (unsigned i { }; i < n; i++)
+      wk.emplace_back();
+  }
+
+  prevwk = currwk = wk.begin();
+}
+
+void
+some::Root::init_tree()
+noexcept {
+  some::xlib::QueryTree query { dpy.root };
   auto const wins { query.get() };
-  for (auto const win : wins)
-    ;
+  for (auto const win : wins) {
+    if (::XWindowAttributes wa;
+      ::XGetWindowAttributes(dpy.ptr, win, &wa) &&
+        wa.map_state == IsViewable)
+      map_request(::XMapRequestEvent {
+        .send_event { false },
+        .parent { dpy.root },
+        .window { win }
+      });
+  }
+}
 
+void
+some::Root::init_mons()
+noexcept {
   try {
     some::xlib::Xinerama xinerama;
     auto const n { xinerama.number() };
-    for (std::size_t i { }; i < n; i++) {
+    for (int i { }; i < n; i++) {
       auto const query { xinerama.query(i) };
       // queries { pos, size }
-      MON.emplace_back(Mon { 
-        std::get<0>(query), std::get<1>(query) });
+      auto const& pos { std::get<0>(query) };
+      auto const& size { std::get<1>(query) };
+      mon.emplace_back(std::get<0>(pos),
+        std::get<1>(pos),
+        std::get<0>(size),
+        std::get<1>(size));
     }
   } catch (...) {
-    MON.emplace_back(Mon { { }, 
-      { xlib.dpy_width(), xlib.dpy_height() } });
+    mon.emplace_back(0, 0, dpy.width, dpy.height);
   }
 
-  xlib.set_winbg(root.win, ROOTBG);
+  Log() << "Number of mons " << mon.size() << "\n";
+  for (auto const& mon : this->mon)
+    Log() << "mon " << 
+      "pos (" << mon.x << "," << mon.y << ")" <<
+      " size (" << mon.w << "," << mon.h << ")" << "\n";
+}
   ///////////////////////////////////////////////////
   /*
   std::vector<char> A;
@@ -180,49 +648,54 @@ font { wmconf::FONT } {
     A.emplace_back(static_cast<char>(a));
   auto const kill { 
     rootpix.create_bitmap(root.win, A.data(), 100, 100) };
-  rootpix.copy_plane(kill, root.win, xlib.default_gc(),
+  rootpix.copy_plane(kill, root.win, win.default_gc(),
     0, 0, 100, 100, 0, 0);
   */
   ///////////////////////////////////////////////////
-  refresh_root();
-  refresh_panel();
-  std::cout << wmconf::WMNAME << " initialized\n";
-}
-
-some::Wm::~Wm() {
-  // Destr. must also act static because of Display
-  // Leave it empty
-}
-
 void
-some::Wm::exit() const noexcept {
-  xlib.set_winbg(root.win, Black);
-  for (auto const &wk : WK)
-    std::ranges::for_each(wk.C, 
-      [this](auto const& c) { 
-        xlib.repar_win(c.win, root.win, 0, 0);
-        xlib.destroy_win(c.parw);
-        xlib.map_win(c.win);
-      });
-    
-  input.set_focus(root.win);
-  std::cout << wmconf::WMNAME << " exit\n";
-}
-
-void
-some::Wm::sw_wk(unsigned const n)
+some::Root::init_wgs()
 noexcept {
-  if (n - 1 == currwk || n > WK.size())
+  if (wk.size() > 1) {
+    for (auto& wk : this->wk)
+      wk.init_wg(ui.clen, ui.clen);
+  }
+
+  status = Wg { dpy.root, 1, 1, dpy.depth };
+  ::XMapRaised(dpy.ptr, status.win);
+  icon = Wg { dpy.root, 1, 1, dpy.depth };
+}
+
+void
+some::Root::deinit() 
+noexcept {
+  wk.clear();
+  ::XDestroyWindow(dpy.ptr, status.win);
+  ::XDestroyWindow(dpy.ptr, icon.win);
+}
+
+void
+some::Root::sw_wk(unsigned const n)
+noexcept {
+  if (wk.cbegin() + n - 1 == currwk || n > wk.size())
     return;
 
-  unmap_all();
+  for (auto const& c : currwk->C) {
+    c.unmap();
+    ::XUnmapWindow(dpy.ptr, c.icon.win);
+  }
+  
   prevwk = currwk;
-  currwk = n - 1;
-  map_all();
+  currwk = wk.begin() + n - 1;
+  for (auto const& c : currwk->C)
+    c.map();
+
+  if (currwk->C.size()) {
+    focus();
+  }
 }
 
 void
-some::Wm::sw_mon(unsigned const n)
+some::Root::sw_mon(unsigned const n)
 const noexcept {
   if (n > 0)
     return;
@@ -230,492 +703,558 @@ const noexcept {
 }
 
 void
-some::Wm::unmap_all()
-const noexcept {
-  auto const& wk { WK[currwk] };
-  for (auto const& c : wk.C) {
-    unfocus(c);
-    xlib.unmap_win(c.parw);
-    //xlib.iconify_win(c.parw);
-  }
+some::Root::load_wk()
+noexcept {
+  wk.emplace_back();
+  wk.back().init_wg(ui.clen, ui.clen);
 }
 
 void
-some::Wm::map_all()
+some::Root::unload_wk()
 noexcept {
-  auto const& wk { WK[currwk] };
-  for (auto const& c : wk.C)
-    xlib.map_win(c.parw);
+  if (wk.size() == 1)
+    return;
 
-  if (wk.C.size()) {
-    xlib.map_win(wk.C[wk.currc].parw);
-    focus(wk.C[wk.currc]);
-  }
-}
-
-void
-some::Wm::load_wk()
-noexcept {
-  WK.emplace_back(Wk { });
-}
-
-void
-some::Wm::unload_wk()
-noexcept {
-  auto const wk { WK.begin() + currwk };
   auto next { 
-    std::next(WK.cbegin() + currwk) == WK.cend() ? 
-    WK.begin() + currwk - 1 :
-    WK.begin() + currwk + 1 };
+    std::next(currwk) == wk.cend() ? currwk - 1 :
+    currwk + 1
+  };
   
-  for (auto& c : wk->C)
+  for (auto& c : currwk->C)
     next->C.emplace_back(std::move(c));
 
-  currwk = std::distance(WK.begin(), next);
-  WK.erase(wk);
-  // propagate prop change
+  wk.erase(currwk);
+  currwk = next;
 }
 
 void
-some::Wm::unfocus(Client const& c)
-const noexcept {
-  auto const mask { input.modmask() };
-  for (auto const& b : wmconf::BTN)
-    input.ungrab_btn(c.parw, b.mod & mask, b.sym);
-
-  //delprop_active(wk[1]->client[1]->w);
-  xlib.set_winbg(c.parw, wmconf::COLORS[BG]);
-}
-
-void
-some::Wm::focus(Client const& c)
+some::Root::focus()
 noexcept {
-  input.set_focus(c.parw);
-  auto const mask { input.modmask() };
-  for (auto const& b : wmconf::BTN)
-    input.grab_btn(c.parw, b.mod & mask, b.sym);
- 
-  xlib.set_winbg(c.parw, wmconf::COLORS[SEL]);
-  // Offset to ui class
-  auto const name { prop.get_name(c.win) };
-  if (name.has_value()) {
-    c.gc.set_fg(wmconf::COLORS[FG]);
-    c.draw.string(name.value().data(), 
-      name.value().length(), c.gc.get(), 4, 
-        font.get_ascent());
-  }
+  if (currwk->C.size() == 0)
+    return;
+  if (currwk->C.size() == 1)
+    currwk->prevc = currwk->currc = 0;
 
-  c.gc.set_fg(wmconf::COLORS[BG]);
-  int const w0 { font.text_width(name.value().data(),
-    name.value().length()) };
-  int const w1 { c.size.w() - 20 };
-  int const h { font.get_scent() };
-  for (int i { w0 }; i < w1; i += 3)
-    for (int j { }; j < h; j += 3) {
-      c.draw.fill(c.gc.get(), i, j, 2, 2);
-    }
+  auto const prevc { currwk->C.cbegin() + currwk->prevc };
+  auto const currc { currwk->C.cbegin() + currwk->currc };
+  prevc->grab_any_btn();
+  prevc->set_bg(ui.COLORS[ui.BG]);
+  currc->set_focus();
+  currc->grab_btns();
+  currc->set_bg(ui.COLORS[ui.ACTSEL]);
+  currc->map();
+}
+
+void
+some::Root::next()
+noexcept {
+  //if (currwk->C.size() < 2)
+    //return;
+
+  currwk->prevc = currwk->currc;
+  ++currwk->currc %= currwk->C.size();
+  //currwk->currc == currwk->C.end() - 1 ? 
+    //currwk->C.begin() : currwk->currc + 1;
+
+  focus();
+}
+
+void
+some::Root::prev()
+noexcept {
+  //if (currwk->C.size() < 2)
+    //return;
   
+  currwk->prevc = currwk->currc;
+  if (--currwk->currc < 0)
+    currwk->currc = currwk->C.size() + currwk->currc;
+  //currwk->currc == currwk->C.begin() ? 
+    //currwk->C.end() - 1 : currwk->currc - 1;
+
+  focus();
 }
 
 void
-some::Wm::prev_client()
+some::Root::rotate_next()
 noexcept {
-  auto& wk { WK[currwk] };
-  if (wk.C.size() < 2)
-    return;
 
-  unfocus(wk.C[wk.currc]);
-  wk.prevc = wk.currc;
-  wk.currc = wk.currc == 0 ? wk.C.size() - 1 :
-    wk.currc - 1;
-  xlib.map_win(wk.C[wk.currc].parw);
-  focus(wk.C[wk.currc]);
 }
 
 void
-some::Wm::next_client()
+some::Root::rotate_prev()
 noexcept {
-  auto& wk { WK[currwk] };
-  if (wk.C.size() < 2)
-    return;
-
-  unfocus(wk.C[wk.currc]);
-  wk.prevc = wk.currc;
-  wk.currc = wk.currc == wk.C.size() - 1 ? 0 : 
-    wk.currc + 1;
-  xlib.map_win(wk.C[wk.currc].parw);
-  focus(wk.C[wk.currc]);
-}
-
-void
-some::Wm::kill_client() {
 
 }
 
 void
-some::Wm::toggle_sel()
+some::Root::kill_client() {
+  auto const c { currwk->C.cbegin() + currwk->currc };
+  ::XDestroyWindow(dpy.ptr, c->win);
+  Log() << "Kill Client " << c->win << "\n";
+}
+
+void
+some::Root::toggle_sel()
 noexcept {
-  auto& wk { WK[currwk] };
-  auto& c { wk.C[wk.currc] };
-  c.sel = !c.sel;
-  xlib.set_bdrcolor(c.parw, c.sel ? Yellow : 
-    wmconf::COLORS[BG]);
+  auto const currc { currwk->C.begin() + currwk->currc };
+  currc->toggle_sel(ui.COLORS[ui.SEL],
+    ui.COLORS[ui.ACTSEL]);
 }
 
 void
-some::Wm::clear_sel()
+some::Root::clear_sel()
 noexcept {
-  auto& wk { WK[currwk] };
-  for (auto& c : wk.C) {
-    c.sel = false;
-    xlib.set_bdrcolor(c.parw, wmconf::COLORS[BG]);
-  }
+  for (auto& c : currwk->C)
+    c.clear_sel(ui.COLORS[ui.BG]);
+
+  auto currc { currwk->C.cbegin() + currwk->currc };
+  currc->set_bdrcolor(ui.COLORS[ui.ACTSEL]);
 }
 
 void
-some::Wm::refresh_root()
-const noexcept {
-  root.gc.set_fg(ROOTBG);
-  root.draw.stipple(root.gc.get(), 32, 8, 
-    xlib.dpy_width(), xlib.dpy_height());
+some::Root::refresh_root()
+noexcept {
+  auto const& mon { this->mon[0] };
 }
 
 void
-some::Wm::refresh_panel()
-const noexcept {
-  // Draw panel on first mon
-  auto const& mon { MON[0] };
-  auto const monw { mon.size.w() };
-  auto const monh { mon.size.h() };
-  root.gc.set_fg(wmconf::COLORS[BG]);
-  root.draw.fill(root.gc.get(), 0, 
-    monh - font.get_scent(), monw, font.get_scent());
-  unsigned o { };
-  static auto constexpr BOX { 20 };
-  static auto constexpr BOXBDR { 2 };
-  for (std::size_t i { }; auto const& wk : WK) {
-    root.gc.set_fg(wmconf::COLORS[FG]);
-    root.draw.fill(root.gc.get(), o, 
-      monh - font.get_scent(), BOX, font.get_scent());
-    root.gc.set_fg(i == currwk ? wmconf::COLORS[SEL] : 
-      wmconf::COLORS[BG]);
-    root.draw.fill(root.gc.get(), o + BOXBDR, 
-      monh - font.get_scent() + BOXBDR, BOX - 2 * BOXBDR,
-      font.get_scent() - 2 * BOXBDR);
-    if (wk.C.size()) {
-      root.gc.set_fg(wmconf::COLORS[FG]);
-      root.draw.string("#", 1, root.gc.get(), o + 4, 
-        monh - font.get_descent());
+some::Root::refresh_panels()
+noexcept {
+  // Draw panels on first monitor
+  auto const& mon { this->mon[0] };
+  auto const Y { mon.h - ui.clen }; 
+
+  unsigned pos_wk { };
+  if (wk.size() > 1) {
+    for (auto& wk : this->wk) {
+      ::XSetWindowBackground(dpy.ptr, wk.wg.win, 
+        ui.COLORS[ui.FG]);
+      //::XClearWindow(dpy.ptr, wk.wg.win);
+      wk.wg.gc.set_fg(wk.wg.win == currwk->wg.win ? 
+        ui.COLORS[ui.ACTSEL] : ui.COLORS[ui.BG]);
+
+      wk.wg.draw.fill(wk.wg.gc.get(),
+        ui.bdrw, ui.bdrw, 
+        wk.wg.w - 2 * ui.bdrw,
+        wk.wg.h - 2 * ui.bdrw);
+
+      if (wk.C.size()) {
+        wk.wg.gc.set_fg(ui.COLORS[ui.FG]);
+        wk.wg.draw.string("#", 1, wk.wg.gc.get(), 
+          4, 
+          wk.wg.h - 4);
+      }
+
+      ::XMoveWindow(dpy.ptr, wk.wg.win, pos_wk, Y);
+      pos_wk += wk.wg.w;
     }
-
-    o += BOX - BOXBDR;
-    i++;
   }
 
-  auto const rpad { 
-    font.text_width(wmconf::WMNAME, strlen(wmconf::WMNAME))
-  };
-  root.gc.set_fg(ROOTBG);
-  root.draw.fill(root.gc.get(), monw - rpad, 
-    monh - font.get_scent(), rpad, font.get_scent());
-  root.gc.set_fg(wmconf::COLORS[FG]);
-  root.draw.string(wmconf::WMNAME, strlen(wmconf::WMNAME), 
-    root.gc.get(), monw - rpad, monh - font.get_descent());
-}
+  ::XSetWindowBackground(dpy.ptr, status.win,
+    ui.COLORS[ui.FG]);
+  //::XClearWindow(dpy.ptr, status.win);
+  char const* s { wmname.data() };
+  auto const len { wmname.length() };
+  auto const textw { font.text_width(s, len) };
+  ::XResizeWindow(dpy.ptr, status.win, textw, ui.clen);
+  auto const pos_status { mon.w - textw };
+  ::XMoveWindow(dpy.ptr, status.win, pos_status, Y);
+  status.gc.set_fg(ui.COLORS[ui.BG]);
+  status.draw.fill(status.gc.get(), 
+    0, 0, textw, font.get_scent());
+  status.gc.set_fg(ui.COLORS[ui.FG]);
+  status.draw.string(s, len, status.gc.get(),
+    4, 14 - font.get_descent());
 
-void some::Wm::change_root_state() const noexcept {
-  prop.change_state(root.win);
-}
+  if (currwk->C.size() && 
+    (pos_status - pos_wk) / currwk->C.size() < 40) {
+    for (auto const& c : currwk->C)
+      ::XUnmapWindow(dpy.ptr, c.icon.win);
 
-void some::Wm::change_wins_state() noexcept {
-  auto& wk { WK[currwk] };
-  for (auto const& c : wk.C) {
-    auto const name { prop.get_name(c.win) };
-    // Offset to ui class
-    if (name.has_value()) {
-      c.gc.set_fg(wmconf::COLORS[FG]);
-      c.draw.string(name.value().data(), 
-        name.value().length(), c.gc.get(), 4, 
+    //auto const c { currwk->currc };
+    auto const c { currwk->C.cbegin() + currwk->currc };
+    ::XSetWindowBackground(dpy.ptr, icon.win,
+      ui.COLORS[ui.ACTSEL]);
+    icon.gc.set_fg(ui.COLORS[ui.FG]);
+    if (auto const icon { prop.get_icon(c->win) };
+      icon.has_value())
+      this->icon.draw.string(icon.value().data(), 
+        icon.value().length(), this->icon.gc.get(), 4, 
           font.get_ascent());
-    }
-  }
-}
-
-void
-some::Recv::key(Data const& data)
-noexcept {
-  std::cout << "EV: Key Press\n";
-  auto const mask { input.modmask() };
-  auto const kmod { static_cast<int>(data[0]) & mask };
-  auto const kcode { static_cast<int>(data[1]) };
-  auto const ksym { KCODE_KSYM[kcode] };
-  for (auto const& k : wmconf::KBD)
-    if (k.mod == kmod && k.sym == ksym) {
-      using Call = wmconf::Calls; 
-      if (std::holds_alternative<char const*>(k.var)) {
-        Sys const sys;
-        sys.spawn(std::get<char const*>(k.var));
-      } else if (std::holds_alternative<Call>(k.var)) {
-        auto const i {
-          static_cast<std::size_t>(std::get<Call>(k.var)) };
-        CALL[i]();
-    }
-      
-      change_root_state();
-      break;
-    }
-}
-
-void
-some::Recv::button_press(Data const& data)
-noexcept {
-  auto const mask { input.modmask() };
-  auto const win { static_cast<xlib::Win>(data[0]) };
-  auto const x { static_cast<int>(data[4]) };
-  auto const y { static_cast<int>(data[5]) };
-  auto const x_root { static_cast<int>(data[6]) };
-  auto const y_root { static_cast<int>(data[7]) };
-  auto const kmod { static_cast<int>(data[8]) & mask };
-  auto const btn { static_cast<int>(data[9]) };
-  if (win == root.win) {
-    std::cout << "EV: Btn Press root window\n";
-
-  } else if (auto const c { 
-    std::ranges::find_if(WK[currwk].C,
-      [win](auto const& c) { return c.parw == win; }) }; 
-        c < WK[currwk].C.cend()) {
-
-    std::cout << "EV: Btn Press client window " << 
-      c->parw << "\n";
-    if (x < 20 && y < c->th) {
-      btn1_ispressed = true;
-      auto const cursor { this->cursor.get_move() };
-      auto constexpr MASK {
-        xlib::mask::BTNPRESS |
-        xlib::mask::BTNRELEASE |
-        xlib::mask::PTRMOTION
-      };
-
-      input.grab_pointer(win, MASK, cursor);
-      std::cout << "Button on client " << x << " " 
-        << y << "\n";
-      move_origin = Dim<int, int> { x_root, y_root };
-
-      
-      Ev ev;
-      ev.init_button_release([this](Data const& data) { 
-        button_release(data); });
-      ev.init_motion([this](Data const& data) { 
-        motion(data); });
-      ev.sync();
-      while (btn1_ispressed) {
-        ev.mask_event(//xlib::mask::BTNPRESS |
-          xlib::mask::BTNRELEASE |
-          xlib::mask::PTRMOTION |
-          xlib::mask::EXPO |
-          xlib::mask::SUBSTRUCTREDIR);
-
-        std::cout << "EV: Btn Press client window\n";
-        ev.call();
-        ev.sync();
-      }
-
-      
-    }
-  }
-
-  change_root_state();
-}
-
-void
-some::Recv::button_release(Data const& data)
-noexcept {
-  std::cout << "EV: Btn Release\n";
-  auto const btn { static_cast<int>(data[9]) };
-  //if (btn == Button1)
-  btn1_ispressed = false;
-  input.ungrab_pointer();
-}
-
-void
-some::Recv::motion(Data const& data)
-const noexcept {
-  auto const win { static_cast<xlib::Win>(data[0]) };
-  auto const x { static_cast<int>(data[4]) };
-  auto const y { static_cast<int>(data[5]) };
-  auto const x_root { static_cast<int>(data[6]) };
-  auto const y_root { static_cast<int>(data[7]) };
-  if (win == root.win) {
-    std::cout << "EV: Motion on root window\n";
-
-  } else if (auto const c { 
-    std::ranges::find_if(WK[currwk].C,
-      [win](auto const& c) { return c.parw == win; }) }; 
-        c < WK[currwk].C.cend()) {
-      
-      if (btn1_ispressed) {
-        xlib.move_win(c->parw, x_root - move_origin.x(), 
-          y_root - move_origin.y());
-      }
-      
-  }
-}
-
-void
-some::Recv::crossing(Data const& data)
-noexcept {
-  std::cout << "EV: Enter Notify\n";
-  auto const win { static_cast<xlib::Win>(data[0]) };
-  auto& wk { WK[currwk] };
-  if (wk.C.size() < 2)
+    else
+      this->icon.draw.string("...", 3, 
+        this->icon.gc.get(), 4, font.get_ascent());
+    
+    ::XMapRaised(dpy.ptr, icon.win);
+    ::XResizeWindow(dpy.ptr, icon.win, 
+      pos_status - pos_wk - 1, 14);
+    ::XMoveWindow(dpy.ptr, icon.win, pos_wk + 1, Y);
     return;
-  else if (auto const c { std::ranges::find_if(wk.C,
-      [win](auto const& c) { return c.parw == win; }) }; 
-        c < wk.C.cend()) {
-    unfocus(wk.C[wk.currc]);
-    wk.prevc = wk.currc;
-    wk.currc = std::distance(wk.C.begin(), c);
-    xlib.map_win(c->parw);
-    focus(wk.C[wk.currc]);
   }
 
-  change_root_state();
+  ::XUnmapWindow(dpy.ptr, icon.win);
+  unsigned pos_client { pos_wk + 1 };
+  for (auto const& c : currwk->C) {
+    ::XMapRaised(dpy.ptr, c.icon.win);
+    ::XMoveWindow(dpy.ptr, c.icon.win, pos_client, Y);
+    c.refresh();
+    pos_client += c.icon.w + 1;
+  }
+  // TODO: call this only if wks change or 
+  // clients change or 
+  // status changes or
+  // first mon size changes
 }
 
 void
-some::Recv::expose(Data const&)
+some::Root::change_state() 
 const noexcept {
-  std::cout << "EV: Expose\n";
-  change_root_state();
+  prop.change_state(dpy.root);
 }
 
 void
-some::Recv::unmap(Data const& data) 
-noexcept{
-  std::cout << "EV: Unmapnotify\n";
-  auto const win { static_cast<xlib::Win>(data[1]) };
-  for (auto& wk : WK)
-    if (auto const c { std::ranges::find_if(wk.C, 
-      [win](auto const& c) { return c.win == win; })};
-        c < wk.C.cend()) {
-      xlib.destroy_win(c->parw);
-      wk.currc = wk.C.size() > 1 ? 
-        std::distance(wk.C.begin(), c - 1) : wk.prevc;
-      
-      xlib.map_win(wk.C[wk.currc].parw);
-      focus(wk.C[wk.currc]);
-      wk.C.erase(c);
-      change_root_state();
-      break;
+some::Root::move_client() 
+const noexcept {
+  if (currwk->C.size() > 0) {
+    //auto const c { currwk->currc };
+    auto const c { currwk->C.begin() + currwk->currc };
+    c->move(c->ptr_x, c->ptr_y, 
+      c->ptr_x_root, c->ptr_y_root);
+  }
+}
+
+void
+some::Root::resize_client() 
+const noexcept {
+  Log() << "Resize client\n";
+
+  if (currwk->C.size() > 0) { 
+    //auto const c { currwk->currc };
+    auto const c { currwk->C.begin() + currwk->currc };
+    ::XWarpPointer(dpy.ptr, None, c->par.win, 0, 0, 0, 0, 
+      c->w + ui.bdrw - 1, c->h + c->ui.bdrw - 1); 
+    if (c->resize(c->w, c->h)) {
+      c->resize(c->ptr_x, c->ptr_y, 
+        c->ptr_x_root, c->ptr_y_root);
     }
+  }
 }
-
+///////////////////////////////////////////////////////////
 void
-some::Recv::map(Data const& data)
-const noexcept {
-  std::cout << "EV: Mapnotify\n";
-  auto const win { static_cast<xlib::Win>(data[1]) };
-  (void) win;
-  change_root_state();
-}
-
-void
-some::Recv::maprequest(Data const& data)
+some::Root::key(::XKeyEvent const& xkey)
 noexcept {
-  std::cout << "EV: Map Request\n";
-  auto const parw { static_cast<xlib::Win>(data[0]) };
-  auto const win { static_cast<xlib::Win>(data[1]) };
+  Log() << "EV: Key Press\n";
+  auto const win { xkey.window };
+  (void) win;
+  auto const x { xkey.x };
+  (void) x;
+  auto const y { xkey.y };
+  (void) y;
+  auto const x_root { xkey.x_root };
+  (void) x_root;
+  auto const y_root { xkey.y_root };
+  (void) y_root;
+
+  auto const kmod { kbd.kmod(xkey.state) };
+  auto const kcode { xkey.keycode };
+  auto const ksym { kbd.kcode_ksym.at(kcode) };
+  try {
+    auto const& call { kbd.call.at({ kmod, ksym }) };
+    call();
+  } catch (...) { }
 
   try {
-    xlib::WinAttr wa { win };
-    if (parw != root.win && wa.override_redirect())
-      throw std::runtime_error("No");
-
-    Dim<int, int> size { wa.size() };
-    size.h() += font.get_scent();
-    xlib::Win const parw { 
-      xlib.create_win(root.win, size.w(), size.h()) };
-    static auto constexpr MASK { 
-      xlib::mask::SUBSTRUCTREDIR | 
-      xlib::mask::SUBSTRUCTNOTIF |
-      xlib::mask::BTNPRESS |
-      xlib::mask::BTNRELEASE |
-      xlib::mask::ENTERWIN
-    };
-
-    input.select(parw, MASK);
-    xlib.repar_win(win, parw, 0, font.get_scent());
-    xlib.set_bdrwidth(parw, wmconf::BDRPX);
-    xlib.set_bdrcolor(parw, wmconf::COLORS[BG]);
-    xlib.map_win(parw);
-    xlib.set_bdrwidth(win, 0);
-    xlib.map_win(win);
-    auto& wk { WK[currwk] };
-    Dim<int, int> pos { wk.C.size() ? 
-      Dim<int, int> { 
-        wk.C[wk.currc].pos.x() + CASC_OSET, 
-        wk.C[wk.currc].pos.y() + CASC_OSET } : 
-      Dim<int, int> { }
-    };
-
-    xlib.move_win(parw, pos.x(), pos.y());
-    Client c { win, parw, pos, size, font.get_scent(), 
-      xlib.depth() };
-    focus(c);
-    wk.C.push_back(std::move(c));
-    
-    if (wk.C.size() > 1) {
-      unfocus(wk.C[wk.currc]);
-      wk.prevc = wk.currc;
-      wk.currc = wk.C.size() - 1;
-    }
-    
-    //std::cout << "Map parent window " << parw << "\n";
-    //std::cout << "Map window " << win << "\n";
+    auto const& shell { kbd.shell.at({ kmod, ksym }) };
+    sys.spawn(shell.data());
   } catch (...) { }
-}
-
-void
-some::Recv::configure(Data const& data) 
-const noexcept {
-  std::cout << "EV: Configure Notify\n";
-  auto const win { static_cast<xlib::Win>(data[1]) }; 
-  if (win == root.win) {
-    Dim<int, int> const pos { data[2], data[3] };
-    Dim<int, int> const size { data[4], data[5] };
-  }
   
-  change_root_state();
+  change_state();
 }
 
 void
-some::Recv::configurerequest(Data const&)
-const noexcept {
-  std::cout << "EV: Config Request\n";
-  change_root_state();
-}
-
-void
-some::Recv::property(Data const& data)
+some::Root::button_press(::XButtonEvent const& xbutton)
 noexcept {
-  std::cout << "EV: Prop Notify\n";
-  if (auto const win { data[0] }; win == root.win) {
-    refresh_root();
-    refresh_panel();
+  auto const win { xbutton.window };
+  auto const x { xbutton.x };
+  auto const y { xbutton.y };
+  auto const x_root { xbutton.x_root };
+  auto const y_root { xbutton.y_root };
+
+  auto const kmod { kbd.kmod(xbutton.state) };
+  auto const btn { xbutton.button };
+  if (win == dpy.root) {
+    Log() << "EV: Btn Press root window\n";
+
+  } else if (auto const wk { 
+    std::ranges::find_if(this->wk, [win](auto const& wk) {
+      return wk.wg.win == win; }) }; wk < this->wk.cend())
+    // Workspace counts from logical index 1
+    sw_wk(std::distance(this->wk.begin(), wk) + 1);
+
+  else if (auto const c { std::ranges::find_if(currwk->C, 
+    [win](auto const& c) { 
+      return c.par.win == win || 
+        c.icon.win == win ||
+        c.btn0.win == win ||
+        c.btn1.win == win ||
+        c.btn2.win == win; }) }; c < currwk->C.cend()) {
+    c->ptr_x = x;
+    c->ptr_y = y;
+    c->ptr_x_root = x_root;
+    c->ptr_y_root = y_root;
+    try {
+      auto const& call { this->btn.btn.at({ kmod, btn }) };
+      call();
+    } catch (...) { }
+
+    if (win == c->par.win && btn == Button1) {
+      Log() << "EV: Btn Press client window " << 
+      win << "\n";
+      if (c->move(x, y))
+        c->move(x, y, x_root, y_root);
+      else if (c->resize(x, y))
+        c->resize(x, y, x_root, y_root);
+    }
+
+    else if (win == c->icon.win) {
+      // Btn Press client icon
+      c->map();
+    } else if (win == c->btn0.win) {
+      // Btn Press client btn0w
+      c->unmap();
+    } else if (win == c->btn1.win) {
+      // Btn Press client btn1w
+      // Do maximize
+      ;
+    } else if (win == c->btn2.win) {
+      // Btn Press client btn2w
+      // Do close
+      ;
+    }
   }
+
+  change_state();
+}
+
+void
+some::Root::button_release(::XButtonEvent const& xbutton)
+noexcept {
+  Log() << "EV: Btn Release\n";
+  auto const btn { xbutton.button };
+  (void) btn;
+}
+
+void
+some::Root::motion(::XMotionEvent const& xmotion)
+const noexcept {
+  auto const win { xmotion.window };
+  auto const x { xmotion.x };
+  auto const y { xmotion.y };
+  auto const x_root { xmotion.x_root };
+  auto const y_root { xmotion.y_root };
+  if (win == dpy.root) {
+    Log() << "EV: Motion on root window " <<
+      win << " (" << x_root << ", " << y_root << ")\n";
+
+  } else if (auto const c { 
+    std::ranges::find_if(currwk->C, [win](auto const& c) { 
+      return c.par.win == win; }) }; 
+      c < currwk->C.cend()) {
+    c->ptr_x = x;
+    c->ptr_y = y;
+    c->ptr_x_root = x_root;
+    c->ptr_y_root = y_root;
+    c->resize(x, y);
+    Log() << "EV: Motion on client window " <<
+      win << " (" << x << ", " << y << ")\n";
+  }
+}
+
+void
+some::Root::crossing(::XCrossingEvent const& xcrossing)
+noexcept {
+  Log() << "EV: Enter Notify\n";
+  auto const win { xcrossing.window };
+  if (currwk->C.size() < 2)
+    return;
+  else if (auto const c { std::ranges::find_if(currwk->C,
+    [win](auto const& c) { return c.par.win == win; }) };
+      c < currwk->C.cend()) {
+    currwk->prevc = currwk->currc;
+    currwk->currc = c - currwk->C.cbegin();
+    focus();
+    change_state();
+  }
+}
+
+void
+some::Root::focus_change(::XFocusChangeEvent const& xfocus)
+noexcept {
+  auto const win { xfocus.window };
+  auto const mode { xfocus.mode };
+  (void) mode;
+  auto const detail { xfocus.detail };
+  (void) detail;
+  if (auto const c { std::ranges::find_if(currwk->C,
+    [win](auto const& c) { return c.win == win; }) };
+      c < currwk->C.cend()) {
+    currwk->prevc = currwk->currc;
+    //currwk->currc = c;
+    currwk->currc = c - currwk->C.cbegin();
+    focus();
+    change_state();
+  }
+}
+
+void
+some::Root::expose(::XExposeEvent const& xexpose)
+const noexcept {
+  Log() << "EV: Expose\n";
+  change_state();
+}
+
+void
+some::Root::unmap(::XUnmapEvent const& xunmap) 
+noexcept{
+  auto const win { xunmap.window };
+  Log() << "EV: Unmapnotify window " << win << "\n";
+  (void) win;
+  change_state();
+}
+
+void
+some::Root::map(::XMapEvent const& xmap)
+const noexcept {
+  Log() << "EV: Mapnotify\n";
+  auto const win { xmap.window };
+  (void) win;
+  change_state();
+}
+
+void
+some::Root::map_request(
+  ::XMapRequestEvent const& xmaprequest)
+noexcept {
+  Log() << "EV: Map Request\n";
+  auto const parw { xmaprequest.parent };
+  auto const win { xmaprequest.window };
+  ::XWindowAttributes wa;
+  if (::XGetWindowAttributes(dpy.ptr, win, &wa) &&
+    wa.override_redirect)
+    return;
+  
+  if (Client c { win, wa.x, wa.y, wa.width, wa.height };
+    parw != dpy.root) {
+    // A child of some client (eg. boxes)
+    Log() << "MapRequest child created\n";
+    //focus(c);
+    //xlib::WinAttr wa { parw };
+    //arrange.center(std::get<::Window>(next), wa.size(),
+      //wa.pos());
+
+  } else {
+    // A child of root
+    Log() << "Maprequest window " << c.win 
+      << " Parent " << c.par.win << "\n";
     
-  change_wins_state();
+    currwk->C.emplace_back(std::move(c));
+    currwk->prevc = currwk->currc;
+    //currwk->currc = currwk->C.end() - 1;
+    currwk->currc++;
+    focus();
+  }
 }
 
 void
-some::Recv::clientmessage(Data const& data) 
-const noexcept {
-  std::cout << "EV: Client Message\n";
-  change_root_state();
+some::Root::destroy(
+  ::XDestroyWindowEvent const& xdestroy)
+noexcept {
+  auto const win { xdestroy.window };
+  Log() << "EV: Destroy window " << win << "\n";
+  for (auto& wk : this->wk)
+    if (auto const c { std::ranges::find_if(wk.C, 
+      [win](auto const& c) { return c.win == win; })};
+        c != wk.C.cend()) {
+      //prev();
+      Log() << "EV: Erase client " << win << "\n";
+      wk.C.erase(c);
+      if (currwk->currc)
+        currwk->currc--;
+
+      focus();
+      break;
+    }
 }
 
 void
-some::Recv::exit() 
+some::Root::configure(::XConfigureEvent const& xconfigure) 
 const noexcept {
-  Wm::exit();
+  Log() << "EV: Configure Notify\n";
+  auto const win { xconfigure.window }; 
+  auto const x { xconfigure.x };
+  (void) x;
+  auto const y { xconfigure.y };
+  (void) y;
+  auto const w { xconfigure.width };
+  (void) w;
+  auto const h { xconfigure.height };
+  (void) h;
+  auto const bdrw { xconfigure.border_width };
+  (void) bdrw;
+  auto const raise { xconfigure.above };
+  (void) raise;
+  if (win == dpy.root) {
+    change_state();
+  } else {
+  
+  }
+}
+
+void
+some::Root::configure_request(
+  ::XConfigureRequestEvent const& xconfreq)
+const noexcept {
+  Log() << "EV: Config Request\n";
+  ::XWindowChanges wc {
+    xconfreq.x, 
+    xconfreq.y,
+    xconfreq.width,
+    xconfreq.height,
+    xconfreq.border_width,
+    xconfreq.above,
+    xconfreq.detail
+  };
+  
+  ::XConfigureWindow(dpy.ptr, xconfreq.window, 
+    xconfreq.value_mask, &wc);
+  change_state();
+}
+
+void
+some::Root::property(::XPropertyEvent const& xproperty)
+noexcept {
+  Log() << "EV: Prop Notify\n";
+  if (auto const win { xproperty.window }; 
+    win == dpy.root) {
+    refresh_root();
+    refresh_panels();
+  }
+}
+
+void
+some::Root::client_message(
+  ::XClientMessageEvent const& xmsg) 
+const noexcept {
+  Log() << "EV: Client Message\n";
+  change_state();
+}
+
+void
+some::Root::mapping(::XMappingEvent const& xmapping)
+noexcept {
+  Log() << "EV: Mapping\n";
+  ::XMappingEvent _xmapping { xmapping };
+  if (::XRefreshKeyboardMapping(&_xmapping);
+    _xmapping.request == MappingKeyboard)
+    kbd.grab_keys();
 }

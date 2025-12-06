@@ -4,7 +4,7 @@
 #include <X11/Xutil.h>
 #include <X11/XF86keysym.h>
 
-#include "inc/palette.h"
+#include "src/palette.h"
 
 /*
 KeySym {
@@ -95,15 +95,31 @@ Modifiers {
 }
 */
 
-namespace wmconf {
+namespace conf {
   static char constexpr WMNAME[] { "dopenboxwm" };
-  static char constexpr FONT[] { "9x15bold" };
+  static char constexpr FONT[] { "fixed" };
   static auto constexpr NWKS { 4 };
   static auto constexpr SLOPPY_FOCUS { true };
-  static auto constexpr BDRPX { 2 };
-  // Color Scheme: COLORS[] { BG, Selected BG, FG }
-  static std::size_t constexpr COLORS[] { 
-    Cyan10, Cyan50, Gray10 };
+  static auto constexpr UISCALE { 1.0 };
+  namespace ui {
+    // Dim in px
+    // Cannonical length
+    static auto constexpr CLEN { 14 };
+    // Icon width
+    static auto constexpr ICOW { 20 };
+    // Icon characters
+    static auto constexpr ICOSTRLEN { 3 };
+    // Window string
+    static auto constexpr WINSTR { 4 };
+    // Cascading offset
+    static auto constexpr CASCOSET { 14 };
+    // Window border width
+    static auto constexpr BDRW { 2 };
+    // Color Scheme
+    static std::size_t constexpr COLORS[] { 
+      // BG   ACTSEL  SEL     FG
+      Cyan10, Cyan50, Yellow, Gray10 };
+  }
 
   enum class Calls : std::size_t {
     // Declare pool of calls
@@ -129,16 +145,17 @@ namespace wmconf {
     MON7,
     MON8,
     MON9,
-    UNMAPALL,
-    MAPALL,
     SWFOCUS,
     TOGGLEMODE,
-    PREVCLI,
-    NEXTCLI,
+    NEXT,
+    PREV,
+    ROTATE_NEXT,
+    ROTATE_PREV,
     KILL,
     SELTOGGLE,
     SELCLEAR,
     QUIT,
+    MOVE,
     RESIZE,
     STATE,
   };
@@ -150,6 +167,7 @@ namespace wmconf {
   };
 
   static Input const KBD[] {
+    // Keyboard bindings
     { Mod4Mask, XK_0, Calls::WK0 },
     { Mod4Mask, XK_1, Calls::WK1 },
     { Mod4Mask, XK_2, Calls::WK2 },
@@ -162,14 +180,13 @@ namespace wmconf {
     { Mod4Mask, XK_9, Calls::WK9 },
     { Mod4Mask, XK_w, Calls::LOADWK },
     { Mod4Mask, XK_d, Calls::UNLOADWK },
-    { Mod4Mask, XK_u, Calls::UNMAPALL },
-    { Mod4Mask, XK_v, Calls::MAPALL },
     { Mod4Mask, XK_Tab, Calls::SWFOCUS },
     { Mod4Mask, XK_m, Calls::TOGGLEMODE },
-    { Mod4Mask, XK_o, Calls::PREVCLI },
-    { Mod4Mask, XK_p, Calls::NEXTCLI },
+    { Mod4Mask, XK_o, Calls::PREV },
+    { Mod4Mask, XK_p, Calls::NEXT },
     { Mod4Mask, XK_space, Calls::SELTOGGLE },
     { Mod4Mask, XK_c, Calls::SELCLEAR },
+    { Mod4Mask | ShiftMask, XK_0, Calls::MON0 },
     { Mod4Mask | ShiftMask, XK_1, Calls::MON1 },
     { Mod4Mask | ShiftMask, XK_2, Calls::MON2 },
     { Mod4Mask | ShiftMask, XK_3, Calls::MON3 },
@@ -179,7 +196,6 @@ namespace wmconf {
     { Mod4Mask | ShiftMask, XK_7, Calls::MON7 },
     { Mod4Mask | ShiftMask, XK_8, Calls::MON8 },
     { Mod4Mask | ShiftMask, XK_9, Calls::MON9 },
-    { Mod4Mask | ShiftMask, XK_0, Calls::MON0 },
     { Mod4Mask | ShiftMask, XK_k, Calls::KILL },
     { Mod4Mask | ShiftMask | ControlMask, XK_q, Calls::QUIT },
     // Shell Bindings
@@ -194,6 +210,7 @@ namespace wmconf {
 
   static Input const BTN[] {
     // Mouse Bindings
+    { Mod4Mask, Button1, Calls::MOVE },
     { Mod4Mask, Button3, Calls::RESIZE },
   };
 }

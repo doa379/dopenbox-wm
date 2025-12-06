@@ -1,7 +1,7 @@
 include config.mk
 
 OBJ=$(SRC:%.cpp=obj/%.o)
-HDR=${HDR_SRC:%.h=inc/%.h}
+HDR=${HDR_SRC:%.h=src/%.h}
 
 TARGET=dummy
 FLAG=Release

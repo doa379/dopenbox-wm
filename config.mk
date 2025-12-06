@@ -13,7 +13,7 @@ LIBSPATH= -L . -Wl,-R . '-Wl,-R$$ORIGIN' \
 
 LIBS=-l X11 -l Xinerama -l dbus-1
 
-CPPC=clang++
+CPPC=c++
 FLAGS=-std=c++20 -Wall -fPIE -fPIC -pedantic
 
 REL_CFLAGS=-O3

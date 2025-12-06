@@ -17,7 +17,7 @@ OBJ=${SRC:.cpp=.o}
 .SUFFIXES: .cpp .h .o
 # These paths must pre-exist
 .PATH.cpp: ${.CURDIR}/src
-.PATH.h: ${.CURDIR}/inc
+.PATH.h: ${.CURDIR}/src
 .PATH.o: ${.CURDIR}/obj
 .OBJDIR: ${.CURDIR}/obj
 
